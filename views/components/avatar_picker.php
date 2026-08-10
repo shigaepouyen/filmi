@@ -1,7 +1,7 @@
 <?php
 use App\Utils\Avatars;
 ?>
-<div x-data="{ choix: <?= json_encode($currentAvatar) ?> }" class="space-y-6">
+<div x-data="{ choix: '<?= htmlspecialchars($currentAvatar, ENT_QUOTES) ?>' }" class="space-y-6">
     <?php foreach (Avatars::byFamily() as $family => $avatars): ?>
         <fieldset>
             <legend class="text-xs uppercase tracking-wide text-slate-400 mb-2">

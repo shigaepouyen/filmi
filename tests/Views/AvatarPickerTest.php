@@ -1,0 +1,59 @@
+<?php
+namespace App\Tests\Views;
+
+use App\Utils\Avatars;
+use PHPUnit\Framework\TestCase;
+
+class AvatarPickerTest extends TestCase
+{
+    private function render(string $currentAvatar = 'alien', string $currentColor = 'violet'): string
+    {
+        $inputName = 'avatar';
+
+        ob_start();
+        require dirname(__DIR__, 2) . '/views/components/avatar_picker.php';
+
+        return (string) ob_get_clean();
+    }
+
+    public function testXDataAttributeIsWellFormed(): void
+    {
+        $html = $this->render();
+
+        $this->assertStringContainsString('x-data="{ choix: \'alien\' }"', $html);
+        $this->assertStringNotContainsString('choix: "', $html);
+    }
+
+    public function testEveryAvatarGetsARadioInputAndAnInlineSvg(): void
+    {
+        $html = $this->render();
+
+        $this->assertSame(24, preg_match_all('/<input type="radio"/', $html));
+        $this->assertSame(24, preg_match_all('/<svg /', $html));
+    }
+
+    public function testTheCurrentAvatarIsTheOnlyCheckedRadio(): void
+    {
+        $html = $this->render('gumiho');
+
+        $this->assertSame(1, preg_match_all('/checked/', $html));
+        $this->assertMatchesRegularExpression('/value="gumiho"[^>]*checked/', $html);
+    }
+
+    public function testEveryFamilyLegendIsRendered(): void
+    {
+        $html = $this->render();
+
+        foreach (Avatars::FAMILIES as $label) {
+            $this->assertStringContainsString(htmlspecialchars($label), $html);
+        }
+    }
+
+    public function testNoAttributeIsBrokenByAnUnescapedQuote(): void
+    {
+        // Une valeur hostile ne doit jamais casser un attribut.
+        $html = $this->render('" onmouseover="alert(1)');
+
+        $this->assertStringNotContainsString('onmouseover=', $html);
+    }
+}
