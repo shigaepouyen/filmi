@@ -241,4 +241,49 @@ class MovieRepositoryTest extends DbTestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->repo->add(['title' => '   ', 'pool' => 'adult', 'bet_type' => 'safe', 'added_by' => $this->jc]);
     }
+
+    public function testStaleProvidersReturnsNeverFetchedAndOutdatedOnes(): void
+    {
+        $jamais = $this->addAdult('Jamais interrogé', 'safe', ['tmdb_id' => 1]);
+        $vieux = $this->addAdult('Cache périmé', 'discovery', [
+            'tmdb_id' => 2, 'providers' => '["Netflix"]',
+            'providers_at' => date('Y-m-d H:i:s', strtotime('-20 days')),
+        ]);
+        $this->addAdult('Cache frais', 'discovery', [
+            'tmdb_id' => 3, 'providers' => '["Max"]',
+            'providers_at' => date('Y-m-d H:i:s', strtotime('-2 days')),
+        ]);
+        $this->addAdult('Saisi à la main', 'safe');
+
+        $stale = $this->repo->staleProviders(7);
+
+        $ids = array_column($stale, 'id');
+        $this->assertContains($jamais, $ids);
+        $this->assertContains($vieux, $ids);
+        $this->assertCount(2, $ids, 'Le cache frais et le film sans tmdb_id sont exclus');
+    }
+
+    public function testStaleProvidersIgnoresWatchedMoviesAndHonoursTheLimit(): void
+    {
+        $vu = $this->addAdult('Déjà vu', 'safe', ['tmdb_id' => 10]);
+        $this->repo->markWatched($vu);
+        $this->addAdult('A', 'safe', ['tmdb_id' => 11]);
+        $this->addAdult('B', 'discovery', ['tmdb_id' => 12]);
+
+        $this->assertNotContains($vu, array_column($this->repo->staleProviders(7), 'id'));
+        $this->assertCount(1, $this->repo->staleProviders(7, 1));
+    }
+
+    public function testUpdateProvidersStampsTheFetchDate(): void
+    {
+        $id = $this->addAdult('Brazil', 'discovery', ['tmdb_id' => 20]);
+
+        $this->repo->updateProviders($id, '["Netflix","Max"]', 'Tous publics');
+        $movie = $this->repo->find($id);
+
+        $this->assertSame(['Netflix', 'Max'], json_decode($movie['providers'], true));
+        $this->assertSame('Tous publics', $movie['certification']);
+        $this->assertNotNull($movie['providers_at']);
+        $this->assertSame([], $this->repo->staleProviders(7));
+    }
 }

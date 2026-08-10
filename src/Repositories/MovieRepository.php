@@ -179,6 +179,38 @@ final class MovieRepository
         return (int) $stmt->fetchColumn();
     }
 
+    /**
+     * Films dont le cache de plateformes est absent ou périmé.
+     * Les plus périmés d'abord, pour qu'une exécution interrompue reprenne au bon endroit.
+     */
+    public function staleProviders(int $olderThanDays = 7, int $limit = 25): array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT id, tmdb_id, title, providers_at
+               FROM movies
+              WHERE status = 'pool'
+                AND tmdb_id IS NOT NULL
+                AND (providers_at IS NULL
+                     OR providers_at < datetime('now', ?))
+              ORDER BY providers_at IS NOT NULL, providers_at ASC
+              LIMIT ?"
+        );
+        $stmt->execute(['-' . max(0, $olderThanDays) . ' days', $limit]);
+
+        return $stmt->fetchAll();
+    }
+
+    public function updateProviders(int $id, string $providersJson, ?string $certification = null): void
+    {
+        $this->db->prepare(
+            'UPDATE movies
+                SET providers = ?,
+                    providers_at = CURRENT_TIMESTAMP,
+                    certification = COALESCE(?, certification)
+              WHERE id = ?'
+        )->execute([$providersJson, $certification, $id]);
+    }
+
     private function duplicateSelect(): string
     {
         return 'SELECT m.*, (SELECT s.date FROM seances s WHERE s.movie_id = m.id
