@@ -51,9 +51,13 @@ class AvatarPickerTest extends TestCase
 
     public function testNoAttributeIsBrokenByAnUnescapedQuote(): void
     {
-        // Une valeur hostile ne doit jamais casser un attribut.
+        // Une valeur hostile ne doit jamais casser un attribut. Le texte injecte
+        // peut rester visible dans la sortie, ce qui compte est qu'il soit inerte :
+        // aucun guillemet non echappe, donc aucun attribut evenementiel vivant.
         $html = $this->render('" onmouseover="alert(1)');
 
-        $this->assertStringNotContainsString('onmouseover=', $html);
+        $this->assertStringNotContainsString('onmouseover="', $html);
+        $this->assertStringContainsString('&quot; onmouseover=&quot;', $html);
+        $this->assertStringContainsString('class="space-y-6"', $html);
     }
 }
