@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Filmi">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fef3c7"/>
+      <stop offset="100%" stop-color="#fb923c"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="512" height="512" fill="url(#bgGrad)"/>
+
+  <!-- alien peeking from behind the bucket -->
+  <path d="M96 165 q-10 -34 8 -46" stroke="#86efac" stroke-width="14" fill="none" stroke-linecap="round"/>
+  <path d="M172 172 q14 -32 -2 -46" stroke="#86efac" stroke-width="14" fill="none" stroke-linecap="round"/>
+  <circle cx="100" cy="115" r="15" fill="#fb923c"/>
+  <circle cx="172" cy="122" r="15" fill="#fb923c"/>
+  <ellipse cx="150" cy="228" rx="62" ry="66" fill="#bbf7d0"/>
+  <ellipse cx="128" cy="228" rx="15" ry="19" fill="#1f2937"/>
+  <ellipse cx="174" cy="228" rx="15" ry="19" fill="#1f2937"/>
+  <circle cx="123" cy="223" r="4" fill="#ffffff"/>
+  <circle cx="169" cy="223" r="4" fill="#ffffff"/>
+  <circle cx="102" cy="252" r="10" fill="#fda4af" opacity="0.7"/>
+  <circle cx="196" cy="252" r="10" fill="#fda4af" opacity="0.7"/>
+  <path d="M118 266 q14 11 28 0" stroke="#1f2937" stroke-width="5" fill="none" stroke-linecap="round"/>
+
+  <!-- popcorn bucket -->
+  <polygon points="192,236 384,236 362,432 214,432" fill="#fff7e6"/>
+  <polygon points="230.4,236 268.8,236 273.2,432 243.6,432" fill="#ef4444"/>
+  <polygon points="307.2,236 345.6,236 332.4,432 302.8,432" fill="#ef4444"/>
+  <ellipse cx="288" cy="236" rx="104" ry="24" fill="#fff7e6"/>
+  <ellipse cx="288" cy="243" rx="88" ry="13" fill="#fde9c8"/>
+
+  <!-- popcorn pile -->
+  <circle cx="216" cy="228" r="27" fill="#fffdf5"/>
+  <circle cx="230" cy="196" r="34" fill="#fffdf5"/>
+  <circle cx="270" cy="176" r="40" fill="#fffdf5"/>
+  <circle cx="312" cy="182" r="38" fill="#fffdf5"/>
+  <circle cx="348" cy="212" r="30" fill="#fffdf5"/>
+  <circle cx="360" cy="245" r="22" fill="#fffdf5"/>
+  <circle cx="243" cy="208" r="12" fill="#fde68a" opacity="0.6"/>
+  <circle cx="293" cy="168" r="12" fill="#fde68a" opacity="0.6"/>
+  <circle cx="330" cy="198" r="10" fill="#fde68a" opacity="0.6"/>
+
+  <!-- alien arm and hand, picking a piece from the top of the pile -->
+  <path d="M336 300 q30 -4 32 -56" stroke="#bbf7d0" stroke-width="30" fill="none" stroke-linecap="round"/>
+  <ellipse cx="372" cy="216" rx="24" ry="20" fill="#bbf7d0"/>
+  <circle cx="359" cy="204" r="7" fill="#86efac"/>
+  <circle cx="376" cy="198" r="7" fill="#86efac"/>
+  <circle cx="388" cy="208" r="7" fill="#86efac"/>
+
+  <!-- popcorn piece held by the alien -->
+  <circle cx="378" cy="176" r="15" fill="#fffdf5"/>
+  <circle cx="385" cy="170" r="6" fill="#fde68a" opacity="0.6"/>
+
+  <!-- film-strip border -->
+  <rect x="0" y="452" width="512" height="60" fill="#1f2937"/>
+  <rect x="20" y="472" width="22" height="16" rx="5" fill="#fef3c7"/>
+  <rect x="62" y="472" width="22" height="16" rx="5" fill="#fef3c7"/>
+  <rect x="104" y="472" width="22" height="16" rx="5" fill="#fef3c7"/>
+  <rect x="146" y="472" width="22" height="16" rx="5" fill="#fef3c7"/>
+  <rect x="188" y="472" width="22" height="16" rx="5" fill="#fef3c7"/>
+  <rect x="230" y="472" width="22" height="16" rx="5" fill="#fef3c7"/>
+  <rect x="272" y="472" width="22" height="16" rx="5" fill="#fef3c7"/>
+  <rect x="314" y="472" width="22" height="16" rx="5" fill="#fef3c7"/>
+  <rect x="356" y="472" width="22" height="16" rx="5" fill="#fef3c7"/>
+  <rect x="398" y="472" width="22" height="16" rx="5" fill="#fef3c7"/>
+  <rect x="440" y="472" width="22" height="16" rx="5" fill="#fef3c7"/>
+  <rect x="482" y="472" width="10" height="16" rx="5" fill="#fef3c7"/>
+</svg>
