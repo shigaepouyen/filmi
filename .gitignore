@@ -2,3 +2,4 @@
 /data/
 /config/config.php
 .DS_Store
+/.superpowers/
