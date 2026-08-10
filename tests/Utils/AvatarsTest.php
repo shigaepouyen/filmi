@@ -47,7 +47,15 @@ class AvatarsTest extends TestCase
         $this->assertStringContainsString('viewBox="0 0 96 96"', $svg);
         $this->assertStringContainsString('width="64"', $svg);
         $this->assertStringNotContainsString('<image', $svg);
-        $this->assertStringNotContainsString('http', $svg);
+        $this->assertStringNotContainsString('xlink:href', $svg);
+        $this->assertStringNotContainsString('href=', $svg);
+        $this->assertStringNotContainsString('url(', $svg);
+        $this->assertStringNotContainsString('<text', $svg);
+        $this->assertSame(
+            1,
+            preg_match_all('/https?:/', $svg),
+            'La seule URL autorisee est le namespace SVG'
+        );
     }
 
     public function testEveryAvatarRendersValidSvg(): void

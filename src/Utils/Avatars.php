@@ -86,7 +86,7 @@ final class Avatars
         $label = htmlspecialchars(self::all()[$key]['label'], ENT_QUOTES);
 
         return sprintf(
-            '<svg viewBox="0 0 96 96" width="%d" height="%d" role="img" aria-label="%s">'
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="%d" height="%d" role="img" aria-label="%s">'
             . '<circle cx="48" cy="48" r="46" fill="%s" opacity="0.18"/>%s</svg>',
             $size,
             $size,
@@ -181,6 +181,8 @@ final class Avatars
             . '<ellipse cx="48" cy="30" rx="30" ry="8" fill="#a16207"/>'
             . '<path d="M30 30 q0 -18 18 -18 q18 0 18 18" fill="#a16207"/>'
             . '<rect x="30" y="26" width="36" height="6" rx="3" fill="' . $accent . '"/>'
+            . '<path d="M34 72 L48 86 L62 72 Z" fill="' . $accent . '"/>'
+            . '<rect x="76" y="58" width="8" height="20" rx="4" fill="#a16207"/>'
             . self::face();
     }
 
@@ -218,10 +220,10 @@ final class Avatars
     private static function gardien(string $accent): string
     {
         return '<circle cx="48" cy="52" r="24" fill="#c7d2fe"/>'
-            . '<path d="M30 30 q18 -14 36 0" fill="none" stroke="#4338ca" stroke-width="6" stroke-linecap="round"/>'
-            . '<rect x="74" y="16" width="4" height="56" rx="2" fill="#94a3b8"/>'
-            . '<circle cx="76" cy="16" r="6" fill="' . $accent . '"/>'
-            . '<circle cx="76" cy="16" r="10" fill="' . $accent . '" opacity="0.3"/>'
+            . '<path d="M14 78 Q48 60 82 78 L82 92 L14 92 Z" fill="#4338ca"/>'
+            . '<rect x="24" y="48" width="48" height="9" rx="4.5" fill="#4338ca"/>'
+            . '<rect x="20" y="18" width="72" height="10" rx="5" fill="' . $accent . '" opacity="0.3" transform="rotate(-35 56 20)"/>'
+            . '<rect x="20" y="18" width="72" height="4" rx="2" fill="' . $accent . '" transform="rotate(-35 56 20)"/>'
             . self::face();
     }
 
@@ -247,19 +249,20 @@ final class Avatars
     private static function traqueur(string $accent): string
     {
         return '<circle cx="48" cy="52" r="24" fill="#e2e8f0"/>'
-            . '<path d="M22 38 q26 -24 52 0 q0 -16 -26 -16 q-26 0 -26 16z" fill="#334155"/>'
-            . '<circle cx="48" cy="34" r="9" fill="none" stroke="' . $accent . '" stroke-width="3"/>'
-            . '<circle cx="48" cy="34" r="3" fill="' . $accent . '"/>'
+            . '<path d="M22 40 Q26 20 48 20 Q70 20 74 40 Q48 30 22 40 Z" fill="#334155"/>'
+            . '<rect x="66" y="46" width="16" height="24" rx="5" fill="#334155"/>'
+            . '<path d="M78 48 Q90 54 80 66" stroke="#334155" stroke-width="4" fill="none" stroke-linecap="round"/>'
+            . '<rect x="30" y="78" width="6" height="14" rx="2" fill="' . $accent . '"/>'
+            . '<path d="M33 78 L18 68 L18 60 L46 70 Z" fill="' . $accent . '" opacity="0.35"/>'
             . self::face();
     }
 
     private static function creature(string $accent): string
     {
-        return '<circle cx="48" cy="52" r="25" fill="#d8b4fe"/>'
-            . '<path d="M26 40 q-6 -14 4 -20 q4 8 2 16z" fill="#c084fc"/>'
-            . '<path d="M70 40 q6 -14 -4 -20 q-4 8 -2 16z" fill="#c084fc"/>'
-            . '<circle cx="30" cy="12" r="5" fill="' . $accent . '"/>'
-            . '<circle cx="66" cy="12" r="5" fill="' . $accent . '"/>'
+        return '<path d="M14 56 Q14 30 24 26 Q30 18 37 26 Q43 16 49 26 Q55 18 61 26 Q68 18 74 26 Q84 30 84 56 Q86 86 49 86 Q12 86 14 56 Z" fill="#d8b4fe"/>'
+            . '<ellipse cx="48" cy="66" rx="13" ry="10" fill="#f3e8ff"/>'
+            . '<circle cx="82" cy="62" r="7" fill="' . $accent . '"/>'
+            . '<path d="M74 68 Q82 72 82 62" stroke="' . $accent . '" stroke-width="4" fill="none" stroke-linecap="round"/>'
             . self::face();
     }
 
@@ -277,9 +280,9 @@ final class Avatars
     private static function cowboy(string $accent): string
     {
         return '<circle cx="48" cy="52" r="24" fill="#fcd9b6"/>'
-            . '<path d="M18 30 q30 -16 60 0 q-10 6 -30 6 q-20 0 -30 -6z" fill="#92400e"/>'
-            . '<ellipse cx="48" cy="24" rx="14" ry="10" fill="#92400e"/>'
-            . '<path d="M28 70 q20 12 40 0 l-4 12 l-32 0 z" fill="' . $accent . '"/>'
+            . '<path d="M10 34 q38 -20 76 0 q-14 8 -38 8 q-24 0 -38 -8z" fill="#92400e"/>'
+            . '<ellipse cx="48" cy="26" rx="16" ry="10" fill="#92400e"/>'
+            . '<path d="M16 68 L80 68 L92 92 L4 92 Z" fill="' . $accent . '"/>'
             . self::face();
     }
 
@@ -307,11 +310,15 @@ final class Avatars
 
     private static function haechi(string $accent): string
     {
-        return '<circle cx="48" cy="52" r="24" fill="#fde68a"/>'
-            . '<path d="M22 46 q-4 -20 14 -22 q-2 10 2 16z" fill="#f59e0b"/>'
-            . '<path d="M74 46 q4 -20 -14 -22 q2 10 -2 16z" fill="#f59e0b"/>'
-            . '<path d="M40 20 q8 -10 16 0" fill="none" stroke="' . $accent . '" stroke-width="4" stroke-linecap="round"/>'
-            . '<circle cx="48" cy="18" r="3" fill="' . $accent . '"/>'
+        return '<circle cx="74" cy="50" r="9" fill="#f59e0b"/><circle cx="66" cy="68" r="9" fill="#f59e0b"/>'
+            . '<circle cx="48" cy="76" r="9" fill="#f59e0b"/><circle cx="30" cy="68" r="9" fill="#f59e0b"/>'
+            . '<circle cx="22" cy="50" r="9" fill="#f59e0b"/><circle cx="30" cy="32" r="9" fill="#f59e0b"/>'
+            . '<circle cx="48" cy="24" r="9" fill="#f59e0b"/><circle cx="66" cy="32" r="9" fill="#f59e0b"/>'
+            . '<circle cx="48" cy="50" r="20" fill="#fde68a"/>'
+            . '<circle cx="36" cy="30" r="5" fill="#fde68a"/><circle cx="60" cy="30" r="5" fill="#fde68a"/>'
+            . '<ellipse cx="48" cy="67" rx="8" ry="6" fill="#fde68a"/>'
+            . '<circle cx="48" cy="70" r="2.2" fill="#1f2937"/>'
+            . '<path d="M44 20 q4 -8 8 0" fill="none" stroke="' . $accent . '" stroke-width="3" stroke-linecap="round"/>'
             . self::face();
     }
 
@@ -319,9 +326,10 @@ final class Avatars
     {
         return '<circle cx="48" cy="52" r="24" fill="#fcd9b6"/>'
             . '<path d="M30 74 q18 -10 36 0 l-3 8 l-30 0 z" fill="' . $accent . '"/>'
-            . '<ellipse cx="48" cy="26" rx="20" ry="6" fill="#1e293b"/>'
-            . '<rect x="38" y="12" width="20" height="16" rx="3" fill="#1e293b"/>'
-            . '<rect x="44" y="18" width="8" height="4" fill="' . $accent . '"/>'
+            . '<ellipse cx="48" cy="34" rx="38" ry="6" fill="#1e293b"/>'
+            . '<circle cx="48" cy="22" r="12" fill="#1e293b"/>'
+            . '<rect x="82" y="46" width="6" height="30" rx="3" fill="' . $accent . '"/>'
+            . '<path d="M82 46 q6 4 6 14" fill="none" stroke="' . $accent . '" stroke-width="2"/>'
             . self::face();
     }
 
@@ -347,20 +355,21 @@ final class Avatars
     private static function idole(string $accent): string
     {
         return '<circle cx="48" cy="52" r="24" fill="#fcd9b6"/>'
-            . '<path d="M24 46 q0 -26 24 -26 q24 0 24 26 q-6 -10 -24 -10 q-18 0 -24 10z" fill="#1f2937"/>'
-            . '<path d="M70 44 q6 2 6 10" fill="none" stroke="#1f2937" stroke-width="3" stroke-linecap="round"/>'
-            . '<circle cx="76" cy="56" r="3" fill="' . $accent . '"/>'
-            . '<circle cx="48" cy="30" r="4" fill="' . $accent . '"/>'
+            . '<path d="M24 46 Q24 20 48 20 Q72 20 72 46 Q60 36 48 36 Q36 36 24 46 Z" fill="#1f2937"/>'
+            . '<path d="M70 44 Q82 54 58 65" fill="none" stroke="' . $accent . '" stroke-width="2.5" stroke-linecap="round"/>'
+            . '<circle cx="58" cy="65" r="3" fill="' . $accent . '"/>'
+            . '<rect x="14" y="78" width="68" height="14" rx="4" fill="#1f2937"/>'
+            . '<rect x="14" y="78" width="68" height="5" fill="' . $accent . '"/>'
             . self::face();
     }
 
     private static function danseur(string $accent): string
     {
         return '<circle cx="48" cy="52" r="24" fill="#fcd9b6"/>'
-            . '<path d="M26 30 q22 -16 44 0 q-4 6 -22 6 q-18 0 -22 -6z" fill="#1f2937"/>'
-            . '<rect x="28" y="72" width="40" height="14" rx="7" fill="#1f2937"/>'
-            . '<rect x="28" y="72" width="40" height="5" fill="' . $accent . '"/>'
-            . '<circle cx="62" cy="78" r="3" fill="' . $accent . '"/>'
+            . '<path d="M14 34 Q48 50 82 34 Q78 14 48 14 Q18 14 14 34 Z" fill="#1f2937"/>'
+            . '<ellipse cx="48" cy="18" rx="22" ry="6" fill="#1f2937"/>'
+            . '<path d="M10 92 Q10 62 48 62 Q86 62 86 92 Z" fill="#1f2937"/>'
+            . '<rect x="34" y="62" width="28" height="7" rx="3.5" fill="' . $accent . '"/>'
             . self::face();
     }
 
@@ -377,8 +386,9 @@ final class Avatars
     {
         return '<circle cx="48" cy="52" r="24" fill="#fcd9b6"/>'
             . '<path d="M24 44 q0 -24 24 -24 q24 0 24 24 q-8 -6 -24 -6 q-16 0 -24 6z" fill="#7c2d12"/>'
-            . '<rect x="20" y="40" width="6" height="14" rx="3" fill="' . $accent . '"/>'
-            . '<circle cx="48" cy="16" r="4" fill="' . $accent . '"/>'
+            . '<path d="M28 60 L74 84" stroke="' . $accent . '" stroke-width="6" stroke-linecap="round"/>'
+            . '<rect x="80" y="66" width="8" height="16" rx="3" fill="' . $accent . '"/>'
+            . '<path d="M40 58 q4 3 8 0 M48 58 q4 3 8 0" stroke="#7c2d12" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.6"/>'
             . self::face();
     }
 }
