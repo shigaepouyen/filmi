@@ -127,7 +127,7 @@ class SeanceRepositoryTest extends DbTestCase
     {
         $movieId = $this->movie('Un film contesté');
         $seance = $this->repo->ensure('2026-08-15', 'kid');
-        $this->repo->recordChoice($seance['id'], [$movieId], $movieId);
+        $this->repo->recordChoice($seance['id'], [], $movieId);
 
         $this->repo->recordVeto($seance['id'], $movieId, $this->jc, 'Trop dur pour Soline');
 
@@ -173,7 +173,7 @@ class SeanceRepositoryTest extends DbTestCase
     {
         $movieId = $this->movie('Brazil');
         $seance = $this->repo->ensure('2026-08-15', 'adult');
-        $this->repo->recordChoice($seance['id'], [$movieId], $movieId);
+        $this->repo->recordChoice($seance['id'], [], $movieId);
 
         $this->repo->rate($seance['id'], $this->zoe, 3);
         $this->repo->rate($seance['id'], $this->zoe, 5);
@@ -206,9 +206,9 @@ class SeanceRepositoryTest extends DbTestCase
         $s1 = $this->repo->ensure('2026-07-04', 'adult');
         $this->repo->recordChoice($s1['id'], [$ids['A'], $ids['B'], $ids['C']], $ids['A']);
 
-        // Semaine filles : aucune shortlist, ne doit pas consommer de cooldown.
+        // Semaine filles : aucune shortlist, elles choisissent dans tout le pool.
         $s2 = $this->repo->ensure('2026-07-11', 'kid');
-        $this->repo->recordChoice($s2['id'], [$ids['G']], $ids['G']);
+        $this->repo->recordChoice($s2['id'], [], $ids['G']);
 
         // Semaine parents suivante : shortlist D E F, D retenu.
         $s3 = $this->repo->ensure('2026-07-18', 'adult');
@@ -237,14 +237,49 @@ class SeanceRepositoryTest extends DbTestCase
         $this->assertNotContains($vieux, $this->repo->cooldownMovieIds(2));
     }
 
+    public function testASeanceWithoutShortlistConsumesNoCooldownSlot(): void
+    {
+        $a = $this->movie('Parents A', 'safe');
+        $b = $this->movie('Parents B');
+        $c = $this->movie('Parents C');
+
+        // Semaine parents avec vraie shortlist.
+        $s1 = $this->repo->ensure('2026-07-04', 'adult');
+        $this->repo->recordChoice($s1['id'], [$a, $b, $c], $a);
+
+        // Deux semaines filles sans shortlist, chacune avec son propre film :
+        // elles ne doivent pas chasser la semaine parents hors de la fenêtre
+        // de cooldown.
+        foreach (['2026-07-11', '2026-07-18'] as $index => $date) {
+            $kid = $this->movie('Choix des filles ' . $index);
+            $seance = $this->repo->ensure($date, 'kid');
+            $this->repo->recordChoice($seance['id'], [], $kid);
+        }
+
+        $cooldown = $this->repo->cooldownMovieIds(2);
+
+        $this->assertContains($b, $cooldown, 'La semaine parents doit rester dans la fenêtre');
+        $this->assertContains($c, $cooldown);
+    }
+
+    public function testRecordChoiceStillRefusesANonEmptyShortlistMissingTheChosenFilm(): void
+    {
+        $dansLaShortlist = $this->movie('Dans la shortlist');
+        $horsShortlist = $this->movie('Hors shortlist');
+        $seance = $this->repo->ensure('2026-08-15', 'adult');
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->repo->recordChoice($seance['id'], [$dansLaShortlist], $horsShortlist);
+    }
+
     public function testHistoryIsSortedByDateDescendingWithMovieAndAverage(): void
     {
         $a = $this->movie('Ancien');
         $b = $this->movie('Récent');
         $s1 = $this->repo->ensure('2026-07-04', 'adult');
-        $this->repo->recordChoice($s1['id'], [$a], $a);
+        $this->repo->recordChoice($s1['id'], [], $a);
         $s2 = $this->repo->ensure('2026-07-11', 'kid');
-        $this->repo->recordChoice($s2['id'], [$b], $b);
+        $this->repo->recordChoice($s2['id'], [], $b);
         $this->repo->rate($s2['id'], $this->zoe, 5);
         $this->repo->rate($s2['id'], $this->jc, 4);
 
@@ -259,7 +294,7 @@ class SeanceRepositoryTest extends DbTestCase
     {
         $movieId = $this->movie('Brazil');
         $s1 = $this->repo->ensure('2026-07-04', 'adult');
-        $this->repo->recordChoice($s1['id'], [$movieId], $movieId);
+        $this->repo->recordChoice($s1['id'], [], $movieId);
         $s2 = $this->repo->ensure('2026-07-11', 'kid');
         $this->repo->skip($s2['id']);
 

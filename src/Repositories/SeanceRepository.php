@@ -62,11 +62,16 @@ final class SeanceRepository
      * Écrit la shortlist, le film retenu, le statut de la séance et le passage
      * du film en 'watched' en une seule transaction.
      *
+     * Une shortlist vide est légitime : elle signifie qu'aucun tirage n'a eu
+     * lieu (semaine des filles, qui choisissent dans tout le pool). Dans ce
+     * cas le film retenu n'a pas besoin d'y figurer. Une shortlist non vide
+     * reste, elle, contraignante : le film retenu doit en faire partie.
+     *
      * @param list<int> $shortlistIds
      */
     public function recordChoice(int $seanceId, array $shortlistIds, int $chosenId): void
     {
-        if (!in_array($chosenId, $shortlistIds, true)) {
+        if ($shortlistIds !== [] && !in_array($chosenId, $shortlistIds, true)) {
             throw new InvalidArgumentException('Le film retenu doit figurer dans la shortlist.');
         }
 
@@ -163,21 +168,20 @@ final class SeanceRepository
     /**
      * @return list<int> films en shortlist des dernières séances qui en avaient une
      *
-     * Une séance « possède une shortlist » quand plus d'un film y a été mis en
-     * concurrence (rôle 'shortlist'). Les semaines des filles enregistrent leur
-     * unique choix via recordChoice() avec un seul film en 'shortlist' : ce n'est
-     * pas un tirage, donc ça ne doit pas consommer un créneau de cooldown.
+     * Une séance « possède une shortlist » dès qu'elle a au moins une ligne de
+     * rôle 'shortlist'. Une semaine des filles ne produit aucun tirage : elles
+     * choisissent dans tout le pool, donc recordChoice() y est appelé avec une
+     * shortlist vide et n'écrit aucune ligne 'shortlist'. Ces semaines ne
+     * peuvent donc pas consommer un créneau de cooldown.
      */
     public function cooldownMovieIds(int $lastNDraws = 2): array
     {
         // $lastNDraws est typé int par la signature : jamais une chaîne venant d'une requête.
         // L'interpolation directe dans LIMIT ne peut donc pas être exploitée pour une injection SQL.
         $seanceIds = $this->db->query(
-            "SELECT s.id
+            "SELECT DISTINCT s.id
                FROM seances s
                JOIN seance_picks sp ON sp.seance_id = s.id AND sp.role = 'shortlist'
-              GROUP BY s.id
-             HAVING COUNT(*) > 1
               ORDER BY s.date DESC
               LIMIT " . max(0, $lastNDraws)
         )->fetchAll(PDO::FETCH_COLUMN);
