@@ -1,0 +1,32 @@
+{
+  "id": 129,
+  "title": "Le Voyage de Chihiro",
+  "original_title": "千と千尋の神隠し",
+  "release_date": "2001-07-20",
+  "runtime": 125,
+  "poster_path": "/chihiro.jpg",
+  "overview": "Chihiro et ses parents déménagent.",
+  "vote_average": 8.5,
+  "genres": [{"id": 16, "name": "Animation"}, {"id": 14, "name": "Fantastique"}],
+  "credits": {
+    "crew": [
+      {"job": "Producer", "name": "Toshio Suzuki"},
+      {"job": "Director", "name": "Hayao Miyazaki"}
+    ]
+  },
+  "watch/providers": {
+    "results": {
+      "FR": {
+        "flatrate": [{"provider_name": "Netflix"}, {"provider_name": "Max"}],
+        "rent": [{"provider_name": "Apple TV"}]
+      },
+      "US": {"flatrate": [{"provider_name": "HBO"}]}
+    }
+  },
+  "release_dates": {
+    "results": [
+      {"iso_3166_1": "US", "release_dates": [{"certification": "PG"}]},
+      {"iso_3166_1": "FR", "release_dates": [{"certification": ""}, {"certification": "Tous publics"}]}
+    ]
+  }
+}

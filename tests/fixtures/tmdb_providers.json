@@ -1,0 +1,9 @@
+{
+  "results": {
+    "FR": {
+      "flatrate": [{"provider_name": "Netflix"}, {"provider_name": "Max"}],
+      "rent": [{"provider_name": "Apple TV"}]
+    },
+    "US": {"flatrate": [{"provider_name": "HBO"}]}
+  }
+}
