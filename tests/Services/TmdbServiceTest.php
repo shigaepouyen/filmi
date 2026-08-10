@@ -119,9 +119,10 @@ class TmdbServiceTest extends TestCase
         $service->search('chihiro');
     }
 
-    public function testApiKeyNeverAppearsInTheExceptionMessage(): void
+    public function testApiKeyNeverAppearsAnywhereInTheExceptionChain(): void
     {
-        $service = new TmdbService('SECRET123', 'fr-FR', 'FR', function (string $url): string {
+        $key = 'SECRET123';
+        $service = new TmdbService($key, 'fr-FR', 'FR', function (string $url) use ($key): string {
             throw new \RuntimeException('erreur sur ' . $url);
         });
 
@@ -129,7 +130,17 @@ class TmdbServiceTest extends TestCase
             $service->search('chihiro');
             $this->fail('TmdbException attendue');
         } catch (TmdbException $e) {
-            $this->assertStringNotContainsString('SECRET123', $e->getMessage());
+            $this->assertStringNotContainsString($key, $e->getMessage());
+            $this->assertStringNotContainsString($key, (string) $e);
+            $this->assertStringNotContainsString($key, $e->getTraceAsString());
+
+            for ($previous = $e->getPrevious(); $previous !== null; $previous = $previous->getPrevious()) {
+                $this->assertStringNotContainsString(
+                    $key,
+                    $previous->getMessage(),
+                    'La cle fuit dans une exception chainee'
+                );
+            }
         }
     }
 }

@@ -98,7 +98,14 @@ final class TmdbService
         try {
             $raw = ($this->transport)($url);
         } catch (\Throwable $e) {
-            throw new TmdbException('Appel TMDb en échec : ' . $this->redact($e->getMessage()), 0, $e);
+            // On ne chaine jamais l'exception d'origine telle quelle : son message
+            // contient l'URL complete, donc la cle. (string) $e la ferait fuiter
+            // dans les logs et dans le gestionnaire d'exceptions par defaut.
+            throw new TmdbException(
+                'Appel TMDb en échec : ' . $this->redact($e->getMessage()),
+                0,
+                new \RuntimeException($this->redact($e->getMessage()), (int) $e->getCode())
+            );
         }
 
         $decoded = json_decode($raw, true);
