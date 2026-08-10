@@ -271,7 +271,7 @@ CREATE TABLE votes (
 
 CREATE TABLE seances (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    date            DATE NOT NULL,
+    date            DATE NOT NULL UNIQUE,
     chooser_side    TEXT NOT NULL CHECK (chooser_side IN ('adult','kid')),
     derogation      INTEGER NOT NULL DEFAULT 0,
     derogation_note TEXT,
@@ -395,6 +395,7 @@ Déploiement : `lftp` ou `rsync` over SSH vers Infomaniak, `sites/filmi.shi-ga.n
 | WAL dès l'initialisation | Écritures concurrentes attendues. Absent de Wishi, ajouté ici. |
 | Dépôt séparé de Wishi | Domaine métier disjoint, cycles de vie indépendants. |
 | Camp stocké et non recalculé | Les dérogations et les samedis sautés rendraient tout calcul à la volée faux. |
+| `seances.date` en `UNIQUE` | Deux parents ouvrant l'application le même samedi soir depuis deux téléphones créeraient deux séances pour la même date, ce qui corromprait d'un coup l'alternance, la fenêtre de cooldown et le palmarès. C'est l'usage attendu, pas un cas limite. |
 | Shortlists intermédiaires non persistées | Sinon les re-tirages consomment le cooldown et vident le pool. |
 | Votes non pondérants sur le tirage | Le hasard est le sel du rituel. Les votes servent à trier et discuter. |
 | Tirage limité au pool adulte | Les semaines filles, elles choisissent à la main. C'est la règle familiale existante. |

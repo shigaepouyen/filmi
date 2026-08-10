@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS votes (
 
 CREATE TABLE IF NOT EXISTS seances (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    date            DATE NOT NULL,
+    date            DATE NOT NULL UNIQUE,
     chooser_side    TEXT NOT NULL CHECK (chooser_side IN ('adult','kid')),
     derogation      INTEGER NOT NULL DEFAULT 0,
     derogation_note TEXT,

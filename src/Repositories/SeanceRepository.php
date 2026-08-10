@@ -37,9 +37,17 @@ final class SeanceRepository
             return $existing;
         }
 
-        $this->db->prepare(
-            "INSERT INTO seances (date, chooser_side, status) VALUES (?, ?, 'planned')"
-        )->execute([$date, $chooserSide]);
+        try {
+            $this->db->prepare(
+                "INSERT INTO seances (date, chooser_side, status) VALUES (?, ?, 'planned')"
+            )->execute([$date, $chooserSide]);
+        } catch (\PDOException $e) {
+            // Course perdue contre un autre appareil : la séance existe déjà,
+            // la contrainte UNIQUE sur date a fait son travail. On relit.
+            if ($this->findByDate($date) === null) {
+                throw $e;
+            }
+        }
 
         return $this->findByDate($date);
     }

@@ -69,6 +69,29 @@ class SeanceRepositoryTest extends DbTestCase
         $this->assertSame('pool', $this->movies->find($movieId)['status']);
     }
 
+    public function testEnsureIsIdempotentWhenTheRowAppearsConcurrently(): void
+    {
+        // Simule l'appareil concurrent : la ligne est insérée entre le SELECT et l'INSERT.
+        $this->db->prepare(
+            "INSERT INTO seances (date, chooser_side, status) VALUES (?, 'kid', 'planned')"
+        )->execute(['2026-08-15']);
+
+        $seance = $this->repo->ensure('2026-08-15', 'adult');
+
+        $this->assertSame('kid', $seance['chooser_side'], 'Le camp existant ne doit pas être écrasé');
+        $this->assertSame(1, (int) $this->db->query('SELECT COUNT(*) FROM seances')->fetchColumn());
+    }
+
+    public function testTheDateColumnRefusesADuplicate(): void
+    {
+        $this->repo->ensure('2026-08-15', 'adult');
+
+        $this->expectException(\PDOException::class);
+        $this->db->prepare(
+            "INSERT INTO seances (date, chooser_side, status) VALUES (?, 'kid', 'planned')"
+        )->execute(['2026-08-15']);
+    }
+
     public function testUnskipBringsTheSeanceBackToPlanned(): void
     {
         $seance = $this->repo->ensure('2026-08-15', 'adult');
