@@ -54,11 +54,15 @@ class DrawServiceTest extends TestCase
 
     public function testShownIdsAreAvoidedWhenPossible(): void
     {
-        // 2 safe (1,2) et 4 discovery (3..6). On a déjà montré 1, 3 et 4.
+        // 2 safe (1,2) et 4 discovery (3..6). On a deja montre 1, 3 et 4.
         $result = DrawService::pick($this->pool(2, 4), [], [1, 3, 4]);
 
         $ids = array_column($result['movies'], 'id');
-        $this->assertSame([2, 5, 6], $ids);
+        $discoveries = array_slice($ids, 1);
+        sort($discoveries);
+
+        $this->assertSame(2, $ids[0], 'La valeur sure non montree est la seule possible');
+        $this->assertSame([5, 6], $discoveries, 'Les deux decouvertes non montrees, ordre indifferent');
         $this->assertFalse($result['reset']);
     }
 

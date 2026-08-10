@@ -43,9 +43,7 @@ final class DrawService
                 throw self::failure($eligible);
             }
 
-            if (count($source) > $needed) {
-                shuffle($source);
-            }
+            shuffle($source);
             array_push($movies, ...array_slice($source, 0, $needed));
         }
 
