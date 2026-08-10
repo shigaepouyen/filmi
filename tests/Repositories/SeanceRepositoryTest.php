@@ -69,6 +69,27 @@ class SeanceRepositoryTest extends DbTestCase
         $this->assertSame('pool', $this->movies->find($movieId)['status']);
     }
 
+    public function testUnskipBringsTheSeanceBackToPlanned(): void
+    {
+        $seance = $this->repo->ensure('2026-08-15', 'adult');
+        $this->repo->skip($seance['id']);
+
+        $this->repo->unskip($seance['id']);
+
+        $this->assertSame('planned', $this->repo->findByDate('2026-08-15')['status']);
+    }
+
+    public function testUnskipLeavesADoneSeanceAlone(): void
+    {
+        $movieId = $this->movie('Brazil');
+        $seance = $this->repo->ensure('2026-08-15', 'adult');
+        $this->repo->recordChoice($seance['id'], [$movieId], $movieId);
+
+        $this->repo->unskip($seance['id']);
+
+        $this->assertSame('done', $this->repo->findByDate('2026-08-15')['status']);
+    }
+
     public function testRecordChoiceWritesShortlistChosenAndWatchedStatus(): void
     {
         $a = $this->movie('Sûr', 'safe');

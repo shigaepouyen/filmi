@@ -58,6 +58,13 @@ final class SeanceRepository
         )->execute([$id]);
     }
 
+    public function unskip(int $id): void
+    {
+        $this->db->prepare(
+            "UPDATE seances SET status = 'planned' WHERE id = ? AND status = 'skipped'"
+        )->execute([$id]);
+    }
+
     /**
      * Écrit la shortlist, le film retenu, le statut de la séance et le passage
      * du film en 'watched' en une seule transaction.
