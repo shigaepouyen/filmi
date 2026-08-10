@@ -10,10 +10,10 @@ use App\Utils\Avatars;
             <div class="flex flex-wrap gap-2">
                 <?php foreach ($avatars as $key => $label): ?>
                     <label class="cursor-pointer rounded-2xl p-1 ring-2 transition"
-                           :class="choix === '<?= $key ?>' ? 'ring-violet-400 bg-white/10' : 'ring-transparent'"
+                           :class="choix === '<?= htmlspecialchars($key, ENT_QUOTES) ?>' ? 'ring-violet-400 bg-white/10' : 'ring-transparent'"
                            title="<?= htmlspecialchars($label) ?>">
                         <input type="radio" class="sr-only" name="<?= htmlspecialchars($inputName) ?>"
-                               value="<?= $key ?>" x-model="choix"
+                               value="<?= htmlspecialchars($key, ENT_QUOTES) ?>" x-model="choix"
                                <?= $key === $currentAvatar ? 'checked' : '' ?>>
                         <?= Avatars::render($key, $currentColor, 56) ?>
                     </label>

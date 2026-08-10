@@ -110,6 +110,12 @@ final class Avatars
         );
     }
 
+    /** Tete humaine commune, la plupart des avatars la partagent. */
+    private static function humanHead(int $cy = 52, string $fill = '#fcd9b6'): string
+    {
+        return sprintf('<circle cx="48" cy="%d" r="24" fill="%s"/>', $cy, $fill);
+    }
+
     private static function traits(string $key, string $accent): string
     {
         return match ($key) {
@@ -177,7 +183,7 @@ final class Avatars
 
     private static function aventuriere(string $accent): string
     {
-        return '<circle cx="48" cy="52" r="24" fill="#fcd9b6"/>'
+        return self::humanHead()
             . '<ellipse cx="48" cy="30" rx="30" ry="8" fill="#a16207"/>'
             . '<path d="M30 30 q0 -18 18 -18 q18 0 18 18" fill="#a16207"/>'
             . '<rect x="30" y="26" width="36" height="6" rx="3" fill="' . $accent . '"/>'
@@ -200,7 +206,7 @@ final class Avatars
 
     private static function aviatrice(string $accent): string
     {
-        return '<circle cx="48" cy="50" r="24" fill="#fcd9b6"/>'
+        return self::humanHead(50)
             . '<path d="M24 44 q0 -26 24 -26 q24 0 24 26 q-6 -6 -24 -6 q-18 0 -24 6z" fill="#78350f"/>'
             . '<circle cx="37" cy="40" r="8" fill="#e2e8f0" stroke="' . $accent . '" stroke-width="3"/>'
             . '<circle cx="59" cy="40" r="8" fill="#e2e8f0" stroke="' . $accent . '" stroke-width="3"/>'
@@ -210,7 +216,7 @@ final class Avatars
 
     private static function sorcier(string $accent): string
     {
-        return '<circle cx="48" cy="52" r="24" fill="#fcd9b6"/>'
+        return self::humanHead()
             . '<path d="M24 34 L48 4 L72 34 Q48 26 24 34 Z" fill="#4c1d95"/>'
             . '<ellipse cx="48" cy="34" rx="26" ry="6" fill="#4c1d95"/>'
             . '<path d="M46 12 l2 -5 l2 5 l5 2 l-5 2 l-2 5 l-2 -5 l-5 -2 z" fill="' . $accent . '"/>'
@@ -219,7 +225,7 @@ final class Avatars
 
     private static function gardien(string $accent): string
     {
-        return '<circle cx="48" cy="52" r="24" fill="#c7d2fe"/>'
+        return self::humanHead(fill: '#c7d2fe')
             . '<path d="M14 78 Q48 60 82 78 L82 92 L14 92 Z" fill="#4338ca"/>'
             . '<rect x="24" y="48" width="48" height="9" rx="4.5" fill="#4338ca"/>'
             . '<rect x="20" y="18" width="72" height="10" rx="5" fill="' . $accent . '" opacity="0.3" transform="rotate(-35 56 20)"/>'
@@ -248,7 +254,7 @@ final class Avatars
 
     private static function traqueur(string $accent): string
     {
-        return '<circle cx="48" cy="52" r="24" fill="#e2e8f0"/>'
+        return self::humanHead(fill: '#e2e8f0')
             . '<path d="M22 40 Q26 20 48 20 Q70 20 74 40 Q48 30 22 40 Z" fill="#334155"/>'
             . '<rect x="66" y="46" width="16" height="24" rx="5" fill="#334155"/>'
             . '<path d="M78 48 Q90 54 80 66" stroke="#334155" stroke-width="4" fill="none" stroke-linecap="round"/>'
@@ -268,7 +274,7 @@ final class Avatars
 
     private static function detective(string $accent): string
     {
-        return '<circle cx="48" cy="52" r="24" fill="#fcd9b6"/>'
+        return self::humanHead()
             . '<path d="M28 70 Q48 86 68 70 L64 90 L32 90 Z" fill="#78716c"/>'
             . '<path d="M44 70 L48 82 L52 70 Z" fill="' . $accent . '"/>'
             . '<path d="M24 30 Q24 12 48 12 Q72 12 72 30 Q48 22 24 30 Z" fill="#78716c"/>'
@@ -279,7 +285,7 @@ final class Avatars
 
     private static function cowboy(string $accent): string
     {
-        return '<circle cx="48" cy="52" r="24" fill="#fcd9b6"/>'
+        return self::humanHead()
             . '<path d="M10 34 q38 -20 76 0 q-14 8 -38 8 q-24 0 -38 -8z" fill="#92400e"/>'
             . '<ellipse cx="48" cy="26" rx="16" ry="10" fill="#92400e"/>'
             . '<path d="M16 68 L80 68 L92 92 L4 92 Z" fill="' . $accent . '"/>'
@@ -288,7 +294,7 @@ final class Avatars
 
     private static function gumiho(string $accent): string
     {
-        return '<circle cx="48" cy="52" r="24" fill="#fed7aa"/>'
+        return self::humanHead(fill: '#fed7aa')
             . '<path d="M26 34 l6 -20 l10 16z" fill="#fb923c"/>'
             . '<path d="M70 34 l-6 -20 l-10 16z" fill="#fb923c"/>'
             . '<path d="M20 78 q28 -18 56 0 q-28 10 -56 0z" fill="' . $accent . '" opacity="0.85"/>'
@@ -298,7 +304,7 @@ final class Avatars
 
     private static function dokkaebi(string $accent): string
     {
-        return '<circle cx="48" cy="52" r="24" fill="#93c5fd"/>'
+        return self::humanHead(fill: '#93c5fd')
             . '<path d="M34 32 q-6 -16 8 -20 q0 10 -4 20z" fill="#1e3a8a"/>'
             . '<path d="M62 32 q6 -16 -8 -20 q0 10 4 20z" fill="#1e3a8a"/>'
             . '<ellipse cx="78" cy="66" rx="8" ry="16" fill="' . $accent . '"/>'
@@ -324,7 +330,7 @@ final class Avatars
 
     private static function erudit(string $accent): string
     {
-        return '<circle cx="48" cy="52" r="24" fill="#fcd9b6"/>'
+        return self::humanHead()
             . '<path d="M30 74 q18 -10 36 0 l-3 8 l-30 0 z" fill="' . $accent . '"/>'
             . '<ellipse cx="48" cy="34" rx="38" ry="6" fill="#1e293b"/>'
             . '<circle cx="48" cy="22" r="12" fill="#1e293b"/>'
@@ -345,7 +351,7 @@ final class Avatars
 
     private static function zombie(string $accent): string
     {
-        return '<circle cx="48" cy="52" r="24" fill="#bef264"/>'
+        return self::humanHead(fill: '#bef264')
             . '<path d="M28 42 q20 -12 40 0" fill="none" stroke="' . $accent . '" stroke-width="2" stroke-linecap="round"/>'
             . '<rect x="30" y="70" width="36" height="14" rx="6" fill="#e2e8f0"/>'
             . '<rect x="44" y="70" width="8" height="14" fill="' . $accent . '"/>'
@@ -354,7 +360,7 @@ final class Avatars
 
     private static function idole(string $accent): string
     {
-        return '<circle cx="48" cy="52" r="24" fill="#fcd9b6"/>'
+        return self::humanHead()
             . '<path d="M24 46 Q24 20 48 20 Q72 20 72 46 Q60 36 48 36 Q36 36 24 46 Z" fill="#1f2937"/>'
             . '<path d="M70 44 Q82 54 58 65" fill="none" stroke="' . $accent . '" stroke-width="2.5" stroke-linecap="round"/>'
             . '<circle cx="58" cy="65" r="3" fill="' . $accent . '"/>'
@@ -365,7 +371,7 @@ final class Avatars
 
     private static function danseur(string $accent): string
     {
-        return '<circle cx="48" cy="52" r="24" fill="#fcd9b6"/>'
+        return self::humanHead()
             . '<path d="M14 34 Q48 50 82 34 Q78 14 48 14 Q18 14 14 34 Z" fill="#1f2937"/>'
             . '<ellipse cx="48" cy="18" rx="22" ry="6" fill="#1f2937"/>'
             . '<path d="M10 92 Q10 62 48 62 Q86 62 86 92 Z" fill="#1f2937"/>'
@@ -375,7 +381,7 @@ final class Avatars
 
     private static function fan(string $accent): string
     {
-        return '<circle cx="48" cy="50" r="24" fill="#fde68a"/>'
+        return self::humanHead(50, '#fde68a')
             . '<rect x="26" y="30" width="44" height="7" rx="3.5" fill="' . $accent . '"/>'
             . '<rect x="70" y="40" width="6" height="26" rx="3" fill="#e5e7eb"/>'
             . '<circle cx="73" cy="36" r="7" fill="' . $accent . '" class="filmi-lightstick"/>'
@@ -384,7 +390,7 @@ final class Avatars
 
     private static function trainee(string $accent): string
     {
-        return '<circle cx="48" cy="52" r="24" fill="#fcd9b6"/>'
+        return self::humanHead()
             . '<path d="M24 44 q0 -24 24 -24 q24 0 24 24 q-8 -6 -24 -6 q-16 0 -24 6z" fill="#7c2d12"/>'
             . '<path d="M28 60 L74 84" stroke="' . $accent . '" stroke-width="6" stroke-linecap="round"/>'
             . '<rect x="80" y="66" width="8" height="16" rx="3" fill="' . $accent . '"/>'
