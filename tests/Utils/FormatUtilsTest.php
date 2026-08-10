@@ -37,4 +37,30 @@ class FormatUtilsTest extends TestCase
         $this->assertSame('samedi 15 août', FormatUtils::frenchDate('2026-08-15'));
         $this->assertSame('samedi 3 janvier', FormatUtils::frenchDate('2026-01-03'));
     }
+
+    public function testEndTimeRefusesANegativeRuntime(): void
+    {
+        $this->assertNull(FormatUtils::endTime('19:15', -1));
+        $this->assertNull(FormatUtils::endTime('00:10', -1000));
+    }
+
+    public function testFrenchDateReturnsTheInputWhenItCannotBeParsed(): void
+    {
+        $this->assertSame('pas une date', FormatUtils::frenchDate('pas une date'));
+        $this->assertSame('', FormatUtils::frenchDate(''));
+    }
+
+    public function testFrenchDateRefusesACalendarInvalidDate(): void
+    {
+        // 2026 n'est pas bissextile et fevrier n'a jamais 30 jours :
+        // la date doit ressortir telle quelle, pas etre glissee en mars.
+        $this->assertSame('2026-02-30', FormatUtils::frenchDate('2026-02-30'));
+        $this->assertSame('2026-13-01', FormatUtils::frenchDate('2026-13-01'));
+        $this->assertSame('2026-02-29', FormatUtils::frenchDate('2026-02-29'));
+    }
+
+    public function testFrenchDateAcceptsARealLeapDay(): void
+    {
+        $this->assertSame('jeudi 29 février', FormatUtils::frenchDate('2024-02-29'));
+    }
 }

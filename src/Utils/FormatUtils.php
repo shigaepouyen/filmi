@@ -36,7 +36,7 @@ final class FormatUtils
 
     public static function endTime(string $startHhMm, ?int $minutes): ?string
     {
-        if ($minutes === null) {
+        if ($minutes === null || $minutes < 0) {
             return null;
         }
 
@@ -52,7 +52,7 @@ final class FormatUtils
     public static function frenchDate(string $isoDate): string
     {
         $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $isoDate);
-        if ($date === false) {
+        if ($date === false || $date->format('Y-m-d') !== $isoDate) {
             return $isoDate;
         }
 
