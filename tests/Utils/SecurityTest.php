@@ -33,4 +33,17 @@ class SecurityTest extends TestCase
         $this->assertSame('&quot;', Security::e('"'));
         $this->assertSame('', Security::e(null));
     }
+
+    public function testTokenWorksWithoutAnActiveSessionInCli(): void
+    {
+        $this->assertSame(64, strlen(Security::csrfToken()));
+    }
+
+    public function testCheckRoundTripsWithoutAnActiveSessionInCli(): void
+    {
+        $token = Security::csrfToken();
+
+        $this->assertTrue(Security::checkCsrf($token));
+        $this->assertFalse(Security::checkCsrf('faux'));
+    }
 }

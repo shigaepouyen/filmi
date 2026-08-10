@@ -66,4 +66,23 @@ class ProfileRepositoryTest extends DbTestCase
     {
         $this->assertNull($this->repo->find(999));
     }
+
+    public function testUpdateRejectsAnEmptyName(): void
+    {
+        $id = $this->repo->findBySlug('jc')['id'];
+
+        foreach (['', '   '] as $emptyName) {
+            try {
+                $this->repo->update($id, $emptyName, 'detective', 'slate');
+                $this->fail('InvalidArgumentException attendue pour un nom vide.');
+            } catch (\InvalidArgumentException $e) {
+                // attendu
+            }
+        }
+
+        $unchanged = $this->repo->find($id);
+        $this->assertSame('JC', $unchanged['name']);
+        $this->assertSame('detective', $unchanged['avatar']);
+        $this->assertSame('slate', $unchanged['color']);
+    }
 }

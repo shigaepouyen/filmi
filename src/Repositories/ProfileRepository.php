@@ -49,14 +49,16 @@ final class ProfileRepository
     {
         $name = trim($name);
         if ($name === '') {
-            return;
+            throw new \InvalidArgumentException('Le nom du profil ne peut pas etre vide.');
         }
 
-        $sql = Avatars::exists($avatar)
+        $avatarExists = Avatars::exists($avatar);
+
+        $sql = $avatarExists
             ? 'UPDATE profiles SET name = ?, avatar = ?, color = ? WHERE id = ?'
             : 'UPDATE profiles SET name = ?, color = ? WHERE id = ?';
 
-        $params = Avatars::exists($avatar)
+        $params = $avatarExists
             ? [$name, $avatar, $color, $id]
             : [$name, $color, $id];
 
