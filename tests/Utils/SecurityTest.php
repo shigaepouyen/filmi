@@ -27,10 +27,11 @@ class SecurityTest extends TestCase
         $this->assertFalse(Security::checkCsrf(''));
     }
 
-    public function testEscapeHandlesQuotesAndNull(): void
+    public function testEscapeNeutralisesMarkupAndKeepsAccentsIntact(): void
     {
-        $this->assertSame('&lt;b&gt;Zo&eacute;&lt;/b&gt;', Security::e('<b>Zoé</b>'));
+        $this->assertSame('&lt;b&gt;Zoé&lt;/b&gt;', Security::e('<b>Zoé</b>'));
         $this->assertSame('&quot;', Security::e('"'));
+        $this->assertSame('&#039;', Security::e("'"));
         $this->assertSame('', Security::e(null));
     }
 

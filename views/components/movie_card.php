@@ -22,14 +22,14 @@ $betLabels = ['safe' => 'valeur sûre', 'discovery' => 'découverte'];
         <h3 class="font-medium leading-tight"><?= Security::e($movie['title']) ?></h3>
         <p class="text-xs text-slate-400">
             <?= $movie['year'] !== null ? (int) $movie['year'] . ' · ' : '' ?>
-            <?= FormatUtils::humanRuntime($movie['runtime'] === null ? null : (int) $movie['runtime']) ?>
+            <?= Security::e(FormatUtils::humanRuntime($movie['runtime'] === null ? null : (int) $movie['runtime'])) ?>
             <?= $endTime !== null ? ' · fin vers ' . Security::e($endTime) : '' ?>
         </p>
 
         <div class="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
             <?php if (isset($betLabels[$movie['bet_type'] ?? ''])): ?>
                 <span class="rounded-full bg-violet-500/25 px-2 py-0.5 text-violet-100">
-                    <?= $betLabels[$movie['bet_type']] ?>
+                    <?= Security::e($betLabels[$movie['bet_type']]) ?>
                 </span>
             <?php endif; ?>
             <?php if (!empty($movie['certification'])): ?>
@@ -63,7 +63,7 @@ $betLabels = ['safe' => 'valeur sûre', 'discovery' => 'découverte'];
                             filmiPost('/api/vote.php', { movie_id: <?= (int) $movie['id'] ?> })
                                 .then(r => { voted = r.voted; count = r.count; })
                                 .finally(() => busy = false)"
-                    title="<?= $movie['voter_names'] === '' ? 'Personne n a encore voté' : 'Ont voté : ' . Security::e($movie['voter_names']) ?>">
+                    title="<?= $movie['voter_names'] === '' ? Security::e('Personne n a encore voté') : 'Ont voté : ' . Security::e($movie['voter_names']) ?>">
                 <span aria-hidden="true">▲</span>
                 <span x-text="count"><?= (int) $movie['vote_count'] ?></span>
             </button>
