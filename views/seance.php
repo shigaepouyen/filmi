@@ -1,0 +1,73 @@
+<?php
+use App\Utils\FormatUtils;
+use App\Utils\Security;
+
+$endTime = FormatUtils::endTime($startTime, $movie['runtime'] === null ? null : (int) $movie['runtime']);
+$scoresByName = array_column($ratings, 'score', 'name');
+?>
+<p class="text-xs uppercase tracking-wide text-slate-400">
+    <?= Security::e(FormatUtils::frenchDate($seance['date'])) ?>,
+    au tour des <?= $seance['chooser_side'] === 'kid' ? 'filles' : 'parents' ?>
+</p>
+<h1 class="mt-1 text-2xl font-semibold"><?= Security::e($movie['title']) ?></h1>
+<p class="text-sm text-slate-400">
+    <?= $movie['year'] !== null ? (int) $movie['year'] . ' · ' : '' ?>
+    <?= Security::e(FormatUtils::humanRuntime($movie['runtime'] === null ? null : (int) $movie['runtime'])) ?>
+    <?= $endTime !== null ? ' · début ' . Security::e($startTime) . ', fin vers ' . Security::e($endTime) : '' ?>
+</p>
+
+<div class="mt-4 flex gap-4">
+    <?php if (!empty($movie['poster_url'])): ?>
+        <img src="<?= Security::e($movie['poster_url']) ?>" alt=""
+             class="h-56 w-36 shrink-0 rounded-2xl object-cover bg-slate-800">
+    <?php endif; ?>
+    <div class="min-w-0 space-y-2 text-sm">
+        <?php if (!empty($movie['director'])): ?>
+            <p class="text-slate-400">de <?= Security::e($movie['director']) ?></p>
+        <?php endif; ?>
+        <?php if (!empty($movie['overview'])): ?>
+            <p class="text-slate-300"><?= Security::e($movie['overview']) ?></p>
+        <?php endif; ?>
+        <?php if (!empty($movie['memo'])): ?>
+            <p class="italic text-slate-400">« <?= Security::e($movie['memo']) ?> »</p>
+        <?php endif; ?>
+    </div>
+</div>
+
+<section class="mt-6 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
+    <h2 class="text-sm font-medium">Ta note, après le film</h2>
+    <form method="post" class="mt-2 flex gap-2">
+        <input type="hidden" name="csrf" value="<?= Security::csrfToken() ?>">
+        <input type="hidden" name="action" value="rate">
+        <?php for ($score = 1; $score <= 5; $score++): ?>
+            <button name="score" value="<?= $score ?>"
+                    class="h-11 w-11 rounded-xl text-lg <?= $myScore === $score ? 'bg-amber-400/30 ring-2 ring-amber-300' : 'bg-white/10' ?>">
+                <?= $score ?>
+            </button>
+        <?php endfor; ?>
+    </form>
+
+    <?php if ($ratings !== []): ?>
+        <ul class="mt-3 space-y-1 text-sm text-slate-300">
+            <?php foreach ($scoresByName as $name => $score): ?>
+                <li><?= Security::e((string) $name) ?> : <?= (int) $score ?> sur 5</li>
+            <?php endforeach; ?>
+        </ul>
+    <?php endif; ?>
+</section>
+
+<?php if ($canVeto): ?>
+    <section class="mt-4 rounded-2xl bg-rose-500/10 p-4 ring-1 ring-rose-400/20">
+        <h2 class="text-sm font-medium text-rose-100">Droit de veto</h2>
+        <p class="mt-1 text-xs text-rose-200/80">
+            Le film retourne dans la liste, les filles en choisissent un autre. Chaque veto est enregistré.
+        </p>
+        <form method="post" class="mt-2 flex flex-wrap gap-2">
+            <input type="hidden" name="csrf" value="<?= Security::csrfToken() ?>">
+            <input type="hidden" name="action" value="veto">
+            <input name="reason" maxlength="120" placeholder="Motif, facultatif"
+                   class="min-w-0 flex-1 rounded-xl bg-white/10 px-3 py-2 text-sm">
+            <button class="rounded-xl bg-rose-500/80 px-3 py-2 text-sm font-medium">Poser un veto</button>
+        </form>
+    </section>
+<?php endif; ?>

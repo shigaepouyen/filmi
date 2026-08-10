@@ -115,4 +115,23 @@ class MovieCardTest extends TestCase
         $this->assertStringNotContainsString('valeur sûre', $html);
         $this->assertStringNotContainsString('découverte', $html);
     }
+
+    public function testChooseButtonIsAbsentByDefault(): void
+    {
+        $this->assertStringNotContainsString('celui-là ce soir', $this->render($this->movie()));
+    }
+
+    public function testChooseButtonAppearsWhenChoosable(): void
+    {
+        $html = ViewRenderer::component('movie_card', [
+            'movie' => $this->movie(),
+            'startTime' => '19:15',
+            'myVotes' => [],
+            'profile' => ['id' => 1, 'name' => 'JC'],
+            'choosable' => true,
+        ]);
+
+        $this->assertStringContainsString('celui-là ce soir', $html);
+        $this->assertStringContainsString('name="action" value="choose"', $html);
+    }
 }

@@ -3,6 +3,8 @@ use App\Utils\Avatars;
 use App\Utils\FormatUtils;
 use App\Utils\Security;
 
+$choosable = $choosable ?? false;
+
 $endTime = FormatUtils::endTime($startTime, $movie['runtime'] === null ? null : (int) $movie['runtime']);
 $providers = json_decode((string) ($movie['providers'] ?? '[]'), true);
 $providers = is_array($providers) ? $providers : [];
@@ -68,5 +70,16 @@ $betLabels = ['safe' => 'valeur sûre', 'discovery' => 'découverte'];
                 <span x-text="count"><?= (int) $movie['vote_count'] ?></span>
             </button>
         </div>
+
+        <?php if ($choosable): ?>
+            <form method="post" class="mt-2">
+                <input type="hidden" name="csrf" value="<?= Security::csrfToken() ?>">
+                <input type="hidden" name="action" value="choose">
+                <input type="hidden" name="movie_id" value="<?= (int) $movie['id'] ?>">
+                <button class="w-full rounded-xl bg-violet-500 px-3 py-2 text-sm font-medium">
+                    C'est celui-là ce soir
+                </button>
+            </form>
+        <?php endif; ?>
     </div>
 </article>

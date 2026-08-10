@@ -29,6 +29,11 @@ $sorts = ['votes' => 'Les plus votés', 'recent' => 'Les plus récents', 'runtim
         </a>
     </div>
 <?php else: ?>
+    <?php if ($kidWeek && $pool === 'kid'): ?>
+        <p class="mb-3 rounded-xl bg-violet-500/20 px-3 py-2 text-sm text-violet-100">
+            C'est votre tour ce samedi. Choisissez le film, les parents ont un droit de veto.
+        </p>
+    <?php endif; ?>
     <div class="space-y-3">
         <?php foreach ($movies as $movie): ?>
             <?= ViewRenderer::component('movie_card', [
@@ -36,6 +41,7 @@ $sorts = ['votes' => 'Les plus votés', 'recent' => 'Les plus récents', 'runtim
                 'startTime' => $startTime,
                 'myVotes' => $myVotes,
                 'profile' => $profile,
+                'choosable' => $kidWeek && $pool === 'kid',
             ]) ?>
         <?php endforeach; ?>
     </div>
