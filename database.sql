@@ -1,4 +1,4 @@
-CREATE TABLE profiles (
+CREATE TABLE IF NOT EXISTS profiles (
     id       INTEGER PRIMARY KEY AUTOINCREMENT,
     name     TEXT NOT NULL,
     slug     TEXT UNIQUE NOT NULL,
@@ -7,7 +7,7 @@ CREATE TABLE profiles (
     color    TEXT NOT NULL DEFAULT 'indigo'
 );
 
-CREATE TABLE movies (
+CREATE TABLE IF NOT EXISTS movies (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     tmdb_id        INTEGER,
     title          TEXT NOT NULL,
@@ -30,9 +30,9 @@ CREATE TABLE movies (
                    CHECK (status IN ('pool','watched','archived')),
     created_at     DATETIME DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_movies_pool ON movies(pool, status);
+CREATE INDEX IF NOT EXISTS idx_movies_pool ON movies(pool, status);
 
-CREATE TABLE votes (
+CREATE TABLE IF NOT EXISTS votes (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     movie_id   INTEGER NOT NULL REFERENCES movies(id) ON DELETE CASCADE,
     profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -40,7 +40,7 @@ CREATE TABLE votes (
     UNIQUE (movie_id, profile_id)
 );
 
-CREATE TABLE seances (
+CREATE TABLE IF NOT EXISTS seances (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     date            DATE NOT NULL,
     chooser_side    TEXT NOT NULL CHECK (chooser_side IN ('adult','kid')),
@@ -52,7 +52,7 @@ CREATE TABLE seances (
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE seance_picks (
+CREATE TABLE IF NOT EXISTS seance_picks (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     seance_id     INTEGER NOT NULL REFERENCES seances(id) ON DELETE CASCADE,
     movie_id      INTEGER NOT NULL REFERENCES movies(id) ON DELETE CASCADE,
@@ -61,9 +61,9 @@ CREATE TABLE seance_picks (
     reason        TEXT,
     created_at    DATETIME DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_picks_movie ON seance_picks(movie_id, role);
+CREATE INDEX IF NOT EXISTS idx_picks_movie ON seance_picks(movie_id, role);
 
-CREATE TABLE ratings (
+CREATE TABLE IF NOT EXISTS ratings (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     seance_id  INTEGER NOT NULL REFERENCES seances(id) ON DELETE CASCADE,
     profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -72,7 +72,7 @@ CREATE TABLE ratings (
     UNIQUE (seance_id, profile_id)
 );
 
-CREATE TABLE settings (
+CREATE TABLE IF NOT EXISTS settings (
     key   TEXT PRIMARY KEY,
     value TEXT
 );

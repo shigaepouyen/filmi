@@ -10,9 +10,7 @@ $path = (string) Config::get('db_path');
 $fresh = !is_file($path);
 
 $db = Database::connect($path);
-if ($fresh) {
-    $db->exec(Database::schemaSql());
-}
+$db->exec(Database::schemaSql());
 
 $profiles = [
     ['JC', 'jc', 'adult', 'detective', 'slate'],
