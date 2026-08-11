@@ -259,8 +259,12 @@ final class MovieRepository
         if (!in_array($pool, self::POOLS, true)) {
             throw new InvalidArgumentException('Pool inconnu : ' . $pool);
         }
-        if ($pool === 'kid' && $betType !== null) {
-            throw new InvalidArgumentException('La liste enfant ne porte jamais de pari.');
+        // Deplacer un film vers la liste enfant retire son pari, sans erreur : le
+        // pari ne sert qu'au tirage des parents, et refuser le deplacement pour
+        // cette raison n'aurait aucun sens pour la personne qui le demande.
+        // C'est le meme comportement que add(), qui force deja bet_type a null.
+        if ($pool === 'kid') {
+            $betType = null;
         }
         if ($pool === 'adult' && !in_array($betType, self::BET_TYPES, true)) {
             throw new InvalidArgumentException('La liste adulte exige un pari (sûr ou découverte).');

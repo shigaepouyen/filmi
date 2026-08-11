@@ -363,12 +363,40 @@ class MovieRepositoryTest extends DbTestCase
         $this->assertSame('safe', $movie['bet_type']);
     }
 
-    public function testUpdateClassificationRejectsABetTypeOnTheKidPool(): void
+    public function testMovingAFilmToTheKidPoolSilentlyDropsItsBetType(): void
     {
-        $id = $this->repo->add(['title' => 'Film de filles', 'pool' => 'kid', 'added_by' => $this->zoe]);
+        // Le formulaire de la fiche renvoie le pari coche meme quand on choisit la
+        // liste des filles. Refuser le deplacement pour cette raison serait une
+        // erreur incomprehensible : le pari ne sert qu'au tirage des parents.
+        $id = $this->addAdult('Un film qui change de camp', 'safe');
 
-        $this->expectException(\InvalidArgumentException::class);
         $this->repo->updateClassification($id, 'kid', 'safe');
+        $movie = $this->repo->find($id);
+
+        $this->assertSame('kid', $movie['pool']);
+        $this->assertNull($movie['bet_type'], 'Le pari doit disparaitre, sans erreur');
+    }
+
+    public function testMovingBackToTheAdultPoolRequiresABetTypeAgain(): void
+    {
+        $id = $this->addAdult('Un film qui revient', 'discovery');
+        $this->repo->updateClassification($id, 'kid', null);
+
+        // Ici l'erreur est legitime : sans pari, le tirage ne peut pas servir son quota.
+        $this->expectException(\InvalidArgumentException::class);
+        $this->repo->updateClassification($id, 'adult', null);
+    }
+
+    public function testMovingBackToTheAdultPoolWithABetTypeWorks(): void
+    {
+        $id = $this->addAdult('Un aller-retour complet', 'safe');
+        $this->repo->updateClassification($id, 'kid', 'safe');
+
+        $this->repo->updateClassification($id, 'adult', 'discovery');
+        $movie = $this->repo->find($id);
+
+        $this->assertSame('adult', $movie['pool']);
+        $this->assertSame('discovery', $movie['bet_type']);
     }
 
     public function testUpdateClassificationRejectsTheAdultPoolWithoutABetType(): void
