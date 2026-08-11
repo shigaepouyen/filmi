@@ -28,7 +28,8 @@ foreach ($stale as $movie) {
         $app->movies->updateProviders(
             (int) $movie['id'],
             (string) $fresh['providers'],
-            $fresh['certification']
+            $fresh['certification'],
+            $fresh['trailer_url'] ?? null
         );
         $done++;
     } catch (TmdbException $e) {

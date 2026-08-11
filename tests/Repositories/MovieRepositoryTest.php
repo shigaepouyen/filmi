@@ -286,4 +286,131 @@ class MovieRepositoryTest extends DbTestCase
         $this->assertNotNull($movie['providers_at']);
         $this->assertSame([], $this->repo->staleProviders(7));
     }
+
+    public function testUpdateProvidersAlsoCarriesTheTrailer(): void
+    {
+        $id = $this->addAdult('Brazil', 'discovery', ['tmdb_id' => 20]);
+
+        $this->repo->updateProviders(
+            $id,
+            '["Netflix"]',
+            'Tous publics',
+            'https://www.youtube.com/watch?v=abc123'
+        );
+
+        $this->assertSame(
+            'https://www.youtube.com/watch?v=abc123',
+            $this->repo->find($id)['trailer_url']
+        );
+    }
+
+    public function testUpdateProvidersKeepsTheExistingTrailerWhenNoneIsGiven(): void
+    {
+        $id = $this->addAdult('Brazil', 'discovery', ['tmdb_id' => 20]);
+        $this->repo->updateProviders($id, '["Netflix"]', 'Tous publics', 'https://www.youtube.com/watch?v=abc123');
+
+        // Un rafraîchissement ultérieur qui ne retrouve pas de bande-annonce
+        // (film retiré de TMDb, panne partielle) ne doit pas effacer celle déjà connue.
+        $this->repo->updateProviders($id, '["Netflix","Max"]', null, null);
+
+        $this->assertSame(
+            'https://www.youtube.com/watch?v=abc123',
+            $this->repo->find($id)['trailer_url']
+        );
+    }
+
+    public function testArchiveHidesAMovieFromItsPoolAndArchivedListShowsIt(): void
+    {
+        $id = $this->addAdult('Brazil', 'discovery');
+
+        $this->repo->archive($id);
+
+        $this->assertSame('archived', $this->repo->find($id)['status']);
+        $this->assertSame([], array_column($this->repo->pool('adult'), 'id'));
+        $this->assertSame(['Brazil'], array_column($this->repo->archivedList('adult'), 'title'));
+    }
+
+    public function testArchivedListOnlyReturnsItsOwnPool(): void
+    {
+        $adultId = $this->addAdult('Brazil', 'discovery');
+        $kidId = $this->repo->add(['title' => 'Film de filles', 'pool' => 'kid', 'added_by' => $this->zoe]);
+        $this->repo->archive($adultId);
+        $this->repo->archive($kidId);
+
+        $this->assertSame(['Brazil'], array_column($this->repo->archivedList('adult'), 'title'));
+        $this->assertSame(['Film de filles'], array_column($this->repo->archivedList('kid'), 'title'));
+    }
+
+    public function testUnarchiveReturnsTheMovieToItsPool(): void
+    {
+        $id = $this->addAdult('Brazil', 'discovery');
+        $this->repo->archive($id);
+
+        $this->repo->unarchive($id);
+
+        $this->assertSame('pool', $this->repo->find($id)['status']);
+        $this->assertSame(['Brazil'], array_column($this->repo->pool('adult'), 'title'));
+    }
+
+    public function testUpdateClassificationChangesPoolAndBetType(): void
+    {
+        $id = $this->addAdult('Brazil', 'discovery');
+
+        $this->repo->updateClassification($id, 'adult', 'safe');
+
+        $movie = $this->repo->find($id);
+        $this->assertSame('adult', $movie['pool']);
+        $this->assertSame('safe', $movie['bet_type']);
+    }
+
+    public function testUpdateClassificationRejectsABetTypeOnTheKidPool(): void
+    {
+        $id = $this->repo->add(['title' => 'Film de filles', 'pool' => 'kid', 'added_by' => $this->zoe]);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->repo->updateClassification($id, 'kid', 'safe');
+    }
+
+    public function testUpdateClassificationRejectsTheAdultPoolWithoutABetType(): void
+    {
+        $id = $this->addAdult('Brazil', 'discovery');
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->repo->updateClassification($id, 'adult', null);
+    }
+
+    public function testUpdateClassificationRejectsAnUnknownPool(): void
+    {
+        $id = $this->addAdult('Brazil', 'discovery');
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->repo->updateClassification($id, 'grand-parents', 'safe');
+    }
+
+    public function testUpdateClassificationAcceptsTheKidPoolWithoutABetType(): void
+    {
+        $id = $this->repo->add(['title' => 'Film de filles', 'pool' => 'kid', 'added_by' => $this->zoe]);
+
+        $this->repo->updateClassification($id, 'kid', null);
+
+        $this->assertNull($this->repo->find($id)['bet_type']);
+    }
+
+    public function testProviderBrandsReturnsDistinctBrandsAcrossAllMovies(): void
+    {
+        $this->addAdult('Brazil', 'discovery', ['providers' => '["Netflix","Netflix Standard with Ads"]']);
+        $this->addAdult('Alien', 'safe', ['providers' => '[{"id":384,"name":"HBO Max","logo":"/hbo.jpg"}]']);
+
+        $brands = $this->repo->providerBrands();
+
+        $this->assertSame(['HBO Max', 'Netflix'], array_column($brands, 'brand'));
+    }
+
+    public function testProviderBrandsExcludesArchivedMovies(): void
+    {
+        $id = $this->addAdult('Brazil', 'discovery', ['providers' => '["Netflix"]']);
+        $this->repo->archive($id);
+
+        $this->assertSame([], $this->repo->providerBrands());
+    }
 }
