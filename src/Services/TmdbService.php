@@ -61,7 +61,7 @@ final class TmdbService
         }
 
         $movie = $this->get('/movie/' . $tmdbId, [
-            'append_to_response' => 'credits,watch/providers,release_dates',
+            'append_to_response' => 'credits,watch/providers,release_dates,videos',
         ]);
 
         return [
@@ -84,6 +84,7 @@ final class TmdbService
                 JSON_UNESCAPED_UNICODE
             ),
             'providers_at' => date('Y-m-d H:i:s'),
+            'trailer_url' => self::trailerUrl($movie['videos']['results'] ?? []),
         ];
     }
 
@@ -171,23 +172,78 @@ final class TmdbService
 
     /**
      * @param array<string, mixed> $byCountry
-     * @return list<string> noms de plateformes de la région, sans doublon
+     * @return list<array{id: ?int, name: string, logo: ?string}> plateformes de la région, sans doublon
      */
     private function providers(array $byCountry): array
     {
         $region = $byCountry[$this->region] ?? [];
-        $names = [];
+        $result = [];
+        $seen = [];
 
         foreach (['flatrate', 'free', 'ads', 'rent', 'buy'] as $kind) {
             foreach ($region[$kind] ?? [] as $provider) {
-                $name = (string) ($provider['provider_name'] ?? '');
-                if ($name !== '' && !in_array($name, $names, true)) {
-                    $names[] = $name;
+                $name = trim((string) ($provider['provider_name'] ?? ''));
+                if ($name === '') {
+                    continue;
                 }
+                $id = isset($provider['provider_id']) ? (int) $provider['provider_id'] : null;
+                $dedupeKey = $id !== null ? 'id:' . $id : 'name:' . mb_strtolower($name, 'UTF-8');
+                if (isset($seen[$dedupeKey])) {
+                    continue;
+                }
+                $seen[$dedupeKey] = true;
+                $result[] = [
+                    'id' => $id,
+                    'name' => $name,
+                    'logo' => $provider['logo_path'] ?? null,
+                ];
             }
         }
 
-        return $names;
+        return $result;
+    }
+
+    /**
+     * Sélection de la bande-annonce, par ordre de préférence : Trailer YouTube
+     * officiel en français, puis officiel toutes langues, puis n'importe quel
+     * Trailer YouTube. Renvoie l'URL complète, ou null si aucun ne convient.
+     *
+     * @param array<int, array<string, mixed>> $videos
+     */
+    private static function trailerUrl(array $videos): ?string
+    {
+        $trailers = array_values(array_filter(
+            $videos,
+            static fn (array $v): bool => ($v['site'] ?? null) === 'YouTube' && ($v['type'] ?? null) === 'Trailer'
+        ));
+
+        if ($trailers === []) {
+            return null;
+        }
+
+        $pick = self::firstMatching(
+            $trailers,
+            static fn (array $v): bool => ($v['official'] ?? false) === true && ($v['iso_639_1'] ?? null) === 'fr'
+        ) ?? self::firstMatching(
+            $trailers,
+            static fn (array $v): bool => ($v['official'] ?? false) === true
+        ) ?? $trailers[0];
+
+        $key = $pick['key'] ?? null;
+
+        return $key ? 'https://www.youtube.com/watch?v=' . $key : null;
+    }
+
+    /** @param array<int, array<string, mixed>> $items */
+    private static function firstMatching(array $items, callable $predicate): ?array
+    {
+        foreach ($items as $item) {
+            if ($predicate($item)) {
+                return $item;
+            }
+        }
+
+        return null;
     }
 
     /** @param array<int, array<string, mixed>> $crew */

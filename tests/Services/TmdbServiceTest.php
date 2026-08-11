@@ -78,14 +78,55 @@ class TmdbServiceTest extends TestCase
         $this->assertSame(['Animation', 'Fantastique'], json_decode($movie['genres'], true));
     }
 
-    public function testDetailsKeepsOnlyFrenchProvidersAndDeduplicates(): void
+    public function testDetailsKeepsOnlyFrenchProvidersAsObjectsAndDeduplicates(): void
     {
         $service = $this->service(['/movie/129' => $this->fixture('tmdb_details.json')]);
 
         $providers = json_decode($service->details(129)['providers'], true);
 
-        $this->assertSame(['Netflix', 'Max', 'Apple TV'], $providers);
+        $this->assertSame([
+            ['id' => 8, 'name' => 'Netflix', 'logo' => '/netflix.jpg'],
+            ['id' => 384, 'name' => 'Max', 'logo' => '/max.jpg'],
+            ['id' => 2, 'name' => 'Apple TV', 'logo' => '/appletv.jpg'],
+        ], $providers);
         $this->assertNotEmpty($service->details(129)['providers_at']);
+    }
+
+    public function testDetailsPrefersTheOfficialFrenchYoutubeTrailer(): void
+    {
+        $service = $this->service(['/movie/129' => $this->fixture('tmdb_details.json')]);
+
+        $this->assertSame(
+            'https://www.youtube.com/watch?v=official-fr-key',
+            $service->details(129)['trailer_url']
+        );
+    }
+
+    public function testDetailsFallsBackOnAnyOfficialYoutubeTrailerWithoutFrench(): void
+    {
+        $service = $this->service(['/movie/200' => $this->fixture('tmdb_details_trailer_official_only.json')]);
+
+        $this->assertSame(
+            'https://www.youtube.com/watch?v=official-en-key',
+            $service->details(200)['trailer_url']
+        );
+    }
+
+    public function testDetailsFallsBackOnAnyYoutubeTrailerWhenNoneIsOfficial(): void
+    {
+        $service = $this->service(['/movie/201' => $this->fixture('tmdb_details_trailer_any_only.json')]);
+
+        $this->assertSame(
+            'https://www.youtube.com/watch?v=unofficial-key',
+            $service->details(201)['trailer_url']
+        );
+    }
+
+    public function testDetailsTrailerIsNullWhenNoYoutubeTrailerExists(): void
+    {
+        $service = $this->service(['/movie/202' => $this->fixture('tmdb_details_no_trailer.json')]);
+
+        $this->assertNull($service->details(202)['trailer_url']);
     }
 
     public function testDetailsKeepsTheFrenchCertificationAndSkipsEmptyOnes(): void

@@ -1,0 +1,10 @@
+{
+  "id": 200,
+  "title": "Sans bande-annonce française",
+  "videos": {
+    "results": [
+      {"site": "YouTube", "type": "Trailer", "official": false, "iso_639_1": "en", "key": "unofficial-key"},
+      {"site": "YouTube", "type": "Trailer", "official": true, "iso_639_1": "en", "key": "official-en-key"}
+    ]
+  }
+}
