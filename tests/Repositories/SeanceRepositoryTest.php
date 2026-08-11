@@ -102,6 +102,33 @@ class SeanceRepositoryTest extends DbTestCase
         $this->assertSame('planned', $this->repo->findByDate('2026-08-15')['status']);
     }
 
+    public function testSkipLeavesADoneSeanceAlone(): void
+    {
+        $movieId = $this->movie('Brazil');
+        $seance = $this->repo->ensure('2026-08-15', 'adult');
+        $this->repo->recordChoice($seance['id'], [$movieId], $movieId);
+
+        $this->repo->skip($seance['id']);
+
+        $updated = $this->repo->findByDate('2026-08-15');
+        $this->assertSame('done', $updated['status']);
+        $this->assertSame($movieId, (int) $updated['movie_id']);
+        $this->assertSame('watched', $this->movies->find($movieId)['status']);
+    }
+
+    public function testSetChooserSideLeavesADoneSeanceAlone(): void
+    {
+        $movieId = $this->movie('Brazil');
+        $seance = $this->repo->ensure('2026-08-15', 'adult');
+        $this->repo->recordChoice($seance['id'], [$movieId], $movieId);
+
+        $this->repo->setChooserSide($seance['id'], 'kid', true, 'trop tard');
+
+        $updated = $this->repo->findByDate('2026-08-15');
+        $this->assertSame('adult', $updated['chooser_side'], 'Le camp ne doit pas bouger une fois la séance faite');
+        $this->assertSame(0, (int) $updated['derogation']);
+    }
+
     public function testUnskipLeavesADoneSeanceAlone(): void
     {
         $movieId = $this->movie('Brazil');
@@ -165,6 +192,32 @@ class SeanceRepositoryTest extends DbTestCase
         $this->assertSame('planned', $this->repo->findByDate('2026-08-15')['status']);
         $this->assertSame('pool', $this->movies->find($a)['status']);
         $this->assertSame(0, (int) $this->db->query('SELECT COUNT(*) FROM seance_picks')->fetchColumn());
+    }
+
+    public function testRatingsAreClearedWhenAVetoedFilmIsReplaced(): void
+    {
+        $premier = $this->movie('Premier');
+        $second = $this->movie('Second');
+        $seance = $this->repo->ensure('2026-08-15', 'kid');
+        $this->repo->recordChoice($seance['id'], [], $premier);
+        $this->repo->rate($seance['id'], $this->zoe, 4);
+
+        $this->repo->recordVeto($seance['id'], $premier, $this->jc, 'Trop dur');
+        $this->repo->recordChoice($seance['id'], [], $second);
+
+        $this->assertSame([], $this->repo->ratings($seance['id']));
+    }
+
+    public function testRatingsSurviveRecordingTheSameFilmAgain(): void
+    {
+        $movieId = $this->movie('Brazil');
+        $seance = $this->repo->ensure('2026-08-15', 'adult');
+        $this->repo->recordChoice($seance['id'], [$movieId], $movieId);
+        $this->repo->rate($seance['id'], $this->zoe, 4);
+
+        $this->repo->recordChoice($seance['id'], [$movieId], $movieId);
+
+        $this->assertCount(1, $this->repo->ratings($seance['id']));
     }
 
     public function testRecordVetoReturnsTheMovieToThePoolAndDetachesIt(): void

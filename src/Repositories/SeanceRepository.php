@@ -55,14 +55,14 @@ final class SeanceRepository
     public function setChooserSide(int $id, string $side, bool $derogation, ?string $note): void
     {
         $this->db->prepare(
-            'UPDATE seances SET chooser_side = ?, derogation = ?, derogation_note = ? WHERE id = ?'
+            "UPDATE seances SET chooser_side = ?, derogation = ?, derogation_note = ? WHERE id = ? AND status = 'planned'"
         )->execute([$side, $derogation ? 1 : 0, $note, $id]);
     }
 
     public function skip(int $id): void
     {
         $this->db->prepare(
-            "UPDATE seances SET status = 'skipped', movie_id = NULL WHERE id = ?"
+            "UPDATE seances SET status = 'skipped', movie_id = NULL WHERE id = ? AND status = 'planned'"
         )->execute([$id]);
     }
 
@@ -115,8 +115,11 @@ final class SeanceRepository
 
             if ($previousMovieId !== null && (int) $previousMovieId !== $chosenId) {
                 // Un second choix remplace le premier : le film abandonné retourne
-                // au pool au lieu de rester orphelin en 'watched'.
+                // au pool au lieu de rester orphelin en 'watched', et les notes
+                // données au premier film ne doivent pas se retrouver créditées
+                // au second.
                 $this->movies->returnToPool((int) $previousMovieId);
+                $this->db->prepare('DELETE FROM ratings WHERE seance_id = ?')->execute([$seanceId]);
             }
 
             $this->db->commit();
@@ -143,6 +146,10 @@ final class SeanceRepository
             $this->db->prepare(
                 "UPDATE seances SET status = 'planned', movie_id = NULL WHERE id = ? AND movie_id = ?"
             )->execute([$seanceId, $movieId]);
+
+            // Le film vetoté se détache : les notes qu'il avait reçues ne doivent pas
+            // se retrouver créditées au film qui le remplacera.
+            $this->db->prepare('DELETE FROM ratings WHERE seance_id = ?')->execute([$seanceId]);
 
             $this->movies->returnToPool($movieId);
 
