@@ -10,13 +10,31 @@ use App\Utils\Security;
 $app = App::boot();
 $profile = $app->requireProfile();
 
-$date = ScheduleService::nextSeanceDate()->format('Y-m-d');
-$seance = $app->seances->findByDate($date);
+$idParam = $_GET['id'] ?? null;
+
+if ($idParam !== null) {
+    if (!ctype_digit((string) $idParam)) {
+        header('Location: /tonight.php');
+        exit;
+    }
+    $seance = $app->seances->find((int) $idParam);
+} else {
+    $date = ScheduleService::nextSeanceDate()->format('Y-m-d');
+    $seance = $app->seances->findByDate($date);
+
+    if ($seance === null || $seance['movie_id'] === null) {
+        // Le dimanche matin, la « prochaine séance » calculée vise déjà samedi
+        // prochain : la soirée d'hier n'aurait sinon nulle part où être notée.
+        $seance = $app->seances->mostRecentDone();
+    }
+}
 
 if ($seance === null || $seance['movie_id'] === null) {
     header('Location: /tonight.php');
     exit;
 }
+
+$redirectTo = '/seance.php' . ($idParam !== null ? '?id=' . (int) $seance['id'] : '');
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     if (!Security::checkCsrf($_POST['csrf'] ?? null)) {
@@ -26,7 +44,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
     $action = (string) ($_POST['action'] ?? '');
 
-    if ($action === 'veto' && $profile['side'] === 'adult') {
+    if ($action === 'veto' && $profile['side'] === 'adult' && $seance['chooser_side'] === 'kid') {
         $reason = trim((string) ($_POST['reason'] ?? ''));
         $app->seances->recordVeto(
             (int) $seance['id'],
@@ -45,7 +63,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         }
     }
 
-    header('Location: /seance.php');
+    header('Location: ' . $redirectTo);
     exit;
 }
 

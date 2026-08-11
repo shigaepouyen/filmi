@@ -28,7 +28,12 @@ $statusLabels = [
 <?php else: ?>
     <ol class="space-y-3">
         <?php foreach ($seances as $seance): ?>
-            <li class="flex items-center gap-3 rounded-2xl bg-white/5 p-3 ring-1 ring-white/10">
+            <?php
+                $hasFilm = $seance['movie_title'] !== null;
+                $tag = $hasFilm ? 'a' : 'div';
+            ?>
+            <li class="rounded-2xl bg-white/5 ring-1 ring-white/10">
+            <<?= $tag ?><?= $hasFilm ? ' href="/seance.php?id=' . (int) $seance['id'] . '"' : '' ?> class="flex items-center gap-3 p-3 no-underline text-inherit">
                 <?php if (!empty($seance['movie_poster'])): ?>
                     <img src="<?= Security::e($seance['movie_poster']) ?>" alt="" loading="lazy"
                          class="h-20 w-14 shrink-0 rounded-xl object-cover bg-slate-800">
@@ -73,6 +78,7 @@ $statusLabels = [
                         </p>
                     <?php endif; ?>
                 </div>
+            </<?= $tag ?>>
             </li>
         <?php endforeach; ?>
     </ol>

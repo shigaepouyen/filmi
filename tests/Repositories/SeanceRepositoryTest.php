@@ -417,6 +417,29 @@ class SeanceRepositoryTest extends DbTestCase
         $this->assertSame('JC', $history[0]['proposer_name']);
     }
 
+    public function testMostRecentDoneReturnsTheLatestDoneSeance(): void
+    {
+        $a = $this->movie('Ancien');
+        $b = $this->movie('Récent');
+        $s1 = $this->repo->ensure('2026-07-04', 'adult');
+        $this->repo->recordChoice($s1['id'], [], $a);
+        $s2 = $this->repo->ensure('2026-07-11', 'kid');
+        $this->repo->recordChoice($s2['id'], [], $b);
+        $s3 = $this->repo->ensure('2026-07-18', 'adult');
+        // Séance à venir, sans film retenu : ne doit jamais être retournée.
+
+        $latest = $this->repo->mostRecentDone();
+
+        $this->assertSame($s2['id'], $latest['id']);
+    }
+
+    public function testMostRecentDoneReturnsNullWhenNothingWasEverWatched(): void
+    {
+        $this->repo->ensure('2026-08-15', 'adult');
+
+        $this->assertNull($this->repo->mostRecentDone());
+    }
+
     public function testRecentForScheduleFeedsTheScheduleService(): void
     {
         $movieId = $this->movie('Brazil');

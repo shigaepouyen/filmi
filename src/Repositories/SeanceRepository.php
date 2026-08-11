@@ -231,6 +231,20 @@ final class SeanceRepository
         return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
     }
 
+    /**
+     * Dernière séance réellement jouée, indépendamment de la date de « ce soir ».
+     * Sert de repli le dimanche matin, quand la prochaine séance calculée vise
+     * déjà samedi prochain et que la soirée d'hier n'a nulle part où être notée.
+     */
+    public function mostRecentDone(): ?array
+    {
+        $stmt = $this->db->query(
+            "SELECT * FROM seances WHERE status = 'done' ORDER BY date DESC LIMIT 1"
+        );
+
+        return $stmt->fetch() ?: null;
+    }
+
     public function history(int $limit = 200): array
     {
         $stmt = $this->db->prepare(
