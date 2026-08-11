@@ -13,8 +13,21 @@ final class Session
     public static function start(): void
     {
         if (session_status() === PHP_SESSION_NONE) {
+            ini_set('session.cookie_httponly', '1');
+            ini_set('session.cookie_samesite', 'Lax');
+            ini_set('session.cookie_secure', self::isHttps() ? '1' : '0');
             session_start();
         }
+    }
+
+    /**
+     * Le site est servi en HTTPS uniquement en production, mais le dev local tourne
+     * en clair : le flag 'secure' ne doit s'activer que si la requête est réellement
+     * en HTTPS, sinon aucun cookie ne serait posé en local.
+     */
+    public static function isHttps(): bool
+    {
+        return !empty($_SERVER['HTTPS']);
     }
 
     public static function currentProfileId(): ?int
@@ -31,6 +44,7 @@ final class Session
             'path' => '/',
             'httponly' => true,
             'samesite' => 'Lax',
+            'secure' => self::isHttps(),
         ]);
         $_COOKIE[self::COOKIE] = (string) $id;
     }

@@ -35,4 +35,51 @@ class SessionTest extends TestCase
             $this->assertNull(Session::currentProfileId(), "Valeur acceptee a tort : {$hostile}");
         }
     }
+
+    public function testIsHttpsIsFalseOnPlainLocalDev(): void
+    {
+        unset($_SERVER['HTTPS']);
+
+        $this->assertFalse(Session::isHttps());
+    }
+
+    public function testIsHttpsIsTrueBehindHttps(): void
+    {
+        $_SERVER['HTTPS'] = 'on';
+
+        $this->assertTrue(Session::isHttps());
+
+        unset($_SERVER['HTTPS']);
+    }
+
+    public function testStartHardensSessionCookieIniSettingsBeforeStarting(): void
+    {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+        $_SERVER['HTTPS'] = 'on';
+
+        Session::start();
+
+        $this->assertSame('1', ini_get('session.cookie_httponly'));
+        $this->assertSame('Lax', ini_get('session.cookie_samesite'));
+        $this->assertSame('1', ini_get('session.cookie_secure'));
+
+        session_write_close();
+        unset($_SERVER['HTTPS']);
+    }
+
+    public function testStartLeavesTheSecureFlagOffOverPlainHttp(): void
+    {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+        unset($_SERVER['HTTPS']);
+
+        Session::start();
+
+        $this->assertSame('0', ini_get('session.cookie_secure'));
+
+        session_write_close();
+    }
 }
