@@ -280,4 +280,39 @@ class MovieCardTest extends TestCase
         $this->assertStringContainsString('hors abonnement', $html);
         $this->assertStringNotContainsString('+', explode('hors abonnement', $html)[0] ?? '');
     }
+
+    public function testTheWholeCardIsClickableAndTheControlsStayAboveTheLink(): void
+    {
+        $html = $this->render($this->movie());
+
+        // Regression : le lien couvrant la carte etait en z-0, donc peint SOUS le
+        // titre et l'affiche (un positionne en z-index auto passe apres un z-0 dans
+        // l'ordre du DOM). Taper sur la carte ne faisait rien et la fiche du film
+        // etait inatteignable. Le lien doit etre au-dessus du contenu, et les
+        // commandes interactives au-dessus du lien.
+        $this->assertMatchesRegularExpression(
+            '/<a [^>]*class="absolute inset-0 z-10[^"]*"/',
+            $html,
+            'Le lien de la carte doit couvrir la carte au-dessus du contenu'
+        );
+        $this->assertStringNotContainsString('absolute inset-0 z-0', $html);
+        $this->assertStringContainsString('relative z-20', $html, 'La rangee de vote doit rester cliquable');
+    }
+
+    public function testTheChooseButtonStaysAboveTheCardLink(): void
+    {
+        $html = ViewRenderer::component('movie_card', [
+            'movie' => $this->movie(),
+            'startTime' => '19:15',
+            'myVotes' => [],
+            'profile' => ['id' => 1, 'name' => 'JC'],
+            'choosable' => true,
+        ]);
+
+        $this->assertMatchesRegularExpression(
+            '/<form method="post" class="relative z-20[^"]*">\s*<input type="hidden" name="csrf"/',
+            $html,
+            'Le bouton de choix du soir ne doit pas etre avale par le lien de la carte'
+        );
+    }
 }

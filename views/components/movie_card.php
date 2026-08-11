@@ -26,7 +26,15 @@ $truncatedOverview = $overview !== '' && mb_strlen($overview, 'UTF-8') > 160
 ?>
 <article class="relative flex gap-3 rounded-2xl bg-white/5 p-3 ring-1 ring-white/10"
          x-data="{ voted: <?= $hasVoted ? 'true' : 'false' ?>, count: <?= (int) $movie['vote_count'] ?>, busy: false }">
-    <a href="/movie.php?id=<?= (int) $movie['id'] ?>" class="absolute inset-0 z-0 rounded-2xl"
+    <?php /*
+       Le lien couvre toute la carte et doit passer AU-DESSUS du contenu : un
+       element positionne en z-index auto est peint apres un z-index 0 dans
+       l'ordre du DOM, donc un lien en z-0 se retrouve enterre sous le titre et
+       l'affiche, et taper sur la carte ne fait rien. Les commandes reellement
+       interactives (vote, choix du soir) remontent en z-20 pour rester au-dessus
+       du lien.
+    */ ?>
+    <a href="/movie.php?id=<?= (int) $movie['id'] ?>" class="absolute inset-0 z-10 rounded-2xl"
        aria-label="Voir la fiche de <?= Security::e($movie['title']) ?>"></a>
 
     <?php if (!empty($movie['poster_url'])): ?>
@@ -76,7 +84,7 @@ $truncatedOverview = $overview !== '' && mb_strlen($overview, 'UTF-8') > 160
             <p class="mt-1.5 text-xs italic text-slate-300">« <?= Security::e($movie['memo']) ?> »</p>
         <?php endif; ?>
 
-        <div class="relative z-10 mt-2 flex items-center gap-2">
+        <div class="relative z-20 mt-2 flex items-center gap-2">
             <span title="Proposé par <?= Security::e($movie['proposer_name']) ?>">
                 <?= Avatars::render($movie['proposer_avatar'], $movie['proposer_color'], 22) ?>
             </span>
@@ -96,7 +104,7 @@ $truncatedOverview = $overview !== '' && mb_strlen($overview, 'UTF-8') > 160
         </div>
 
         <?php if ($choosable): ?>
-            <form method="post" class="relative z-10 mt-2">
+            <form method="post" class="relative z-20 mt-2">
                 <input type="hidden" name="csrf" value="<?= Security::csrfToken() ?>">
                 <input type="hidden" name="action" value="choose">
                 <input type="hidden" name="movie_id" value="<?= (int) $movie['id'] ?>">

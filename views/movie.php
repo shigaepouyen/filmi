@@ -146,18 +146,21 @@ $betLabels = ['safe' => 'valeur sûre', 'discovery' => 'découverte'];
                 <input type="hidden" name="csrf" value="<?= Security::csrfToken() ?>">
                 <input type="hidden" name="id" value="<?= (int) $movie['id'] ?>">
                 <input type="hidden" name="action" value="reclassify">
+                <?php $poolLabels = ['adult' => 'Liste des parents', 'kid' => 'Liste des filles']; ?>
                 <div class="flex gap-2">
-                    <label class="flex-1 cursor-pointer rounded-xl px-3 py-2 text-sm ring-1 ring-white/10"
-                           :class="pool === 'adult' ? 'bg-white/15' : 'bg-white/5'">
-                        <input type="radio" name="pool" value="adult" x-model="pool" class="sr-only">
-                        Liste des parents
-                    </label>
-                    <label class="flex-1 cursor-pointer rounded-xl px-3 py-2 text-sm ring-1 ring-white/10"
-                           :class="pool === 'kid' ? 'bg-white/15' : 'bg-white/5'">
-                        <input type="radio" name="pool" value="kid" x-model="pool" class="sr-only">
-                        Liste des filles
-                    </label>
+                    <?php foreach ($manageablePools as $poolOption): ?>
+                        <label class="flex-1 cursor-pointer rounded-xl px-3 py-2 text-sm ring-1 ring-white/10"
+                               :class="pool === '<?= $poolOption ?>' ? 'bg-white/15' : 'bg-white/5'">
+                            <input type="radio" name="pool" value="<?= $poolOption ?>" x-model="pool" class="sr-only">
+                            <?= Security::e($poolLabels[$poolOption]) ?>
+                        </label>
+                    <?php endforeach; ?>
                 </div>
+                <?php if (count($manageablePools) === 1): ?>
+                    <p class="text-xs text-slate-400">
+                        Seuls les parents peuvent deplacer un film vers leur liste.
+                    </p>
+                <?php endif; ?>
                 <div x-show="pool === 'adult'" class="flex gap-2">
                     <label class="flex-1 cursor-pointer rounded-xl bg-white/5 px-3 py-2 text-sm ring-1 ring-white/10">
                         <input type="radio" name="bet_type" value="safe" class="mr-1.5"
@@ -187,5 +190,10 @@ $betLabels = ['safe' => 'valeur sûre', 'discovery' => 'découverte'];
                 <?php endif; ?>
             </form>
         </section>
+    <?php else: ?>
+        <p class="mt-8 rounded-2xl bg-white/5 p-4 text-sm text-slate-400">
+            Ce film est dans la liste des parents. Tu peux le regarder, voter pour lui et
+            le proposer le samedi, mais seuls les parents peuvent le modifier ou le retirer.
+        </p>
     <?php endif; ?>
 </div>

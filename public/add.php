@@ -5,6 +5,7 @@ require dirname(__DIR__) . '/vendor/autoload.php';
 
 use App\App;
 use App\Services\TmdbException;
+use App\Utils\Access;
 use App\Utils\Security;
 
 $app = App::boot();
@@ -15,7 +16,12 @@ $isPost = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST';
 // Conservés pour réafficher le formulaire tel quel si une erreur de validation
 // est levée plus bas : perdre la saisie est ce qui irrite le plus dans l'app.
 $old = [
-    'pool' => $isPost && ($_POST['pool'] ?? '') === 'kid' ? 'kid' : ($profile['side'] === 'kid' ? 'kid' : 'adult'),
+    // La liste postee est conservee telle quelle : c'est le controle d'acces plus
+    // bas qui tranche. La ramener silencieusement a la liste du profil ecrirait
+    // un film ailleurs que la ou la requete le demandait, sans rien dire.
+    'pool' => $isPost && in_array($_POST['pool'] ?? '', Access::POOLS, true)
+        ? (string) $_POST['pool']
+        : (Access::manageablePools((string) $profile['side'])[0] ?? 'kid'),
     'bet_type' => $isPost && in_array($_POST['bet_type'] ?? '', ['safe', 'discovery'], true) ? $_POST['bet_type'] : null,
     'memo' => $isPost ? trim((string) ($_POST['memo'] ?? '')) : '',
     'title' => $isPost ? trim((string) ($_POST['title'] ?? '')) : '',
@@ -33,6 +39,14 @@ if ($isPost) {
     $tmdbId = ctype_digit((string) ($_POST['tmdb_id'] ?? '')) ? (int) $_POST['tmdb_id'] : null;
     $memo = $old['memo'];
     $betType = $old['bet_type'];
+
+    // Regle asymetrique : les parents alimentent les deux listes, les filles
+    // seulement la leur. Verifie ici et pas seulement dans le formulaire, sinon
+    // une requete forgee suffirait a contourner la regle.
+    if (!Access::canManagePool((string) $profile['side'], $pool)) {
+        http_response_code(403);
+        exit("Tu ne peux ajouter un film que dans ta propre liste.");
+    }
 
     // Le pool des parents exige un tag, c'est lui qui pilote le tirage.
     if ($pool === 'adult' && $betType === null) {
@@ -70,6 +84,6 @@ if ($isPost) {
 $app->render('add', [
     'error' => $error,
     'tmdbConfigured' => $app->tmdb->isConfigured(),
-    'defaultPool' => $profile['side'] === 'kid' ? 'kid' : 'adult',
+    'manageablePools' => Access::manageablePools((string) $profile['side']),
     'old' => $old,
 ], 'Filmi, ajouter un film');

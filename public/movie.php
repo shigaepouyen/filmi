@@ -4,6 +4,7 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/vendor/autoload.php';
 
 use App\App;
+use App\Utils\Access;
 use App\Utils\Security;
 
 $app = App::boot();
@@ -25,12 +26,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         exit('Requête refusée.');
     }
 
-    // Contrôle d'accès côté serveur : un profil n'agit que sur sa propre liste,
-    // un parent sur la liste adulte, une fille sur la liste enfant. Masquer le
-    // bouton côté vue ne suffit pas, l'action est donc revérifiée ici.
-    if ($profile['side'] !== $movie['pool']) {
+    // Contrôle d'accès côté serveur. Règle asymétrique voulue : les parents
+    // gèrent les deux listes, les filles seulement la leur. Masquer le bouton
+    // côté vue ne suffit pas, l'action est donc revérifiée ici.
+    if (!Access::canManagePool((string) $profile['side'], (string) $movie['pool'])) {
         http_response_code(403);
-        exit("Tu ne peux agir que sur ta propre liste.");
+        exit("Cette liste n'est pas la tienne, tu peux la consulter et voter.");
     }
 
     $action = (string) ($_POST['action'] ?? '');
@@ -52,6 +53,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $betType = in_array($_POST['bet_type'] ?? '', ['safe', 'discovery'], true)
             ? $_POST['bet_type']
             : null;
+
+        // Deplacer un film vers une liste interdite serait un contournement de la
+        // regle : une fille ne doit pas pouvoir pousser un film chez les parents.
+        if (!Access::canManagePool((string) $profile['side'], $pool)) {
+            http_response_code(403);
+            exit("Tu ne peux pas deplacer un film vers cette liste.");
+        }
 
         try {
             $app->movies->updateClassification($id, $pool, $betType);
@@ -76,6 +84,7 @@ $app->render('movie', [
     'watchedOn' => $movie['status'] === 'watched' ? $app->seances->watchedDateForMovie($id) : null,
     'startTime' => $app->settings->startTime(),
     'subscribedBrands' => $app->settings->subscribedBrands(),
-    'canManage' => $profile['side'] === $movie['pool'],
+    'canManage' => Access::canManagePool((string) $profile['side'], (string) $movie['pool']),
+    'manageablePools' => Access::manageablePools((string) $profile['side']),
     'error' => $error,
 ], 'Filmi, ' . $movie['title']);

@@ -120,20 +120,27 @@ use App\Utils\Security;
         </p>
     </template>
 
+    <?php $poolLabels = ['adult' => 'Liste des parents', 'kid' => 'Liste des filles']; ?>
     <section class="space-y-2">
-        <span class="block text-sm font-medium">Dans quelle liste ?</span>
-        <div class="flex gap-2">
-            <label class="flex-1 cursor-pointer rounded-xl px-3 py-2 text-sm ring-1 ring-white/10"
-                   :class="pool === 'adult' ? 'bg-white/15' : 'bg-white/5'">
-                <input type="radio" name="pool" value="adult" x-model="pool" class="sr-only">
-                Liste des parents
-            </label>
-            <label class="flex-1 cursor-pointer rounded-xl px-3 py-2 text-sm ring-1 ring-white/10"
-                   :class="pool === 'kid' ? 'bg-white/15' : 'bg-white/5'">
-                <input type="radio" name="pool" value="kid" x-model="pool" class="sr-only">
-                Liste des filles
-            </label>
-        </div>
+        <?php if (count($manageablePools) === 1): ?>
+            <?php $seulePool = $manageablePools[0]; ?>
+            <input type="hidden" name="pool" value="<?= $seulePool ?>">
+            <p class="text-sm text-slate-400">
+                Ce film ira dans la <strong><?= Security::e($poolLabels[$seulePool]) ?></strong>.
+                Seuls les parents peuvent alimenter la leur.
+            </p>
+        <?php else: ?>
+            <span class="block text-sm font-medium">Dans quelle liste ?</span>
+            <div class="flex gap-2">
+                <?php foreach ($manageablePools as $poolOption): ?>
+                    <label class="flex-1 cursor-pointer rounded-xl px-3 py-2 text-sm ring-1 ring-white/10"
+                           :class="pool === '<?= $poolOption ?>' ? 'bg-white/15' : 'bg-white/5'">
+                        <input type="radio" name="pool" value="<?= $poolOption ?>" x-model="pool" class="sr-only">
+                        <?= Security::e($poolLabels[$poolOption]) ?>
+                    </label>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
     </section>
 
     <section x-show="pool === 'adult'" class="space-y-2">

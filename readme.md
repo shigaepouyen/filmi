@@ -52,7 +52,9 @@ Chaque film a sa page : grande affiche, synopsis complet, réalisateur, genres, 
 
 Depuis la fiche, on peut **changer le pari et la liste** d'un film, et **l'archiver**. Un archivage est réversible : le film disparaît des listes, du tirage et de la détection de doublon, mais rien n'est effacé, donc l'historique et le palmarès gardent leur trace s'il avait déjà été proposé ou veto.
 
-**Chacun n'agit que sur sa propre liste** : un parent sur la liste des parents, une fille sur la liste des filles. La règle est vérifiée côté serveur, pas seulement par un bouton masqué.
+**Qui agit sur quoi**, et la règle est volontairement asymétrique : les parents alimentent et gèrent **les deux listes**, y compris celle des filles, alors que les filles ne gèrent que la leur. En revanche tout le monde voit les deux listes et peut voter partout, c'est ce qui permet aux filles de découvrir ce que les parents ont en réserve et de faire remonter leurs préférences.
+
+La règle est vérifiée **côté serveur**, pas seulement par un bouton masqué, et elle couvre l'ajout, le changement de liste et l'archivage. Une requête forgée qui viserait la liste des parents depuis un profil enfant est refusée, et la liste demandée n'est jamais ramenée en silence vers une autre : mieux vaut un refus explicite qu'un film écrit ailleurs que là où on le demandait.
 
 ### Les abonnements
 
