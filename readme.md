@@ -86,7 +86,16 @@ TMDb fournit les affiches, les durées, les plateformes et l'avis parental. IMDb
 
 1. Créer un compte gratuit sur themoviedb.org.
 2. Aller dans Paramètres, puis API, et demander une clé **v3**.
-3. La coller dans `config/config.php`, champ `tmdb_api_key`.
+3. L'enregistrer avec le script prévu pour ça, plutôt qu'en éditant le fichier à la main :
+
+```bash
+./scripts/install_hooks.sh   # une seule fois, après un clone
+./scripts/set_tmdb_key.sh
+```
+
+Le script demande la clé en **saisie masquée** : elle ne s'affiche pas, elle n'entre pas dans l'historique du shell, et elle n'apparaît pas dans la liste des processus puisqu'elle est transmise à PHP par l'environnement et non par un argument. Il crée `config/config.php` en permissions 600, puis vérifie que git l'ignore bien et affiche une empreinte tronquée pour confirmer sans révéler la clé.
+
+`install_hooks.sh` pose un hook `pre-commit` qui refuse tout commit contenant `config/config.php`, un fichier `.sqlite`, ou une clé TMDb non vide dans n'importe quel fichier indexé, y compris ajouté de force avec `git add -f`. Les hooks ne se versionnent pas, donc ce script est à relancer après chaque clone.
 
 **Filmi fonctionne sans clé**, en saisie manuelle, avec un bandeau d'avertissement en haut de page. La recherche autocomplétée est alors désactivée, tout le reste marche.
 
