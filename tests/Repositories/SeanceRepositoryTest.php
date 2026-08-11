@@ -417,6 +417,18 @@ class SeanceRepositoryTest extends DbTestCase
         $this->assertSame('JC', $history[0]['proposer_name']);
     }
 
+    public function testHistoryDefaultLimitCoversSeveralYearsOfWeeklySeances(): void
+    {
+        $insert = $this->db->prepare(
+            "INSERT INTO seances (date, chooser_side, status) VALUES (?, 'adult', 'done')"
+        );
+        for ($i = 0; $i < 250; $i++) {
+            $insert->execute([sprintf('2020-01-%02d', ($i % 28) + 1) . '-' . $i]);
+        }
+
+        $this->assertCount(250, $this->repo->history());
+    }
+
     public function testMostRecentDoneReturnsTheLatestDoneSeance(): void
     {
         $a = $this->movie('Ancien');

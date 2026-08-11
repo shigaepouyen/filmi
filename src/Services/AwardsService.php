@@ -59,6 +59,24 @@ final class AwardsService
     }
 
     /**
+     * Traduit la sélection demandée (année précise ou 'all') en année à filtrer
+     * et en valeur affichée par le sélecteur. Sans aucune séance en historique,
+     * le sélecteur ne propose que « Tout l'historique » : on aligne le titre
+     * dessus plutôt que de laisser afficher l'année du jour sans rien derrière.
+     *
+     * @param list<int> $years années disponibles dans l'historique
+     * @return array{year: int|null, selected: string}
+     */
+    public static function resolveSelection(array $years, string $requested): array
+    {
+        if ($years === [] || $requested === 'all') {
+            return ['year' => null, 'selected' => 'all'];
+        }
+
+        return ['year' => (int) $requested, 'selected' => $requested];
+    }
+
+    /**
      * L'entrée est déjà triée par date décroissante, donc à égalité de note
      * le premier rencontré est le plus récent.
      *

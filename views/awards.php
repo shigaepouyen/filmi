@@ -1,10 +1,10 @@
 <?php
 use App\Utils\Security;
 
-$title = $awards['year'] === null ? 'depuis le début' : 'en ' . $awards['year'];
+$periode = $awards['year'] === null ? 'depuis le début' : 'en ' . $awards['year'];
 ?>
 <div class="mb-4 flex flex-wrap items-center gap-2">
-    <h1 class="text-2xl font-semibold">Palmarès <?= Security::e($title) ?></h1>
+    <h1 class="text-2xl font-semibold">Palmarès <?= Security::e($periode) ?></h1>
     <select class="ml-auto rounded-xl bg-white/10 px-2 py-1.5 text-sm"
             onchange="location.href='?year=' + this.value">
         <?php foreach ($years as $item): ?>

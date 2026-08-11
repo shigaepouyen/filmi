@@ -49,7 +49,7 @@ final class ProfileRepository
     {
         $name = trim($name);
         if ($name === '') {
-            throw new \InvalidArgumentException('Le nom du profil ne peut pas etre vide.');
+            throw new \InvalidArgumentException("Le nom du profil ne peut pas être vide.");
         }
 
         $avatarExists = Avatars::exists($avatar);

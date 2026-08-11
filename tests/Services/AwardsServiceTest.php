@@ -114,6 +114,32 @@ class AwardsServiceTest extends TestCase
         $this->assertSame([['name' => 'JC', 'total' => 1]], $result['vetoes']);
     }
 
+    public function testResolveSelectionKeepsTheRequestedYearWhenHistoryExists(): void
+    {
+        $result = AwardsService::resolveSelection([2026, 2025], '2026');
+
+        $this->assertSame(2026, $result['year']);
+        $this->assertSame('2026', $result['selected']);
+    }
+
+    public function testResolveSelectionHonoursAnExplicitAllRequest(): void
+    {
+        $result = AwardsService::resolveSelection([2026, 2025], 'all');
+
+        $this->assertNull($result['year']);
+        $this->assertSame('all', $result['selected']);
+    }
+
+    public function testResolveSelectionFallsBackToAllWhenThereIsNoHistory(): void
+    {
+        // Sans aucune séance, le sélecteur ne propose que « Tout l'historique » :
+        // le titre affiché doit correspondre, pas rester sur l'année du jour.
+        $result = AwardsService::resolveSelection([], '2026');
+
+        $this->assertNull($result['year']);
+        $this->assertSame('all', $result['selected']);
+    }
+
     public function testProposerTallyIsSortedDescending(): void
     {
         $history = [

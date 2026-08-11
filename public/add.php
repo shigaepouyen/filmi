@@ -26,7 +26,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
     // Le pool des parents exige un tag, c'est lui qui pilote le tirage.
     if ($pool === 'adult' && $betType === null) {
-        $error = 'Choisis valeur sûre ou découverte, c est ce qui permet le tirage des trois films.';
+        $error = "Choisis valeur sûre ou découverte, c'est ce qui permet le tirage des trois films.";
     }
 
     if ($error === null) {

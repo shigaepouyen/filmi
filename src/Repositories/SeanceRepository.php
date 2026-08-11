@@ -245,7 +245,7 @@ final class SeanceRepository
         return $stmt->fetch() ?: null;
     }
 
-    public function history(int $limit = 200): array
+    public function history(int $limit = 1000): array
     {
         $stmt = $this->db->prepare(
             'SELECT s.*,

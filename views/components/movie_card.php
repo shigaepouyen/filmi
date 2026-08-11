@@ -65,7 +65,7 @@ $betLabels = ['safe' => 'valeur sûre', 'discovery' => 'découverte'];
                             filmiPost('/api/vote.php', { movie_id: <?= (int) $movie['id'] ?> })
                                 .then(r => { voted = r.voted; count = r.count; })
                                 .finally(() => busy = false)"
-                    title="<?= $movie['voter_names'] === '' ? Security::e('Personne n a encore voté') : 'Ont voté : ' . Security::e($movie['voter_names']) ?>">
+                    title="<?= $movie['voter_names'] === '' ? Security::e("Personne n'a encore voté") : 'Ont voté : ' . Security::e($movie['voter_names']) ?>">
                 <span aria-hidden="true">▲</span>
                 <span x-text="count"><?= (int) $movie['vote_count'] ?></span>
             </button>

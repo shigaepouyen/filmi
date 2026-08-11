@@ -25,7 +25,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     // pour afficher un message plutot que de laisser passer une erreur 500.
     $name = trim((string) ($_POST['name'] ?? $profile['name']));
     if ($name === '') {
-        $message = 'Le nom ne peut pas etre vide.';
+        $message = "Le nom ne peut pas être vide.";
     } else {
         $app->profiles->update(
             (int) $profile['id'],

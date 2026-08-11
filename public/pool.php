@@ -24,7 +24,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         && $seance['status'] === 'planned'
         && $seance['chooser_side'] === 'kid';
 
-    if (($_POST['action'] ?? '') === 'choose' && $choosable && $movieId > 0) {
+    $movie = $movieId > 0 ? $app->movies->find($movieId) : null;
+    $isChoosableMovie = $movie !== null
+        && $movie['status'] === 'pool'
+        && $movie['pool'] === 'kid';
+
+    if (($_POST['action'] ?? '') === 'choose' && $choosable && $isChoosableMovie) {
         // Semaine filles : aucune shortlist, il n'y a pas eu de tirage. Elles choisissent
         // dans tout le pool, donc cette séance ne consomme aucun créneau de cooldown.
         $app->seances->recordChoice((int) $seance['id'], [], $movieId);
