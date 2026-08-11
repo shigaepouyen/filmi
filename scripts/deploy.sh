@@ -17,7 +17,9 @@ echo "Synchronisation vers ${REMOTE}:${REMOTE_PATH}..."
 rsync -az --delete \
       --exclude '.git/' \
       --exclude '.superpowers/' \
-      --exclude 'data/' \
+      --include 'data/' \
+      --include 'data/.htaccess' \
+      --exclude 'data/*' \
       --exclude 'config/config.php' \
       --exclude 'tests/' \
       --exclude 'tmp/' \
