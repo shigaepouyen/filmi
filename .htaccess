@@ -1,5 +1,14 @@
-# Ce fichier ne sert que si le docroot du site pointe par erreur sur la racine du
-# depot au lieu de public/. Dans ce cas il vaut mieux tout refuser que de servir le
-# code source, la base de la famille ou la cle TMDb. Une fois le docroot correctement
-# regle sur public/, ce fichier est hors docroot et n a plus aucun effet.
-Require all denied
+# ATTENTION : ce fichier est herite par le docroot public/, parce qu'Apache applique
+# aussi les .htaccess des dossiers parents du repertoire servi. Il ne doit donc
+# contenir que des regles inoffensives pour l'application, et jamais un
+# "Require all denied" global : cela bloquerait tout le site avec un 403.
+#
+# Son role est un filet de securite pour le cas ou le docroot du site pointerait par
+# erreur sur la racine du depot au lieu de public/. Quand le docroot est correct, les
+# chemins ci-dessous n'existent pas dans l'URL et ces regles ne servent a rien.
+#
+# Ne pas ajouter de regle sur *.json ici : le manifeste de la PWA doit rester servi.
+
+RedirectMatch 404 ^/(src|tests|scripts|docs|vendor|config|data)/
+RedirectMatch 404 /\.git
+RedirectMatch 404 \.(sqlite|sqlite-wal|sqlite-shm|lock)$
