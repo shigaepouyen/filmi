@@ -191,4 +191,93 @@ class MovieCardTest extends TestCase
 
         $this->assertStringNotContainsString('hors abonnement', $html);
     }
+
+    /**
+     * Les 20 plateformes réellement renvoyées par TMDb pour "Orgueil et
+     * Préjugés" en production (location/achat mêlés aux abonnements). Sans
+     * plafonnement, la carte affichait une puce par plateforme et poussait le
+     * titre, le synopsis et le bouton de vote hors de l'écran sur mobile.
+     */
+    private function orgueilEtPrejugesProviders(): string
+    {
+        $names = [
+            'Canal+', 'Sooner', 'Molotov TV', 'Cine+ OCS Amazon Channel', 'Paramount Plus',
+            'SFR Play', 'Paramount+ Amazon Channel', 'HBO Max', 'Paramount Plus Premium',
+            'HBO Max Amazon Channel', 'Apple TV Store', 'Google Play Movies', 'Canal VOD',
+            'Orange VOD', 'YouTube', 'Rakuten TV', 'Amazon Video', 'Pathé Home',
+            'VIVA by videofutur', 'Premiere Max',
+        ];
+
+        return json_encode(array_map(
+            static fn (string $name): array => ['id' => null, 'name' => $name, 'logo' => '/logo.jpg'],
+            $names
+        ), JSON_UNESCAPED_UNICODE);
+    }
+
+    public function testTwentyRealPlatformsWithNoSubscriptionShowThemAll(): void
+    {
+        $html = ViewRenderer::component('movie_card', [
+            'movie' => $this->movie(['title' => 'Orgueil et Préjugés', 'providers' => $this->orgueilEtPrejugesProviders()]),
+            'startTime' => '19:15',
+            'myVotes' => [],
+            'profile' => ['id' => 1, 'name' => 'JC'],
+            'subscribedBrands' => [],
+        ]);
+
+        // Etat transitoire, avant que la famille ait coche ses abonnements : les
+        // 20 plateformes reelles se reduisent a 17 marques distinctes une fois les
+        // declinaisons Paramount+ et HBO Max fusionnees, et la carte les montre
+        // toutes. C'est volontairement non plafonne : le filtre utile est le
+        // perimetre d'abonnement, pas une limite arbitraire.
+        $this->assertSame(17, substr_count($html, 'bg-emerald-500/20'));
+        $this->assertStringNotContainsString('hors abonnement', $html);
+    }
+
+    public function testASubscriptionCutsTheTwentyPlatformsDownToWhatMatters(): void
+    {
+        $html = ViewRenderer::component('movie_card', [
+            'movie' => $this->movie(['title' => 'Orgueil et Préjugés', 'providers' => $this->orgueilEtPrejugesProviders()]),
+            'startTime' => '19:15',
+            'myVotes' => [],
+            'profile' => ['id' => 1, 'name' => 'JC'],
+            'subscribedBrands' => ['Netflix', 'Canal+', 'Disney+', 'HBO Max'],
+        ]);
+
+        // C'est le vrai remede au mur de pastilles : quatre abonnements coches,
+        // quatre pastilles au maximum, sans plafond a maintenir.
+        $this->assertLessThanOrEqual(4, substr_count($html, 'bg-emerald-500/20'));
+        $this->assertStringNotContainsString('hors abonnement', $html);
+    }
+
+    public function testTwentyRealPlatformsWithASubscriptionShowOnlyTheMatchingOnes(): void
+    {
+        $html = ViewRenderer::component('movie_card', [
+            'movie' => $this->movie(['title' => 'Orgueil et Préjugés', 'providers' => $this->orgueilEtPrejugesProviders()]),
+            'startTime' => '19:15',
+            'myVotes' => [],
+            'profile' => ['id' => 1, 'name' => 'JC'],
+            'subscribedBrands' => ['Canal+', 'HBO Max'],
+        ]);
+
+        $this->assertSame(2, substr_count($html, 'bg-emerald-500/20'));
+        $this->assertStringContainsString('Canal+', $html);
+        $this->assertStringContainsString('HBO Max', $html);
+        $this->assertStringNotContainsString('YouTube', $html);
+        $this->assertStringNotContainsString('hors abonnement', $html);
+    }
+
+    public function testTwentyRealPlatformsOutsideTheSubscriptionShowNoChipOnlyTheWarning(): void
+    {
+        $html = ViewRenderer::component('movie_card', [
+            'movie' => $this->movie(['title' => 'Orgueil et Préjugés', 'providers' => $this->orgueilEtPrejugesProviders()]),
+            'startTime' => '19:15',
+            'myVotes' => [],
+            'profile' => ['id' => 1, 'name' => 'JC'],
+            'subscribedBrands' => ['Netflix'],
+        ]);
+
+        $this->assertSame(0, substr_count($html, 'bg-emerald-500/20'));
+        $this->assertStringContainsString('hors abonnement', $html);
+        $this->assertStringNotContainsString('+', explode('hors abonnement', $html)[0] ?? '');
+    }
 }

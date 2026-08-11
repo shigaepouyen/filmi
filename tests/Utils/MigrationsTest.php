@@ -94,9 +94,9 @@ class MigrationsTest extends TestCase
 
         $applied = Migrations::run($db);
 
-        $this->assertSame([2], $applied);
+        $this->assertSame([2, 3], $applied);
         $this->assertContains('trailer_url', $this->columns($db, 'movies'));
-        $this->assertSame(2, Migrations::currentVersion($db));
+        $this->assertSame(3, Migrations::currentVersion($db));
 
         // Preuve d'absence de perte de données : les deux films survivent intacts.
         $rows = $db->query('SELECT title, pool, status, providers, trailer_url FROM movies ORDER BY id')->fetchAll();
@@ -122,13 +122,13 @@ class MigrationsTest extends TestCase
         )->execute();
 
         $first = Migrations::run($db);
-        $this->assertSame([2], $first);
+        $this->assertSame([2, 3], $first);
 
         // Une deuxième exécution ne doit ni lever (ALTER TABLE sur colonne existante
         // lèverait), ni changer quoi que ce soit.
         $second = Migrations::run($db);
         $this->assertSame([], $second, 'La deuxième exécution ne doit rejouer aucune migration');
-        $this->assertSame(2, Migrations::currentVersion($db));
+        $this->assertSame(3, Migrations::currentVersion($db));
 
         $trailerColumns = array_filter(
             $this->columns($db, 'movies'),
@@ -147,7 +147,32 @@ class MigrationsTest extends TestCase
 
         $applied = Migrations::run($db);
 
-        $this->assertSame([2], $applied);
-        $this->assertSame(2, Migrations::currentVersion($db));
+        $this->assertSame([2, 3], $applied);
+        $this->assertSame(3, Migrations::currentVersion($db));
+    }
+
+    public function testMigrationThreeMarksExistingFilmsForProviderRefresh(): void
+    {
+        $db = $this->oldStateDatabase();
+        $db->exec(
+            "INSERT INTO movies (title, pool, bet_type, added_by, tmdb_id, providers, providers_at)
+             VALUES ('Avec tmdb', 'adult', 'safe', 1, 129, '[\"Netflix\"]', '2026-08-11 09:00:00')"
+        );
+        $db->exec(
+            "INSERT INTO movies (title, pool, bet_type, added_by, providers_at)
+             VALUES ('Saisi a la main', 'adult', 'safe', 1, '2026-08-11 09:00:00')"
+        );
+
+        Migrations::run($db);
+
+        $avecTmdb = $db->query("SELECT providers_at FROM movies WHERE title = 'Avec tmdb'")->fetchColumn();
+        $manuel = $db->query("SELECT providers_at FROM movies WHERE title = 'Saisi a la main'")->fetchColumn();
+
+        $this->assertNull($avecTmdb, 'Un film TMDb doit repasser en attente de rafraichissement');
+        $this->assertSame(
+            '2026-08-11 09:00:00',
+            $manuel,
+            'Un film saisi a la main n a rien a rafraichir, sa date ne doit pas bouger'
+        );
     }
 }

@@ -177,4 +177,117 @@ class ProvidersTest extends TestCase
     {
         $this->assertTrue(Providers::needsWarning([], ['Netflix']));
     }
+
+    /** @return list<array{brand: string, logo: ?string}> */
+    private static function fakeBrands(int $count): array
+    {
+        $brands = [];
+        for ($i = 1; $i <= $count; $i++) {
+            $brands[] = ['brand' => 'Plateforme ' . $i, 'logo' => null];
+        }
+
+        return $brands;
+    }
+
+    /**
+     * Les 20 plateformes réellement renvoyées par TMDb pour "Orgueil et
+     * Préjugés" en production : location/achat mêlés aux abonnements, ce qui
+     * fait exploser une carte qui les afficherait toutes. displayBrands()
+     * doit rester utilisable sur cette forme réelle, pas seulement sur des
+     * exemples synthétiques.
+     *
+     * @return list<array{id: ?int, name: string, logo: ?string}>
+     */
+    public static function orgueilEtPrejugesProvidersProvider(): array
+    {
+        $names = [
+            'Canal+', 'Sooner', 'Molotov TV', 'Cine+ OCS Amazon Channel', 'Paramount Plus',
+            'SFR Play', 'Paramount+ Amazon Channel', 'HBO Max', 'Paramount Plus Premium',
+            'HBO Max Amazon Channel', 'Apple TV Store', 'Google Play Movies', 'Canal VOD',
+            'Orange VOD', 'YouTube', 'Rakuten TV', 'Amazon Video', 'Pathé Home',
+            'VIVA by videofutur', 'Premiere Max',
+        ];
+
+        return array_map(
+            static fn (string $name): array => ['id' => null, 'name' => $name, 'logo' => '/logo.jpg'],
+            $names
+        );
+    }
+
+    /** Les 20 marques reellement portees par "Orgueil et Prejuges" en production. */
+    private function vingtMarquesReelles(): array
+    {
+        $noms = [
+            'Canal+', 'Sooner', 'Molotov TV', 'Netflix', 'Amazon Prime Video',
+            'Disney+', 'HBO Max', 'Paramount+', 'Apple TV Store',
+            'Google Play Movies', 'Canal VOD', 'Orange VOD', 'Rakuten TV',
+            'Pathé Home', 'ARTE Boutique', 'LaCinetek', 'Premiere Max',
+            'VIVA by videofutur', 'SFR Play', 'TF1+',
+        ];
+
+        return array_map(
+            static fn (string $nom): array => ['brand' => $nom, 'logo' => null],
+            $noms
+        );
+    }
+
+    public function testDisplayBrandsKeepsOnlyThePerimeterWithoutAnyCap(): void
+    {
+        $result = Providers::displayBrands(
+            $this->vingtMarquesReelles(),
+            ['Netflix', 'Disney+', 'Canal+', 'HBO Max']
+        );
+
+        $this->assertSame(
+            ['Canal+', 'Netflix', 'Disney+', 'HBO Max'],
+            array_column($result['shown'], 'brand'),
+            'Les quatre abonnements de la famille, dans l ordre du film, sans plafond'
+        );
+        $this->assertFalse($result['warning']);
+    }
+
+    public function testDisplayBrandsMatchesAcrossOfferVariants(): void
+    {
+        // Le film porte "Netflix Standard with Ads", la famille a coche "Netflix".
+        $brands = Providers::brands([
+            ['id' => 1796, 'name' => 'Netflix Standard with Ads', 'logo' => null],
+            ['id' => 2, 'name' => 'Apple TV Store', 'logo' => null],
+        ]);
+
+        $result = Providers::displayBrands($brands, ['Netflix']);
+
+        $this->assertSame(['Netflix'], array_column($result['shown'], 'brand'));
+        $this->assertFalse($result['warning']);
+    }
+
+    public function testDisplayBrandsWarnsAndShowsNothingWhenThePerimeterMatchesNone(): void
+    {
+        $result = Providers::displayBrands($this->vingtMarquesReelles(), ['Crunchyroll']);
+
+        $this->assertSame([], $result['shown'], 'Lister des plateformes hors d atteinte n apporte rien');
+        $this->assertTrue($result['warning']);
+    }
+
+    public function testDisplayBrandsShowsEverythingWhileNoPerimeterIsConfigured(): void
+    {
+        $brands = $this->vingtMarquesReelles();
+
+        $result = Providers::displayBrands($brands, []);
+
+        $this->assertCount(20, $result['shown'], 'Etat transitoire avant le premier reglage');
+        $this->assertFalse($result['warning']);
+    }
+
+    public function testDisplayBrandsNeverWarnsWhenTheFilmHasNoPlatformAtAll(): void
+    {
+        foreach ([[], ['Netflix']] as $perimetre) {
+            $result = Providers::displayBrands([], $perimetre);
+
+            $this->assertSame([], $result['shown']);
+            $this->assertFalse(
+                $result['warning'],
+                'Un film sans plateforme connue releve d un autre message, pas de l avertissement'
+            );
+        }
+    }
 }

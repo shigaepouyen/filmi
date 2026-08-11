@@ -10,9 +10,12 @@ $subscribedBrands = $subscribedBrands ?? [];
 $endTime = FormatUtils::endTime($startTime, $movie['runtime'] === null ? null : (int) $movie['runtime']);
 $providersRaw = json_decode((string) ($movie['providers'] ?? '[]'), true);
 $providersRaw = is_array($providersRaw) ? $providersRaw : [];
-$providers = Providers::normalise($providersRaw);
 $brands = Providers::brands($providersRaw);
-$needsWarning = Providers::needsWarning($providers, $subscribedBrands);
+// TMDb renvoie jusqu'a une vingtaine de plateformes, boutiques de location
+// melees aux abonnements. Le perimetre d'abonnement de la famille est le
+// filtre : une fois coche, il ne reste que les plateformes accessibles. La
+// fiche du film garde la liste complete.
+$display = Providers::displayBrands($brands, $subscribedBrands);
 $hasVoted = in_array((int) $movie['id'], array_map('intval', $myVotes), true);
 $betLabels = ['safe' => 'valeur sûre', 'discovery' => 'découverte'];
 
@@ -56,17 +59,16 @@ $truncatedOverview = $overview !== '' && mb_strlen($overview, 'UTF-8') > 160
             <?php endif; ?>
             <?php if ($brands === []): ?>
                 <span class="text-slate-500">aucune plateforme connue</span>
+            <?php elseif ($display['warning']): ?>
+                <span class="rounded-full bg-amber-500/20 px-2 py-0.5 text-amber-100">
+                    hors abonnement
+                </span>
             <?php else: ?>
-                <?php foreach ($brands as $brand): ?>
+                <?php foreach ($display['shown'] as $brand): ?>
                     <span class="rounded-full bg-emerald-500/20 px-2 py-0.5 text-emerald-100">
                         <?= Security::e($brand['brand']) ?>
                     </span>
                 <?php endforeach; ?>
-            <?php endif; ?>
-            <?php if ($needsWarning): ?>
-                <span class="rounded-full bg-amber-500/20 px-2 py-0.5 text-amber-100">
-                    hors abonnement
-                </span>
             <?php endif; ?>
         </div>
 

@@ -165,4 +165,40 @@ final class Providers
 
         return true;
     }
+
+    /**
+     * Ce qu'une vue compacte (carte, tirage) doit afficher comme plateformes.
+     *
+     * TMDb renvoie a cote des abonnements toutes les boutiques de location et
+     * d'achat, jusqu'a une vingtaine par film. Le perimetre d'abonnement de la
+     * famille est donc le filtre naturel : une fois les abonnements coches, il
+     * ne reste que quatre ou cinq plateformes reellement pertinentes, et aucun
+     * plafond arbitraire n'est necessaire.
+     *
+     * - Perimetre configure : seules les marques du film qui y figurent sont
+     *   affichees. Si aucune n'y figure, aucune puce et l'avertissement est
+     *   leve, parce que lister des plateformes hors d'atteinte n'apporte rien.
+     * - Perimetre non configure : toutes les marques du film, aucun
+     *   avertissement. C'est l'etat transitoire avant le premier reglage.
+     *
+     * @param list<array{brand: string, logo: ?string}> $brands deja reduit par marque, voir self::brands()
+     * @param list<string> $subscribedBrands
+     * @return array{shown: list<array{brand: string, logo: ?string}>, warning: bool}
+     */
+    public static function displayBrands(array $brands, array $subscribedBrands): array
+    {
+        if ($brands === [] || $subscribedBrands === []) {
+            return ['shown' => $brands, 'warning' => false];
+        }
+
+        $subscribedKeys = array_map([self::class, 'brandKey'], $subscribedBrands);
+        $inside = array_values(array_filter(
+            $brands,
+            static fn (array $b): bool => in_array(self::brandKey($b['brand']), $subscribedKeys, true)
+        ));
+
+        return $inside === []
+            ? ['shown' => [], 'warning' => true]
+            : ['shown' => $inside, 'warning' => false];
+    }
 }

@@ -36,6 +36,18 @@ final class Migrations
                     }
                 },
             ],
+            3 => [
+                'description' => "Force le rafraichissement des plateformes (changement de forme et bande-annonce)",
+                'up' => static function (PDO $db): void {
+                    // La colonne providers passe d'une liste de noms a une liste
+                    // d'objets id/nom/logo, et trailer_url vient d'etre ajoutee. Les
+                    // films existants ont un providers_at recent, donc le script de
+                    // rafraichissement les ignorerait pendant une semaine et ni les
+                    // logos ni les bandes-annonces n'apparaitraient. On les remet
+                    // explicitement en attente de rafraichissement.
+                    $db->exec('UPDATE movies SET providers_at = NULL WHERE tmdb_id IS NOT NULL');
+                },
+            ],
         ];
     }
 

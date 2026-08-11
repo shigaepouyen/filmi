@@ -15,8 +15,14 @@ final class Config
 
     private static ?array $cache = null;
 
+    /**
+     * La variable d'environnement FILMI_CONFIG permet de pointer une autre
+     * configuration, par exemple une base de travail locale, sans jamais deplacer
+     * ni echanger le config/config.php reel qui porte la cle TMDb.
+     */
     public static function load(?string $path = null): array
     {
+        $path ??= (getenv('FILMI_CONFIG') ?: null);
         $path ??= dirname(__DIR__, 2) . '/config/config.php';
         $user = is_file($path) ? (array) require $path : [];
 

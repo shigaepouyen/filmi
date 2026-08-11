@@ -50,10 +50,14 @@ $subscribedBrands = $app->settings->subscribedBrands();
 $movies = array_map(static function (array $movie) use ($subscribedBrands): array {
     $raw = json_decode((string) ($movie['providers'] ?? '[]'), true);
     $raw = is_array($raw) ? $raw : [];
-    $normalised = Providers::normalise($raw);
 
-    $movie['provider_brands'] = array_column(Providers::brands($raw), 'brand');
-    $movie['needs_warning'] = Providers::needsWarning($normalised, $subscribedBrands);
+    // Meme regle que la carte : on n'envoie que les plateformes du perimetre
+    // d'abonnement. Trois films cote a cote avec vingt plateformes chacun
+    // rendraient l'ecran de tirage illisible sur une television.
+    $display = Providers::displayBrands(Providers::brands($raw), $subscribedBrands);
+
+    $movie['provider_brands'] = array_column($display['shown'], 'brand');
+    $movie['needs_warning'] = $display['warning'];
     unset($movie['providers']);
 
     return $movie;
