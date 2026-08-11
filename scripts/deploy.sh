@@ -25,7 +25,15 @@ command -v composer >/dev/null || { echo "composer introuvable"; exit 1; }
 restaurer_dev() {
     echo
     echo "Restauration des dependances de developpement en local..."
+    # --no-dev suivi d'un simple "composer install" laisse vendor/ dans un etat
+    # intermediaire : l'autoloader reste en mode classmap autoritaire et reference
+    # des fichiers de PHPUnit qui viennent d'etre supprimes. On repart de zero,
+    # c'est quelques secondes et cela garantit une suite de tests utilisable.
+    rm -rf vendor
     composer install --quiet
+    vendor/bin/phpunit --no-progress >/dev/null 2>&1 \
+        && echo "Dependances de developpement restaurees, suite de tests operationnelle." \
+        || echo "ATTENTION : la suite de tests ne repart pas, relancez composer install." >&2
 }
 trap restaurer_dev EXIT
 
