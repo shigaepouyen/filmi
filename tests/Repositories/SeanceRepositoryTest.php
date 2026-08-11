@@ -465,4 +465,20 @@ class SeanceRepositoryTest extends DbTestCase
         $this->assertSame(['skipped', 'done'], array_column($rows, 'status'));
         $this->assertSame(['kid', 'adult'], array_column($rows, 'chooser_side'));
     }
+
+    public function testWatchedDateForMovieReturnsTheMostRecentDoneSeance(): void
+    {
+        $movieId = $this->movie('Brazil');
+        $s1 = $this->repo->ensure('2026-07-04', 'adult');
+        $this->repo->recordChoice($s1['id'], [], $movieId);
+
+        $this->assertSame('2026-07-04', $this->repo->watchedDateForMovie($movieId));
+    }
+
+    public function testWatchedDateForMovieIsNullWhenNeverWatched(): void
+    {
+        $movieId = $this->movie('Brazil');
+
+        $this->assertNull($this->repo->watchedDateForMovie($movieId));
+    }
 }

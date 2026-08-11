@@ -85,4 +85,20 @@ class VoteRepositoryTest extends DbTestCase
 
         $this->assertSame(0, (int) $this->db->query('SELECT COUNT(*) FROM votes')->fetchColumn());
     }
+
+    public function testVotersListsTheProfilesWhoVotedForThatMovie(): void
+    {
+        $this->votes->toggle($this->movieId, $this->jc);
+        $this->votes->toggle($this->movieId, $this->zoe);
+        $this->votes->toggle($this->otherMovieId, $this->zoe);
+
+        $names = array_column($this->votes->voters($this->movieId), 'name');
+
+        $this->assertSame(['JC', 'Zoé'], $names);
+    }
+
+    public function testVotersIsEmptyWhenNobodyVoted(): void
+    {
+        $this->assertSame([], $this->votes->voters($this->movieId));
+    }
 }

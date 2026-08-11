@@ -7,6 +7,7 @@ use App\App;
 use App\Services\DrawException;
 use App\Services\DrawService;
 use App\Services\ScheduleService;
+use App\Utils\Providers;
 
 $app = App::boot();
 $app->requireProfile();
@@ -42,8 +43,24 @@ $_SESSION[$sessionKey] = $result['reset']
     ? $drawnIds
     : array_values(array_unique(array_merge($shown, $drawnIds)));
 
+// Le regroupement par marque et l'avertissement de périmètre sont calculés ici,
+// une bonne fois, pour que la vue n'ait pas à dupliquer la logique de Providers
+// en JavaScript.
+$subscribedBrands = $app->settings->subscribedBrands();
+$movies = array_map(static function (array $movie) use ($subscribedBrands): array {
+    $raw = json_decode((string) ($movie['providers'] ?? '[]'), true);
+    $raw = is_array($raw) ? $raw : [];
+    $normalised = Providers::normalise($raw);
+
+    $movie['provider_brands'] = array_column(Providers::brands($raw), 'brand');
+    $movie['needs_warning'] = Providers::needsWarning($normalised, $subscribedBrands);
+    unset($movie['providers']);
+
+    return $movie;
+}, $result['movies']);
+
 $app->json([
-    'movies' => $result['movies'],
+    'movies' => $movies,
     'reset' => $result['reset'],
     'shown' => $_SESSION[$sessionKey],
 ]);

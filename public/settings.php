@@ -21,6 +21,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $app->settings->set('default_start_time', $start);
     }
 
+    $brands = array_values(array_filter(array_map('strval', (array) ($_POST['brands'] ?? []))));
+    $app->settings->setSubscribedBrands($brands);
+
     // Le depot leve une InvalidArgumentException sur un nom vide : on valide ici
     // pour afficher un message plutot que de laisser passer une erreur 500.
     $name = trim((string) ($_POST['name'] ?? $profile['name']));
@@ -44,4 +47,6 @@ $app->render('settings', [
     'saved' => isset($_GET['ok']),
     'message' => $message,
     'tmdbConfigured' => $app->tmdb->isConfigured(),
+    'providerBrands' => $app->movies->providerBrands(),
+    'subscribedBrands' => $app->settings->subscribedBrands(),
 ], 'Filmi, réglages');

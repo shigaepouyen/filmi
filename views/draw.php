@@ -39,10 +39,6 @@ use App\Utils\Security;
             const [h, m] = '<?= Security::e($startTime) ?>'.split(':').map(Number);
             const total = (h * 60 + m + Number(runtime)) % 1440;
             return String(Math.floor(total / 60)).padStart(2, '0') + ':' + String(total % 60).padStart(2, '0');
-        },
-        providers(json) {
-            try { const list = JSON.parse(json || '[]'); return Array.isArray(list) ? list : []; }
-            catch (e) { return []; }
         }
      }"
      x-init="draw()">
@@ -94,7 +90,16 @@ use App\Utils\Security;
                             <span class="ml-1 rounded-full bg-white/10 px-2 py-0.5" x-text="movie.certification"></span>
                         </template>
                     </p>
-                    <p class="text-[11px] text-emerald-200" x-text="providers(movie.providers).join(', ') || 'aucune plateforme connue'"></p>
+                    <p class="text-[11px] text-emerald-200"
+                       x-text="(movie.provider_brands && movie.provider_brands.length ? movie.provider_brands.join(', ') : 'aucune plateforme connue')"></p>
+                    <template x-if="movie.needs_warning">
+                        <p class="rounded-full bg-amber-500/20 px-2 py-0.5 text-[11px] text-amber-100 w-fit">
+                            hors abonnement
+                        </p>
+                    </template>
+                    <template x-if="movie.overview">
+                        <p class="line-clamp-3 text-xs text-slate-300" x-text="movie.overview"></p>
+                    </template>
                     <template x-if="movie.memo">
                         <p class="text-xs italic text-slate-300">« <span x-text="movie.memo"></span> »</p>
                     </template>

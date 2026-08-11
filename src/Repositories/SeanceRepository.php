@@ -267,6 +267,18 @@ final class SeanceRepository
         return $stmt->fetchAll();
     }
 
+    /** Date de la séance la plus récente ayant retenu ce film, ou null s'il n'a jamais été vu. */
+    public function watchedDateForMovie(int $movieId): ?string
+    {
+        $stmt = $this->db->prepare(
+            "SELECT date FROM seances WHERE movie_id = ? AND status = 'done' ORDER BY date DESC LIMIT 1"
+        );
+        $stmt->execute([$movieId]);
+        $date = $stmt->fetchColumn();
+
+        return $date === false ? null : (string) $date;
+    }
+
     /** @return list<array{status:string,chooser_side:string}> */
     public function recentForSchedule(int $limit = 20): array
     {

@@ -1,32 +1,49 @@
 <?php
 use App\Utils\Avatars;
 use App\Utils\FormatUtils;
+use App\Utils\Providers;
 use App\Utils\Security;
 
 $choosable = $choosable ?? false;
+$subscribedBrands = $subscribedBrands ?? [];
 
 $endTime = FormatUtils::endTime($startTime, $movie['runtime'] === null ? null : (int) $movie['runtime']);
-$providers = json_decode((string) ($movie['providers'] ?? '[]'), true);
-$providers = is_array($providers) ? $providers : [];
+$providersRaw = json_decode((string) ($movie['providers'] ?? '[]'), true);
+$providersRaw = is_array($providersRaw) ? $providersRaw : [];
+$providers = Providers::normalise($providersRaw);
+$brands = Providers::brands($providersRaw);
+$needsWarning = Providers::needsWarning($providers, $subscribedBrands);
 $hasVoted = in_array((int) $movie['id'], array_map('intval', $myVotes), true);
 $betLabels = ['safe' => 'valeur sûre', 'discovery' => 'découverte'];
+
+$overview = trim((string) ($movie['overview'] ?? ''));
+$truncatedOverview = $overview !== '' && mb_strlen($overview, 'UTF-8') > 160
+    ? mb_substr($overview, 0, 160, 'UTF-8') . '…'
+    : $overview;
 ?>
-<article class="flex gap-3 rounded-2xl bg-white/5 p-3 ring-1 ring-white/10"
+<article class="relative flex gap-3 rounded-2xl bg-white/5 p-3 ring-1 ring-white/10"
          x-data="{ voted: <?= $hasVoted ? 'true' : 'false' ?>, count: <?= (int) $movie['vote_count'] ?>, busy: false }">
+    <a href="/movie.php?id=<?= (int) $movie['id'] ?>" class="absolute inset-0 z-0 rounded-2xl"
+       aria-label="Voir la fiche de <?= Security::e($movie['title']) ?>"></a>
+
     <?php if (!empty($movie['poster_url'])): ?>
         <img src="<?= Security::e($movie['poster_url']) ?>" alt="" loading="lazy"
-             class="h-32 w-[86px] shrink-0 rounded-xl object-cover bg-slate-800">
+             class="relative h-32 w-[86px] shrink-0 rounded-xl object-cover bg-slate-800">
     <?php else: ?>
-        <div class="h-32 w-[86px] shrink-0 rounded-xl bg-slate-800"></div>
+        <div class="relative h-32 w-[86px] shrink-0 rounded-xl bg-slate-800"></div>
     <?php endif; ?>
 
-    <div class="min-w-0 flex-1">
+    <div class="relative min-w-0 flex-1">
         <h3 class="font-medium leading-tight"><?= Security::e($movie['title']) ?></h3>
         <p class="text-xs text-slate-400">
             <?= $movie['year'] !== null ? (int) $movie['year'] . ' · ' : '' ?>
             <?= Security::e(FormatUtils::humanRuntime($movie['runtime'] === null ? null : (int) $movie['runtime'])) ?>
             <?= $endTime !== null ? ' · fin vers ' . Security::e($endTime) : '' ?>
         </p>
+
+        <?php if ($truncatedOverview !== ''): ?>
+            <p class="mt-1 text-xs text-slate-300"><?= Security::e($truncatedOverview) ?></p>
+        <?php endif; ?>
 
         <div class="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
             <?php if (isset($betLabels[$movie['bet_type'] ?? ''])): ?>
@@ -37,14 +54,19 @@ $betLabels = ['safe' => 'valeur sûre', 'discovery' => 'découverte'];
             <?php if (!empty($movie['certification'])): ?>
                 <span class="rounded-full bg-white/10 px-2 py-0.5"><?= Security::e($movie['certification']) ?></span>
             <?php endif; ?>
-            <?php if ($providers === []): ?>
+            <?php if ($brands === []): ?>
                 <span class="text-slate-500">aucune plateforme connue</span>
             <?php else: ?>
-                <?php foreach ($providers as $name): ?>
+                <?php foreach ($brands as $brand): ?>
                     <span class="rounded-full bg-emerald-500/20 px-2 py-0.5 text-emerald-100">
-                        <?= Security::e((string) $name) ?>
+                        <?= Security::e($brand['brand']) ?>
                     </span>
                 <?php endforeach; ?>
+            <?php endif; ?>
+            <?php if ($needsWarning): ?>
+                <span class="rounded-full bg-amber-500/20 px-2 py-0.5 text-amber-100">
+                    hors abonnement
+                </span>
             <?php endif; ?>
         </div>
 
@@ -52,7 +74,7 @@ $betLabels = ['safe' => 'valeur sûre', 'discovery' => 'découverte'];
             <p class="mt-1.5 text-xs italic text-slate-300">« <?= Security::e($movie['memo']) ?> »</p>
         <?php endif; ?>
 
-        <div class="mt-2 flex items-center gap-2">
+        <div class="relative z-10 mt-2 flex items-center gap-2">
             <span title="Proposé par <?= Security::e($movie['proposer_name']) ?>">
                 <?= Avatars::render($movie['proposer_avatar'], $movie['proposer_color'], 22) ?>
             </span>
@@ -72,7 +94,7 @@ $betLabels = ['safe' => 'valeur sûre', 'discovery' => 'découverte'];
         </div>
 
         <?php if ($choosable): ?>
-            <form method="post" class="mt-2">
+            <form method="post" class="relative z-10 mt-2">
                 <input type="hidden" name="csrf" value="<?= Security::csrfToken() ?>">
                 <input type="hidden" name="action" value="choose">
                 <input type="hidden" name="movie_id" value="<?= (int) $movie['id'] ?>">

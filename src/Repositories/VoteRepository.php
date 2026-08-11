@@ -54,4 +54,18 @@ final class VoteRepository
 
         return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
     }
+
+    /** Profils ayant voté pour ce film, pour l'affichage sur la fiche détaillée. */
+    public function voters(int $movieId): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT p.id, p.name, p.avatar, p.color
+               FROM votes v JOIN profiles p ON p.id = v.profile_id
+              WHERE v.movie_id = ?
+              ORDER BY p.id'
+        );
+        $stmt->execute([$movieId]);
+
+        return $stmt->fetchAll();
+    }
 }

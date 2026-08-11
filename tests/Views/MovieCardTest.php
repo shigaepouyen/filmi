@@ -134,4 +134,61 @@ class MovieCardTest extends TestCase
         $this->assertStringContainsString('celui-là ce soir', $html);
         $this->assertStringContainsString('name="action" value="choose"', $html);
     }
+
+    public function testCardLinksToTheDetailedMoviePage(): void
+    {
+        $html = $this->render($this->movie(['id' => 42]));
+
+        $this->assertStringContainsString('href="/movie.php?id=42"', $html);
+    }
+
+    public function testSynopsisIsShownAndTruncatedWhenLong(): void
+    {
+        $long = str_repeat('Une histoire de renard fantastique. ', 10);
+        $html = $this->render($this->movie(['overview' => $long]));
+
+        $this->assertStringContainsString('…', $html);
+        $this->assertStringNotContainsString(trim($long), $html);
+    }
+
+    public function testShortSynopsisIsShownWithoutTruncation(): void
+    {
+        $html = $this->render($this->movie(['overview' => 'Court résumé.']));
+
+        $this->assertStringContainsString('Court résumé.', $html);
+        $this->assertStringNotContainsString('Court résumé.…', $html);
+    }
+
+    public function testNoWarningWhenNoSubscriptionIsConfigured(): void
+    {
+        $html = $this->render($this->movie(['providers' => '["Disney+"]']));
+
+        $this->assertStringNotContainsString('hors abonnement', $html);
+    }
+
+    public function testWarningAppearsWhenProvidersAreOutsideTheSubscribedBrands(): void
+    {
+        $html = ViewRenderer::component('movie_card', [
+            'movie' => $this->movie(['providers' => '["Disney+"]']),
+            'startTime' => '19:15',
+            'myVotes' => [],
+            'profile' => ['id' => 1, 'name' => 'JC'],
+            'subscribedBrands' => ['Netflix'],
+        ]);
+
+        $this->assertStringContainsString('hors abonnement', $html);
+    }
+
+    public function testNoWarningWhenAProviderIsSubscribed(): void
+    {
+        $html = ViewRenderer::component('movie_card', [
+            'movie' => $this->movie(['providers' => '["Netflix","Max"]']),
+            'startTime' => '19:15',
+            'myVotes' => [],
+            'profile' => ['id' => 1, 'name' => 'JC'],
+            'subscribedBrands' => ['Netflix'],
+        ]);
+
+        $this->assertStringNotContainsString('hors abonnement', $html);
+    }
 }

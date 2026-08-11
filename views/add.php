@@ -16,10 +16,10 @@ use App\Utils\Security;
         manual: <?= $tmdbConfigured ? 'false' : 'true' ?>,
         duplicate: null,
         searching: false,
-        pool: '<?= $defaultPool ?>',
-        title: '',
-        year: '',
-        runtime: '',
+        pool: <?= Security::e(json_encode($old['pool'], JSON_UNESCAPED_UNICODE)) ?>,
+        title: <?= Security::e(json_encode($old['title'], JSON_UNESCAPED_UNICODE)) ?>,
+        year: <?= Security::e(json_encode($old['year'], JSON_UNESCAPED_UNICODE)) ?>,
+        runtime: <?= Security::e(json_encode($old['runtime'], JSON_UNESCAPED_UNICODE)) ?>,
         async search() {
             if (this.query.trim().length < 2) { this.results = []; return; }
             this.searching = true;
@@ -140,10 +140,12 @@ use App\Utils\Security;
         <span class="block text-sm font-medium">Quel pari ?</span>
         <div class="flex gap-2">
             <label class="flex-1 cursor-pointer rounded-xl bg-white/5 px-3 py-2 text-sm ring-1 ring-white/10">
-                <input type="radio" name="bet_type" value="safe" class="mr-1.5"> Valeur sûre
+                <input type="radio" name="bet_type" value="safe" class="mr-1.5"
+                       <?= $old['bet_type'] === 'safe' ? 'checked' : '' ?>> Valeur sûre
             </label>
             <label class="flex-1 cursor-pointer rounded-xl bg-white/5 px-3 py-2 text-sm ring-1 ring-white/10">
-                <input type="radio" name="bet_type" value="discovery" class="mr-1.5"> Découverte
+                <input type="radio" name="bet_type" value="discovery" class="mr-1.5"
+                       <?= $old['bet_type'] === 'discovery' ? 'checked' : '' ?>> Découverte
             </label>
         </div>
         <p class="text-xs text-slate-400">Le tirage sort une valeur sûre et deux découvertes.</p>
@@ -153,7 +155,7 @@ use App\Utils\Security;
         <label class="block text-sm font-medium" for="memo">Pourquoi tu veux le leur montrer ?</label>
         <textarea id="memo" name="memo" rows="3" maxlength="500"
                   placeholder="Trois semaines plus tard, tu auras oublié. Écris-le."
-                  class="w-full rounded-xl bg-white/10 px-3 py-2"></textarea>
+                  class="w-full rounded-xl bg-white/10 px-3 py-2"><?= Security::e($old['memo']) ?></textarea>
     </section>
 
     <button class="w-full rounded-xl bg-violet-500 px-4 py-3 font-medium">Ajouter à la liste</button>

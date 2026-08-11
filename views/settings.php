@@ -1,4 +1,5 @@
 <?php
+use App\Utils\Providers;
 use App\Utils\Security;
 
 $colors = ['slate', 'rose', 'violet', 'emerald', 'amber', 'sky', 'indigo'];
@@ -42,6 +43,31 @@ $colors = ['slate', 'rose', 'violet', 'emerald', 'amber', 'sky', 'indigo'];
         $inputName = 'avatar';
         require dirname(__DIR__) . '/views/components/avatar_picker.php';
         ?>
+    </section>
+
+    <section class="space-y-3">
+        <h2 class="text-sm font-medium">Plateformes auxquelles vous êtes abonnés</h2>
+        <p class="text-xs text-slate-400">
+            Sert à signaler les films qui ne sont sur aucune des plateformes cochées.
+            Sans coche, aucun avertissement n'est affiché.
+        </p>
+        <?php if ($providerBrands === []): ?>
+            <p class="text-xs text-slate-500">Aucune plateforme connue pour l'instant.</p>
+        <?php else: ?>
+            <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <?php foreach ($providerBrands as $brand): ?>
+                    <?php $logo = Providers::logoUrl($brand['logo']); ?>
+                    <label class="flex items-center gap-2 rounded-xl bg-white/5 px-3 py-2 text-sm ring-1 ring-white/10">
+                        <input type="checkbox" name="brands[]" value="<?= Security::e($brand['brand']) ?>"
+                               <?= in_array($brand['brand'], $subscribedBrands, true) ? 'checked' : '' ?>>
+                        <?php if ($logo !== null): ?>
+                            <img src="<?= Security::e($logo) ?>" alt="" class="h-5 w-5 rounded-full">
+                        <?php endif; ?>
+                        <?= Security::e($brand['brand']) ?>
+                    </label>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
     </section>
 
     <section class="text-sm text-slate-400">
