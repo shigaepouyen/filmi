@@ -5,6 +5,7 @@ require dirname(__DIR__) . '/vendor/autoload.php';
 
 use App\Utils\Config;
 use App\Utils\Database;
+use App\Utils\Migrations;
 
 $path = (string) Config::get('db_path');
 $fresh = !is_file($path);
@@ -30,11 +31,16 @@ foreach ($profiles as $profile) {
 $db->prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)')
    ->execute(['default_start_time', (string) Config::get('default_start_time')]);
 
+$applied = Migrations::run($db);
+
 printf(
-    "Base %s : %s%sProfils en base : %d%s",
+    "Base %s : %s%sProfils en base : %d%s%s",
     $path,
     $fresh ? 'créée' : 'mise à jour',
     PHP_EOL,
     (int) $db->query('SELECT COUNT(*) FROM profiles')->fetchColumn(),
-    PHP_EOL
+    PHP_EOL,
+    $applied === []
+        ? 'Aucune migration à appliquer.' . PHP_EOL
+        : 'Migrations appliquées : ' . implode(', ', $applied) . PHP_EOL
 );
