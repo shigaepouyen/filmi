@@ -51,6 +51,7 @@ $app->render('pool', [
     'counts' => ['adult' => $app->movies->countPool('adult'), 'kid' => $app->movies->countPool('kid')],
     'startTime' => $app->settings->startTime(),
     'myVotes' => $app->votes->votedMovieIds((int) $profile['id']),
+    'subscribedBrands' => $app->settings->subscribedBrands(),
     'kidWeek' => $seance !== null
         && $seance['status'] === 'planned'
         && $seance['chooser_side'] === 'kid',

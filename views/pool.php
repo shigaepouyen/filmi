@@ -42,6 +42,7 @@ $sorts = ['votes' => 'Les plus votés', 'recent' => 'Les plus récents', 'runtim
                 'myVotes' => $myVotes,
                 'profile' => $profile,
                 'choosable' => $kidWeek && $pool === 'kid',
+                'subscribedBrands' => $subscribedBrands,
             ]) ?>
         <?php endforeach; ?>
     </div>
