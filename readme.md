@@ -46,6 +46,22 @@ Les semaines des filles, elles choisissent directement dans leur liste. Un paren
 
 Après le film, chacun met une note sur 5. Ces notes alimentent l'historique et le palmarès, sans aucun effet sur les tirages suivants.
 
+### La fiche d'un film
+
+Chaque film a sa page : grande affiche, synopsis complet, réalisateur, genres, note TMDb, avis parental, durée et heure de fin, plateformes, lien vers la bande-annonce quand TMDb en connaît une, mémo, proposeur et votants. La liste affiche le synopsis tronqué et mène à cette fiche.
+
+Depuis la fiche, on peut **changer le pari et la liste** d'un film, et **l'archiver**. Un archivage est réversible : le film disparaît des listes, du tirage et de la détection de doublon, mais rien n'est effacé, donc l'historique et le palmarès gardent leur trace s'il avait déjà été proposé ou veto.
+
+**Chacun n'agit que sur sa propre liste** : un parent sur la liste des parents, une fille sur la liste des filles. La règle est vérifiée côté serveur, pas seulement par un bouton masqué.
+
+### Les abonnements
+
+TMDb renvoie, à côté des abonnements, toutes les boutiques de location et d'achat, ce qui fait jusqu'à vingt plateformes pour un seul film. Les réglages proposent donc de **cocher les plateformes auxquelles la famille est abonnée**, avec leur logo, regroupées par marque : « Netflix » et « Netflix Standard with Ads » sont la même chose, et n'apparaissent qu'une fois.
+
+Une fois ce périmètre défini, la liste et le tirage n'affichent plus que les plateformes réellement accessibles, soit quatre ou cinq au maximum. Un film dont aucune plateforme n'est dans le périmètre porte un simple avertissement « hors abonnement », jamais un blocage : rien n'empêche de le regarder autrement.
+
+Tant que rien n'est coché, toutes les plateformes s'affichent. C'est l'état transitoire avant le premier réglage.
+
 ### Les informations qui font trancher un samedi soir
 
 - **Heure de fin estimée** sur chaque film, calculée depuis une heure de démarrage configurable, 19:15 par défaut. Avec des enfants, c'est souvent le critère décisif.
@@ -187,15 +203,41 @@ Le script lance la suite de tests et refuse de partir si elle échoue, puis sync
 
 Sauvegarde : copier le fichier `data/filmi.sqlite`. C'est tout.
 
-**Limite connue sur le schéma** : `init_db.php` utilise `CREATE TABLE IF NOT EXISTS`, ce qui crée les tables manquantes mais **ne modifie jamais une table existante**. Une colonne ajoutée plus tard n'arrivera donc pas en production par ce chemin. Le jour où le schéma évolue après la mise en ligne, il faudra une vraie migration versionnée.
+### Migrations de schéma
+
+`CREATE TABLE IF NOT EXISTS` crée les tables manquantes mais **ne modifie jamais une table existante**, donc une colonne ajoutée plus tard n'arriverait pas en production par ce chemin. C'est pour ça qu'il existe un mécanisme de migration versionné :
+
+```bash
+php scripts/migrate.php
+```
+
+La version courante vit dans `settings.schema_version`, son absence signifiant la version 1. Chaque migration s'applique dans sa propre transaction, vérifie l'état réel de la base avant d'agir, et ne se rejoue jamais. `init_db.php` les applique à la fin, donc un déploiement les passe automatiquement.
+
+**Avant toute migration sur la production, prendre une sauvegarde et répéter la migration sur cette copie.** La procédure qui a servi pour la v2 :
+
+```bash
+ssh infomaniak-prod 'cd sites/filmi.shi-ga.net && php -r "require \"vendor/autoload.php\"; App\Utils\Database::connect()->exec(\"VACUUM INTO '\''/tmp/sauvegarde.sqlite'\''\");"'
+```
+
+`VACUUM INTO` produit un instantané cohérent même si quelqu'un utilise l'application au même moment, contrairement à une simple copie du fichier.
+
+Pour travailler sur cette copie en local sans jamais toucher au `config/config.php` réel, la variable d'environnement `FILMI_CONFIG` pointe une autre configuration :
+
+```bash
+FILMI_CONFIG=/tmp/ma-copie/config.php php scripts/migrate.php
+```
 
 ### Rafraîchissement des plateformes
 
 Le cache des plateformes de streaming est mis à jour par `scripts/refresh_providers.php`, à planifier une fois par semaine côté Infomaniak :
 
+L'hébergement mutualisé Infomaniak n'expose pas `crontab`, la tâche se crée donc dans le Manager, rubrique Hébergement puis Tâches cron. Commande exacte, avec les chemins absolus de ce compte :
+
 ```
-php /chemin/vers/filmi/scripts/refresh_providers.php
+/opt/php8.4/bin/php /home/clients/a1d3f2277a515800e7b154e91c8a9174/sites/filmi.shi-ga.net/scripts/refresh_providers.php
 ```
+
+Une fois par semaine suffit, par exemple le jeudi matin, pour que les plateformes soient à jour avant le samedi.
 
 Le script traite au maximum 25 films par exécution, les jamais interrogés d'abord puis les plus périmés, de sorte qu'une exécution interrompue reprend où elle s'est arrêtée. Il est sans effet en l'absence de clé TMDb, et il n'est **jamais** appelé pendant le rendu d'une page : un appel réseau bloquant ferait attendre l'utilisateur pour une information qui bouge lentement.
 
