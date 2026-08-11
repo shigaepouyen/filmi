@@ -13,7 +13,7 @@ $profile = $app->requireProfile();
 $date = ScheduleService::nextSeanceDate()->format('Y-m-d');
 $seance = $app->seances->findByDate($date);
 
-if ($seance === null || $seance['status'] === 'skipped') {
+if ($seance === null || $seance['status'] !== 'planned') {
     header('Location: /tonight.php');
     exit;
 }

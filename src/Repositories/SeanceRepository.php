@@ -92,6 +92,9 @@ final class SeanceRepository
 
         $this->db->beginTransaction();
         try {
+            $previous = $this->find($seanceId);
+            $previousMovieId = $previous !== null ? $previous['movie_id'] : null;
+
             $this->db->prepare('DELETE FROM seance_picks WHERE seance_id = ? AND role IN (?, ?)')
                      ->execute([$seanceId, 'shortlist', 'chosen']);
 
@@ -109,6 +112,12 @@ final class SeanceRepository
 
             $this->db->prepare("UPDATE movies SET status = 'watched' WHERE id = ?")
                      ->execute([$chosenId]);
+
+            if ($previousMovieId !== null && (int) $previousMovieId !== $chosenId) {
+                // Un second choix remplace le premier : le film abandonné retourne
+                // au pool au lieu de rester orphelin en 'watched'.
+                $this->movies->returnToPool((int) $previousMovieId);
+            }
 
             $this->db->commit();
         } catch (Throwable $e) {

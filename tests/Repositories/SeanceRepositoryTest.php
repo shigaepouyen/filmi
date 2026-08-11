@@ -306,6 +306,36 @@ class SeanceRepositoryTest extends DbTestCase
         $this->assertContains($c, $cooldown);
     }
 
+    public function testRecordChoiceOnAnAlreadyDecidedSeanceReturnsThePreviousFilmToThePool(): void
+    {
+        $premier = $this->movie('Premier choix');
+        $second = $this->movie('Second choix');
+        $seance = $this->repo->ensure('2026-08-15', 'adult');
+
+        $this->repo->recordChoice($seance['id'], [$premier], $premier);
+        $this->repo->recordChoice($seance['id'], [$second], $second);
+
+        $this->assertSame('pool', $this->movies->find($premier)['status'], 'Le premier film doit revenir au pool');
+        $this->assertSame('watched', $this->movies->find($second)['status']);
+
+        $chosen = $this->db->query(
+            "SELECT movie_id FROM seance_picks WHERE role = 'chosen'"
+        )->fetchAll();
+        $this->assertCount(1, $chosen, 'Une seule ligne chosen doit subsister');
+        $this->assertSame($second, (int) $chosen[0]['movie_id']);
+    }
+
+    public function testRecordChoiceOnTheSameFilmAgainDoesNotTouchThePool(): void
+    {
+        $movieId = $this->movie('Même film');
+        $seance = $this->repo->ensure('2026-08-15', 'adult');
+
+        $this->repo->recordChoice($seance['id'], [$movieId], $movieId);
+        $this->repo->recordChoice($seance['id'], [$movieId], $movieId);
+
+        $this->assertSame('watched', $this->movies->find($movieId)['status']);
+    }
+
     public function testRecordChoiceStillRefusesANonEmptyShortlistMissingTheChosenFilm(): void
     {
         $dansLaShortlist = $this->movie('Dans la shortlist');
