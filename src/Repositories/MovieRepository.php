@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Repositories;
 
+use App\Utils\Providers;
 use InvalidArgumentException;
 use PDO;
 
@@ -14,7 +15,7 @@ final class MovieRepository
     private const COLUMNS = [
         'tmdb_id', 'title', 'original_title', 'year', 'runtime', 'poster_url',
         'overview', 'genres', 'director', 'tmdb_rating', 'certification',
-        'providers', 'providers_at', 'pool', 'bet_type', 'memo', 'added_by',
+        'providers', 'providers_at', 'trailer_url', 'pool', 'bet_type', 'memo', 'added_by',
     ];
 
     public function __construct(private PDO $db)
@@ -200,15 +201,97 @@ final class MovieRepository
         return $stmt->fetchAll();
     }
 
-    public function updateProviders(int $id, string $providersJson, ?string $certification = null): void
-    {
+    public function updateProviders(
+        int $id,
+        string $providersJson,
+        ?string $certification = null,
+        ?string $trailerUrl = null
+    ): void {
         $this->db->prepare(
             'UPDATE movies
                 SET providers = ?,
                     providers_at = CURRENT_TIMESTAMP,
-                    certification = COALESCE(?, certification)
+                    certification = COALESCE(?, certification),
+                    trailer_url = COALESCE(?, trailer_url)
               WHERE id = ?'
-        )->execute([$providersJson, $certification, $id]);
+        )->execute([$providersJson, $certification, $trailerUrl, $id]);
+    }
+
+    /**
+     * Archivage réversible : préserve l'historique et le palmarès, contrairement à
+     * une suppression physique. Aucun contrôle d'accès ici, c'est à la page d'agir.
+     */
+    public function archive(int $id): void
+    {
+        $this->db->prepare("UPDATE movies SET status = 'archived' WHERE id = ?")->execute([$id]);
+    }
+
+    public function unarchive(int $id): void
+    {
+        $this->db->prepare("UPDATE movies SET status = 'pool' WHERE id = ?")->execute([$id]);
+    }
+
+    /** Films archivés d'un camp, les plus récemment ajoutés d'abord. */
+    public function archivedList(string $pool): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT m.*,
+                    p.name AS proposer_name,
+                    p.avatar AS proposer_avatar,
+                    p.color AS proposer_color
+               FROM movies m
+               JOIN profiles p ON p.id = m.added_by
+              WHERE m.pool = ? AND m.status = \'archived\'
+              ORDER BY m.id DESC'
+        );
+        $stmt->execute([$pool]);
+
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Modifie le camp et le type de pari d'un film. Aucun contrôle d'accès ici
+     * (c'est le rôle de la page), mais refuse une classification incohérente :
+     * un pari sur la liste enfant, ou son absence sur la liste adulte.
+     */
+    public function updateClassification(int $id, string $pool, ?string $betType): void
+    {
+        if (!in_array($pool, self::POOLS, true)) {
+            throw new InvalidArgumentException('Pool inconnu : ' . $pool);
+        }
+        if ($pool === 'kid' && $betType !== null) {
+            throw new InvalidArgumentException('La liste enfant ne porte jamais de pari.');
+        }
+        if ($pool === 'adult' && !in_array($betType, self::BET_TYPES, true)) {
+            throw new InvalidArgumentException('La liste adulte exige un pari (sûr ou découverte).');
+        }
+
+        $this->db->prepare('UPDATE movies SET pool = ?, bet_type = ? WHERE id = ?')
+            ->execute([$pool, $betType, $id]);
+    }
+
+    /**
+     * Marques de plateformes distinctes réellement présentes sur les films non
+     * archivés, pour peupler les réglages d'abonnement.
+     *
+     * @return list<array{brand: string, logo: ?string}>
+     */
+    public function providerBrands(): array
+    {
+        $rows = $this->db->query(
+            "SELECT providers FROM movies
+              WHERE providers IS NOT NULL AND status != 'archived'"
+        )->fetchAll();
+
+        $all = [];
+        foreach ($rows as $row) {
+            $decoded = json_decode((string) $row['providers'], true);
+            if (is_array($decoded)) {
+                array_push($all, ...Providers::normalise($decoded));
+            }
+        }
+
+        return Providers::brands($all);
     }
 
     private function duplicateSelect(): string

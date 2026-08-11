@@ -17,16 +17,28 @@
   "watch/providers": {
     "results": {
       "FR": {
-        "flatrate": [{"provider_name": "Netflix"}, {"provider_name": "Max"}],
-        "rent": [{"provider_name": "Apple TV"}]
+        "flatrate": [
+          {"provider_id": 8, "provider_name": "Netflix", "logo_path": "/netflix.jpg"},
+          {"provider_id": 384, "provider_name": "Max", "logo_path": "/max.jpg"}
+        ],
+        "rent": [{"provider_id": 2, "provider_name": "Apple TV", "logo_path": "/appletv.jpg"}]
       },
-      "US": {"flatrate": [{"provider_name": "HBO"}]}
+      "US": {"flatrate": [{"provider_id": 99, "provider_name": "HBO", "logo_path": "/hbo.jpg"}]}
     }
   },
   "release_dates": {
     "results": [
       {"iso_3166_1": "US", "release_dates": [{"certification": "PG"}]},
       {"iso_3166_1": "FR", "release_dates": [{"certification": ""}, {"certification": "Tous publics"}]}
+    ]
+  },
+  "videos": {
+    "results": [
+      {"site": "Vimeo", "type": "Trailer", "official": true, "iso_639_1": "fr", "key": "vimeo-key"},
+      {"site": "YouTube", "type": "Featurette", "official": true, "iso_639_1": "fr", "key": "featurette-key"},
+      {"site": "YouTube", "type": "Trailer", "official": false, "iso_639_1": "en", "key": "unofficial-key"},
+      {"site": "YouTube", "type": "Trailer", "official": true, "iso_639_1": "en", "key": "official-en-key"},
+      {"site": "YouTube", "type": "Trailer", "official": true, "iso_639_1": "fr", "key": "official-fr-key"}
     ]
   }
 }

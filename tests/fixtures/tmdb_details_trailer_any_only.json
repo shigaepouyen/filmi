@@ -1,0 +1,10 @@
+{
+  "id": 201,
+  "title": "Bande-annonce non officielle uniquement",
+  "videos": {
+    "results": [
+      {"site": "YouTube", "type": "Teaser", "official": true, "iso_639_1": "fr", "key": "teaser-key"},
+      {"site": "YouTube", "type": "Trailer", "official": false, "iso_639_1": "en", "key": "unofficial-key"}
+    ]
+  }
+}

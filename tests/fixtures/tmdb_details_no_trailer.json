@@ -1,0 +1,10 @@
+{
+  "id": 202,
+  "title": "Sans aucune bande-annonce YouTube",
+  "videos": {
+    "results": [
+      {"site": "Vimeo", "type": "Trailer", "official": true, "iso_639_1": "fr", "key": "vimeo-key"},
+      {"site": "YouTube", "type": "Featurette", "official": true, "iso_639_1": "fr", "key": "featurette-key"}
+    ]
+  }
+}

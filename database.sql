@@ -20,8 +20,9 @@ CREATE TABLE IF NOT EXISTS movies (
     director       TEXT,
     tmdb_rating    REAL,
     certification  TEXT,              -- avis parental FR
-    providers      TEXT,              -- JSON plateformes FR
+    providers      TEXT,              -- JSON plateformes FR (voir App\Utils\Providers)
     providers_at   DATETIME,          -- date du cache plateformes
+    trailer_url    TEXT,              -- URL YouTube complète de la bande-annonce, ou NULL
     pool           TEXT NOT NULL CHECK (pool IN ('adult','kid')),
     bet_type       TEXT CHECK (bet_type IN ('safe','discovery')),
     memo           TEXT,
