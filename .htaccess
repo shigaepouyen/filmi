@@ -1,1 +1,5 @@
+# Ce fichier ne sert que si le docroot du site pointe par erreur sur la racine du
+# depot au lieu de public/. Dans ce cas il vaut mieux tout refuser que de servir le
+# code source, la base de la famille ou la cle TMDb. Une fois le docroot correctement
+# regle sur public/, ce fichier est hors docroot et n a plus aucun effet.
 Require all denied

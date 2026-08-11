@@ -132,7 +132,9 @@ final class TmdbService
         $body = curl_exec($handle);
         $status = (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
         $error = curl_error($handle);
-        curl_close($handle);
+        // Pas de curl_close() : deprecie depuis PHP 8.0 et sans effet, le handle
+        // est libere a la sortie de portee. L'appeler emet un avertissement en 8.5.
+        unset($handle);
 
         if ($body === false) {
             throw new TmdbException('Réseau indisponible : ' . $this->redact($error));
