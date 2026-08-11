@@ -50,4 +50,39 @@ class SettingRepositoryTest extends DbTestCase
 
         $this->assertSame('19:15', $this->repo->startTime());
     }
+
+    public function testSubscribedBrandsIsEmptyByDefault(): void
+    {
+        $this->assertSame([], $this->repo->subscribedBrands());
+    }
+
+    public function testSetThenGetSubscribedBrands(): void
+    {
+        $this->repo->setSubscribedBrands(['Netflix', 'Disney+']);
+
+        $this->assertSame(['Netflix', 'Disney+'], $this->repo->subscribedBrands());
+    }
+
+    public function testSetSubscribedBrandsOverwritesWithoutDuplicatingTheSetting(): void
+    {
+        $this->repo->setSubscribedBrands(['Netflix']);
+        $this->repo->setSubscribedBrands(['Disney+']);
+
+        $this->assertSame(['Disney+'], $this->repo->subscribedBrands());
+        $this->assertSame(1, (int) $this->db->query('SELECT COUNT(*) FROM settings')->fetchColumn());
+    }
+
+    public function testSetSubscribedBrandsTrimsAndDropsEmptyAndDuplicateEntries(): void
+    {
+        $this->repo->setSubscribedBrands(['Netflix', ' Netflix ', '', '   ', 'Disney+']);
+
+        $this->assertSame(['Netflix', 'Disney+'], $this->repo->subscribedBrands());
+    }
+
+    public function testSubscribedBrandsIsEmptyOnMalformedStoredValue(): void
+    {
+        $this->repo->set('subscribed_brands', 'pas du json');
+
+        $this->assertSame([], $this->repo->subscribedBrands());
+    }
 }
