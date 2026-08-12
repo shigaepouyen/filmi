@@ -101,4 +101,29 @@ class ScheduleServiceTest extends TestCase
         $this->assertSame('adult', ScheduleService::opposite('kid'));
         $this->assertSame('adult', ScheduleService::opposite('n importe quoi'));
     }
+
+    public function testGoingAgainstTheNaturalAlternationIsADerogation(): void
+    {
+        $this->assertTrue(ScheduleService::isDerogation('kid', 'adult'));
+        $this->assertTrue(ScheduleService::isDerogation('adult', 'kid'));
+    }
+
+    public function testFollowingTheNaturalAlternationIsNotADerogation(): void
+    {
+        $this->assertFalse(ScheduleService::isDerogation('adult', 'adult'));
+        $this->assertFalse(ScheduleService::isDerogation('kid', 'kid'));
+    }
+
+    public function testFlippingTwiceCancelsTheDerogation(): void
+    {
+        // Le cas reel : on inverse le tour, puis on se ravise. Le drapeau ne doit
+        // pas rester leve, sinon le badge devient permanent et le palmares compte
+        // une derogation qui n'a pas eu lieu.
+        $naturel = 'adult';
+        $apresPremiereInversion = ScheduleService::opposite($naturel);
+        $apresSecondeInversion = ScheduleService::opposite($apresPremiereInversion);
+
+        $this->assertTrue(ScheduleService::isDerogation($apresPremiereInversion, $naturel));
+        $this->assertFalse(ScheduleService::isDerogation($apresSecondeInversion, $naturel));
+    }
 }

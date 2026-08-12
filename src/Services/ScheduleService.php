@@ -43,6 +43,19 @@ final class ScheduleService
         return self::SIDE_ADULT;
     }
 
+    /**
+     * Une derogation, c'est s'ecarter de l'alternance naturelle, rien d'autre.
+     *
+     * Consequence importante : revenir sur le camp que l'alternance designait
+     * annule la derogation. Sans cette regle, inverser le tour puis se raviser
+     * laisserait le drapeau leve pour toujours et le badge ne voudrait plus rien
+     * dire, ce qui fausserait aussi le compte des derogations du palmares.
+     */
+    public static function isDerogation(string $chosenSide, string $naturalSide): bool
+    {
+        return self::normalise($chosenSide) !== self::normalise($naturalSide);
+    }
+
     public static function opposite(string $side): string
     {
         // Toute valeur non reconnue retombe sur "adult", pas sur l'oppose de "adult".

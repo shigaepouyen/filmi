@@ -28,9 +28,17 @@ $isDone = $seance['status'] === 'done';
         <p class="mt-2 text-lg">
             C'est au tour des <strong><?= $isKidWeek ? 'filles' : 'parents' ?></strong>
             <?php if ((int) $seance['derogation'] === 1): ?>
-                <span class="ml-1 rounded-full bg-amber-500/25 px-2 py-0.5 text-xs text-amber-100">dérogation</span>
+                <span class="ml-1 rounded-full bg-amber-500/25 px-2 py-0.5 text-xs text-amber-100"
+                      title="Le tour a ete inverse, ce n'est pas le camp que l'alternance designait">dérogation</span>
             <?php endif; ?>
         </p>
+        <?php if ((int) $seance['derogation'] === 1): ?>
+            <p class="text-xs text-slate-400">
+                Le tour a été inversé : l'alternance désignait
+                <strong><?= $defaultSide === 'kid' ? 'les filles' : 'les parents' ?></strong>.
+                Réinverser le tour annule la dérogation.
+            </p>
+        <?php endif; ?>
         <?php if (!empty($seance['derogation_note'])): ?>
             <p class="text-xs italic text-slate-400">« <?= Security::e($seance['derogation_note']) ?> »</p>
         <?php endif; ?>
