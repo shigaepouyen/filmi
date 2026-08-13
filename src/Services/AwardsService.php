@@ -19,8 +19,26 @@ final class AwardsService
                 static fn (array $row): bool => str_starts_with((string) $row['date'], (string) $year)
             ));
 
-        $done = array_values(array_filter($rows, static fn ($r) => ($r['status'] ?? '') === 'done'));
+        $doneSeances = array_values(array_filter($rows, static fn ($r) => ($r['status'] ?? '') === 'done'));
         $skipped = array_values(array_filter($rows, static fn ($r) => ($r['status'] ?? '') === 'skipped'));
+
+        // Une série regardée sur plusieurs samedis est une seule œuvre, pas une
+        // par soirée : douze samedis de série ne doivent pas afficher douze
+        // œuvres vues. $rows est trié par date décroissante, donc la première
+        // occurrence de chaque movie_id porte la note finale (la seule notée,
+        // donnée au dernier épisode). L'historique lui-même n'est pas touché,
+        // il garde une ligne par samedi.
+        $done = [];
+        $seenMovies = [];
+        foreach ($doneSeances as $row) {
+            $movieId = $row['movie_id'] ?? null;
+            $key = $movieId !== null ? 'id:' . $movieId : 'row:' . count($done);
+            if (isset($seenMovies[$key])) {
+                continue;
+            }
+            $seenMovies[$key] = true;
+            $done[] = $row;
+        }
 
         $rated = array_values(array_filter($done, static fn ($r) => $r['avg_score'] !== null));
         $scores = array_map(static fn ($r) => (float) $r['avg_score'], $rated);

@@ -11,22 +11,22 @@ class AwardsServiceTest extends TestCase
     {
         return [
             ['date' => '2026-08-08', 'status' => 'done', 'chooser_side' => 'adult', 'derogation' => 0,
-             'movie_title' => 'Brazil', 'movie_year' => 1985, 'movie_poster' => null,
+             'movie_id' => 1, 'movie_title' => 'Brazil', 'movie_year' => 1985, 'movie_poster' => null,
              'proposer_name' => 'JC', 'avg_score' => 4.5, 'veto_count' => 0],
             ['date' => '2026-08-01', 'status' => 'done', 'chooser_side' => 'kid', 'derogation' => 1,
-             'movie_title' => 'Un film de filles', 'movie_year' => 2023, 'movie_poster' => null,
+             'movie_id' => 2, 'movie_title' => 'Un film de filles', 'movie_year' => 2023, 'movie_poster' => null,
              'proposer_name' => 'Zoé', 'avg_score' => 4.5, 'veto_count' => 1],
             ['date' => '2026-07-25', 'status' => 'skipped', 'chooser_side' => 'adult', 'derogation' => 0,
-             'movie_title' => null, 'movie_year' => null, 'movie_poster' => null,
+             'movie_id' => null, 'movie_title' => null, 'movie_year' => null, 'movie_poster' => null,
              'proposer_name' => null, 'avg_score' => null, 'veto_count' => 0],
             ['date' => '2026-07-18', 'status' => 'done', 'chooser_side' => 'adult', 'derogation' => 0,
-             'movie_title' => 'Solaris', 'movie_year' => 1972, 'movie_poster' => null,
+             'movie_id' => 3, 'movie_title' => 'Solaris', 'movie_year' => 1972, 'movie_poster' => null,
              'proposer_name' => 'Élodie', 'avg_score' => 2.0, 'veto_count' => 0],
             ['date' => '2026-07-11', 'status' => 'planned', 'chooser_side' => 'kid', 'derogation' => 0,
-             'movie_title' => null, 'movie_year' => null, 'movie_poster' => null,
+             'movie_id' => null, 'movie_title' => null, 'movie_year' => null, 'movie_poster' => null,
              'proposer_name' => null, 'avg_score' => null, 'veto_count' => 0],
             ['date' => '2025-12-20', 'status' => 'done', 'chooser_side' => 'adult', 'derogation' => 0,
-             'movie_title' => 'Un vieux film', 'movie_year' => 1954, 'movie_poster' => null,
+             'movie_id' => 4, 'movie_title' => 'Un vieux film', 'movie_year' => 1954, 'movie_poster' => null,
              'proposer_name' => 'JC', 'avg_score' => 5.0, 'veto_count' => 0],
         ];
     }
@@ -144,16 +144,45 @@ class AwardsServiceTest extends TestCase
     {
         $history = [
             ['date' => '2026-08-08', 'status' => 'done', 'chooser_side' => 'adult', 'derogation' => 0,
-             'movie_title' => 'A', 'movie_year' => null, 'movie_poster' => null,
+             'movie_id' => 10, 'movie_title' => 'A', 'movie_year' => null, 'movie_poster' => null,
              'proposer_name' => 'Élodie', 'avg_score' => null, 'veto_count' => 0],
             ['date' => '2026-08-01', 'status' => 'done', 'chooser_side' => 'adult', 'derogation' => 0,
-             'movie_title' => 'B', 'movie_year' => null, 'movie_poster' => null,
+             'movie_id' => 11, 'movie_title' => 'B', 'movie_year' => null, 'movie_poster' => null,
              'proposer_name' => 'JC', 'avg_score' => null, 'veto_count' => 0],
             ['date' => '2026-07-25', 'status' => 'done', 'chooser_side' => 'adult', 'derogation' => 0,
-             'movie_title' => 'C', 'movie_year' => null, 'movie_poster' => null,
+             'movie_id' => 12, 'movie_title' => 'C', 'movie_year' => null, 'movie_poster' => null,
              'proposer_name' => 'JC', 'avg_score' => null, 'veto_count' => 0],
         ];
 
         $this->assertSame(['JC' => 2, 'Élodie' => 1], AwardsService::compute($history, [], 2026)['by_proposer']);
+    }
+
+    public function testASeriesWatchedOverSeveralSaturdaysCountsAsOneWork(): void
+    {
+        // Douze samedis d'une même série ne doivent pas afficher douze œuvres
+        // vues : la note finale (portée par la ligne la plus récente) est celle
+        // qui compte pour la série entière.
+        $history = [
+            ['date' => '2026-08-15', 'status' => 'done', 'chooser_side' => 'kid', 'derogation' => 0,
+             'movie_id' => 42, 'movie_title' => 'Heartstopper', 'movie_year' => 2022, 'movie_poster' => null,
+             'proposer_name' => 'Zoé', 'avg_score' => 4.5, 'veto_count' => 0],
+            ['date' => '2026-08-08', 'status' => 'done', 'chooser_side' => 'kid', 'derogation' => 0,
+             'movie_id' => 42, 'movie_title' => 'Heartstopper', 'movie_year' => 2022, 'movie_poster' => null,
+             'proposer_name' => 'Zoé', 'avg_score' => null, 'veto_count' => 0],
+            ['date' => '2026-08-01', 'status' => 'done', 'chooser_side' => 'kid', 'derogation' => 0,
+             'movie_id' => 42, 'movie_title' => 'Heartstopper', 'movie_year' => 2022, 'movie_poster' => null,
+             'proposer_name' => 'Zoé', 'avg_score' => null, 'veto_count' => 0],
+            ['date' => '2026-07-25', 'status' => 'done', 'chooser_side' => 'adult', 'derogation' => 0,
+             'movie_id' => 7, 'movie_title' => 'Brazil', 'movie_year' => 1985, 'movie_poster' => null,
+             'proposer_name' => 'JC', 'avg_score' => 4.0, 'veto_count' => 0],
+        ];
+
+        $result = AwardsService::compute($history, [], 2026);
+
+        $this->assertSame(2, $result['watched'], 'Trois samedis de série ne comptent que pour une œuvre');
+        $this->assertSame(['Zoé' => 1, 'JC' => 1], $result['by_proposer']);
+        $this->assertSame(['adult' => 1, 'kid' => 1], $result['by_side']);
+        $this->assertSame(4.25, $result['avg_score'], '(4.5 + 4.0) / 2, la note de la serie est celle du dernier episode');
+        $this->assertSame('Heartstopper', $result['best']['movie_title']);
     }
 }
