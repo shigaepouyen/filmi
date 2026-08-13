@@ -12,10 +12,14 @@ final class MovieRepository
     private const POOLS = ['adult', 'kid'];
     private const BET_TYPES = ['safe', 'discovery'];
 
+    private const KINDS = ['film', 'series'];
+
     private const COLUMNS = [
         'tmdb_id', 'title', 'original_title', 'year', 'runtime', 'poster_url',
         'overview', 'genres', 'director', 'tmdb_rating', 'certification',
-        'providers', 'providers_at', 'trailer_url', 'pool', 'bet_type', 'memo', 'added_by',
+        'providers', 'providers_at', 'trailer_url', 'kind', 'season_count',
+        'episode_count', 'episodes_per_evening', 'episodes_watched', 'episodes',
+        'pool', 'bet_type', 'memo', 'added_by',
     ];
 
     public function __construct(private PDO $db)
@@ -50,6 +54,18 @@ final class MovieRepository
         $row['pool'] = $pool;
         $row['bet_type'] = $betType;
 
+        // Chaque colonne est nommée explicitement dans l'INSERT ci-dessous : les
+        // DEFAULT de schéma ne s'appliquent qu'aux colonnes omises, jamais à une
+        // valeur explicitement NULL. Il faut donc les reproduire ici.
+        $kind = $data['kind'] ?? 'film';
+        $row['kind'] = in_array($kind, self::KINDS, true) ? $kind : 'film';
+        $row['episodes_per_evening'] = isset($data['episodes_per_evening'])
+            ? (int) $data['episodes_per_evening']
+            : 2;
+        $row['episodes_watched'] = isset($data['episodes_watched'])
+            ? (int) $data['episodes_watched']
+            : 0;
+
         $placeholders = implode(', ', array_map(static fn ($c) => ':' . $c, self::COLUMNS));
         $stmt = $this->db->prepare(
             'INSERT INTO movies (' . implode(', ', self::COLUMNS) . ") VALUES ({$placeholders})"
@@ -57,6 +73,31 @@ final class MovieRepository
         $stmt->execute($row);
 
         return (int) $this->db->lastInsertId();
+    }
+
+    /**
+     * Ajoute une série au pool. Accepte le tableau retourné par
+     * TmdbService::seriesDetails() (episodes déjà encodé en JSON) ou un
+     * tableau où 'episodes' est encore une liste PHP.
+     *
+     * Une série n'est jamais tirée au sort (drawCandidates() filtre sur
+     * kind = 'film'), donc un pari n'aurait aucun sens : bet_type est toujours
+     * forcé à null, quoi que le formulaire ait pu transmettre.
+     *
+     * @param array<string, mixed> $data
+     */
+    public function addSeries(array $data): int
+    {
+        $episodes = $data['episodes'] ?? [];
+        if (is_array($episodes)) {
+            $episodes = json_encode($episodes, JSON_UNESCAPED_UNICODE);
+        }
+
+        return $this->add(array_merge($data, [
+            'kind' => 'series',
+            'bet_type' => null,
+            'episodes' => $episodes,
+        ]));
     }
 
     public function find(int $id): ?array
@@ -100,6 +141,10 @@ final class MovieRepository
         }, $stmt->fetchAll());
     }
 
+    /**
+     * Le tirage reste réservé aux films : tirer une série engagerait la
+     * famille sur des mois de télévision sans l'avoir décidé.
+     */
     public function drawCandidates(): array
     {
         return $this->db->query(
@@ -108,8 +153,40 @@ final class MovieRepository
                     p.name AS proposer_name
                FROM movies m
                JOIN profiles p ON p.id = m.added_by
-              WHERE m.pool = \'adult\' AND m.status = \'pool\''
+              WHERE m.pool = \'adult\' AND m.status = \'pool\' AND m.kind = \'film\''
         )->fetchAll();
+    }
+
+    /**
+     * Avance la progression d'une série jusqu'à l'épisode $episodesTo inclus
+     * dans sa suite continue, et la passe en 'watched' quand cet épisode est
+     * le dernier. Sinon elle reste au pool : c'est ainsi qu'on reconnaît une
+     * série en cours, la contrainte CHECK sur status ne pouvant pas accueillir
+     * un nouveau statut.
+     */
+    public function advanceSeries(int $id, int $episodesTo): void
+    {
+        $movie = $this->find($id);
+        if ($movie === null) {
+            throw new InvalidArgumentException('Série inconnue : ' . $id);
+        }
+
+        $episodeCount = (int) ($movie['episode_count'] ?? 0);
+        $status = $episodeCount > 0 && $episodesTo >= $episodeCount ? 'watched' : 'pool';
+
+        $this->db->prepare('UPDATE movies SET episodes_watched = ?, status = ? WHERE id = ?')
+            ->execute([$episodesTo, $status, $id]);
+    }
+
+    /** Réglage par série du nombre d'épisodes pris par soirée. */
+    public function setEpisodesPerEvening(int $id, int $episodesPerEvening): void
+    {
+        if ($episodesPerEvening < 1) {
+            throw new InvalidArgumentException('Le nombre d\'épisodes par soirée doit être au moins 1.');
+        }
+
+        $this->db->prepare('UPDATE movies SET episodes_per_evening = ? WHERE id = ?')
+            ->execute([$episodesPerEvening, $id]);
     }
 
     public function findDuplicate(?int $tmdbId, string $title, ?int $year): ?array

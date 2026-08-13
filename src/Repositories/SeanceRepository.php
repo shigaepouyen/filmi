@@ -160,6 +160,36 @@ final class SeanceRepository
         }
     }
 
+    /**
+     * Enregistre la soirée d'une série : la séance prend sa plage d'épisodes et
+     * son libellé figé, la série avance sa progression et passe en 'watched'
+     * quand c'était son dernier épisode. Tout ou rien, comme recordChoice().
+     *
+     * @param array{from:int, to:int, label:string, finishes?:bool} $evening
+     *        typiquement le résultat de SeriesService::nextEvening()
+     */
+    public function recordSeriesEvening(int $seanceId, int $movieId, array $evening): void
+    {
+        $this->db->beginTransaction();
+        try {
+            // Avancer la série d'abord : si elle est inconnue, l'exception lève
+            // avant toute écriture sur la séance, mais la transaction couvre
+            // les deux de toute façon.
+            $this->movies->advanceSeries($movieId, $evening['to']);
+
+            $this->db->prepare(
+                "UPDATE seances
+                    SET status = 'done', movie_id = ?, episodes_from = ?, episodes_to = ?, episodes_label = ?
+                  WHERE id = ?"
+            )->execute([$movieId, $evening['from'], $evening['to'], $evening['label'], $seanceId]);
+
+            $this->db->commit();
+        } catch (Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
     public function rate(int $seanceId, int $profileId, int $score): void
     {
         if ($score < 1 || $score > 5) {

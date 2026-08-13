@@ -161,6 +161,27 @@ class MovieRepositoryTest extends DbTestCase
         $this->assertArrayHasKey('id', $candidates[0]);
     }
 
+    public function testDrawCandidatesNeverReturnsASeries(): void
+    {
+        // Un tirage engagerait la famille sur des mois de television sans
+        // l'avoir decide : une serie ne doit jamais pouvoir sortir du tirage,
+        // meme si elle porte un bet_type et vit dans le pool adulte.
+        $this->addAdult('Brazil', 'discovery');
+        $this->repo->addSeries([
+            'title' => 'Heartstopper',
+            'pool' => 'adult',
+            'bet_type' => 'safe',
+            'added_by' => $this->zoe,
+            'episode_count' => 24,
+            'season_count' => 3,
+            'episodes' => [],
+        ]);
+
+        $candidates = $this->repo->drawCandidates();
+
+        $this->assertSame(['Brazil'], array_column($candidates, 'title'));
+    }
+
     public function testFindDuplicateMatchesOnTmdbId(): void
     {
         $this->addAdult('Le Voyage de Chihiro', 'safe', ['tmdb_id' => 129, 'year' => 2001]);
@@ -440,5 +461,133 @@ class MovieRepositoryTest extends DbTestCase
         $this->repo->archive($id);
 
         $this->assertSame([], $this->repo->providerBrands());
+    }
+
+    public function testAddDefaultsKindToFilmWithZeroProgressAndTwoEpisodesPerEvening(): void
+    {
+        $id = $this->addAdult('Brazil', 'discovery');
+
+        $movie = $this->repo->find($id);
+
+        $this->assertSame('film', $movie['kind']);
+        $this->assertSame(0, (int) $movie['episodes_watched']);
+        $this->assertSame(2, (int) $movie['episodes_per_evening']);
+        $this->assertNull($movie['episodes']);
+    }
+
+    public function testAddSeriesStoresKindAndEpisodeFieldsAndForcesNoBetType(): void
+    {
+        $episodes = [
+            ['number' => 1, 'season' => 1, 'episode_in_season' => 1, 'title' => 'Crush', 'runtime' => 27],
+            ['number' => 2, 'season' => 1, 'episode_in_season' => 2, 'title' => 'Lucky', 'runtime' => 33],
+        ];
+
+        $id = $this->repo->addSeries([
+            'title' => 'Heartstopper',
+            'pool' => 'kid',
+            'bet_type' => 'safe', // ignoré : une série n'a jamais de pari
+            'added_by' => $this->zoe,
+            'season_count' => 3,
+            'episode_count' => 24,
+            'episodes' => $episodes,
+        ]);
+
+        $movie = $this->repo->find($id);
+
+        $this->assertSame('series', $movie['kind']);
+        $this->assertSame(3, (int) $movie['season_count']);
+        $this->assertSame(24, (int) $movie['episode_count']);
+        $this->assertSame(0, (int) $movie['episodes_watched']);
+        $this->assertSame(2, (int) $movie['episodes_per_evening']);
+        $this->assertNull($movie['bet_type']);
+        $this->assertSame($episodes, json_decode($movie['episodes'], true));
+    }
+
+    public function testAddSeriesAcceptsAnAlreadyEncodedEpisodesJson(): void
+    {
+        $id = $this->repo->addSeries([
+            'title' => 'Heartstopper',
+            'pool' => 'kid',
+            'added_by' => $this->zoe,
+            'episodes' => '[{"number":1,"season":1,"episode_in_season":1,"title":"Crush","runtime":27}]',
+        ]);
+
+        $episodes = json_decode($this->repo->find($id)['episodes'], true);
+        $this->assertCount(1, $episodes);
+        $this->assertSame('Crush', $episodes[0]['title']);
+    }
+
+    public function testAddSeriesHonoursACustomEpisodesPerEvening(): void
+    {
+        $id = $this->repo->addSeries([
+            'title' => 'Heartstopper',
+            'pool' => 'kid',
+            'added_by' => $this->zoe,
+            'episodes_per_evening' => 3,
+            'episodes' => [],
+        ]);
+
+        $this->assertSame(3, (int) $this->repo->find($id)['episodes_per_evening']);
+    }
+
+    public function testAdvanceSeriesIncrementsProgressAndStaysInPool(): void
+    {
+        $id = $this->repo->addSeries([
+            'title' => 'Heartstopper',
+            'pool' => 'kid',
+            'added_by' => $this->zoe,
+            'episode_count' => 24,
+            'episodes' => [],
+        ]);
+
+        $this->repo->advanceSeries($id, 2);
+
+        $movie = $this->repo->find($id);
+        $this->assertSame(2, (int) $movie['episodes_watched']);
+        $this->assertSame('pool', $movie['status'], 'La serie en cours reste au pool');
+    }
+
+    public function testAdvanceSeriesMarksWatchedOnceTheLastEpisodeIsReached(): void
+    {
+        $id = $this->repo->addSeries([
+            'title' => 'Heartstopper',
+            'pool' => 'kid',
+            'added_by' => $this->zoe,
+            'episode_count' => 24,
+            'episodes' => [],
+        ]);
+
+        $this->repo->advanceSeries($id, 24);
+
+        $movie = $this->repo->find($id);
+        $this->assertSame(24, (int) $movie['episodes_watched']);
+        $this->assertSame('watched', $movie['status']);
+    }
+
+    public function testSetEpisodesPerEveningUpdatesTheValue(): void
+    {
+        $id = $this->repo->addSeries([
+            'title' => 'Heartstopper',
+            'pool' => 'kid',
+            'added_by' => $this->zoe,
+            'episodes' => [],
+        ]);
+
+        $this->repo->setEpisodesPerEvening($id, 3);
+
+        $this->assertSame(3, (int) $this->repo->find($id)['episodes_per_evening']);
+    }
+
+    public function testSetEpisodesPerEveningRejectsLessThanOne(): void
+    {
+        $id = $this->repo->addSeries([
+            'title' => 'Heartstopper',
+            'pool' => 'kid',
+            'added_by' => $this->zoe,
+            'episodes' => [],
+        ]);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->repo->setEpisodesPerEvening($id, 0);
     }
 }

@@ -481,4 +481,85 @@ class SeanceRepositoryTest extends DbTestCase
 
         $this->assertNull($this->repo->watchedDateForMovie($movieId));
     }
+
+    private function series(string $title, int $episodeCount): int
+    {
+        return $this->movies->addSeries([
+            'title' => $title,
+            'pool' => 'kid',
+            'added_by' => $this->zoe,
+            'episode_count' => $episodeCount,
+            'episodes' => [],
+        ]);
+    }
+
+    public function testRecordSeriesEveningWritesTheRangeLabelAndAdvancesProgress(): void
+    {
+        $seriesId = $this->series('Heartstopper', 24);
+        $seance = $this->repo->ensure('2026-08-15', 'kid');
+
+        $this->repo->recordSeriesEvening($seance['id'], $seriesId, [
+            'from' => 1, 'to' => 2, 'label' => 'S1E1 à S1E2', 'finishes' => false,
+        ]);
+
+        $updated = $this->repo->findByDate('2026-08-15');
+        $this->assertSame('done', $updated['status']);
+        $this->assertSame($seriesId, (int) $updated['movie_id']);
+        $this->assertSame(1, (int) $updated['episodes_from']);
+        $this->assertSame(2, (int) $updated['episodes_to']);
+        $this->assertSame('S1E1 à S1E2', $updated['episodes_label']);
+
+        $movie = $this->movies->find($seriesId);
+        $this->assertSame(2, (int) $movie['episodes_watched']);
+        $this->assertSame('pool', $movie['status'], 'La serie en cours reste au pool');
+    }
+
+    public function testRecordSeriesEveningOnTheLastEpisodeMarksTheSeriesWatched(): void
+    {
+        $seriesId = $this->series('Heartstopper', 24);
+        $seance = $this->repo->ensure('2026-08-15', 'kid');
+
+        $this->repo->recordSeriesEvening($seance['id'], $seriesId, [
+            'from' => 23, 'to' => 24, 'label' => 'S3E7 à S3E8', 'finishes' => true,
+        ]);
+
+        $this->assertSame('watched', $this->movies->find($seriesId)['status']);
+    }
+
+    public function testRecordSeriesEveningAcrossSeveralSaturdaysAdvancesTheSameSeries(): void
+    {
+        $seriesId = $this->series('Heartstopper', 24);
+
+        $s1 = $this->repo->ensure('2026-08-01', 'kid');
+        $this->repo->recordSeriesEvening($s1['id'], $seriesId, [
+            'from' => 1, 'to' => 2, 'label' => 'S1E1 à S1E2', 'finishes' => false,
+        ]);
+        $s2 = $this->repo->ensure('2026-08-08', 'kid');
+        $this->repo->recordSeriesEvening($s2['id'], $seriesId, [
+            'from' => 3, 'to' => 4, 'label' => 'S1E3 à S1E4', 'finishes' => false,
+        ]);
+
+        $this->assertSame(4, (int) $this->movies->find($seriesId)['episodes_watched']);
+        $this->assertSame($seriesId, (int) $this->repo->findByDate('2026-08-01')['movie_id']);
+        $this->assertSame($seriesId, (int) $this->repo->findByDate('2026-08-08')['movie_id']);
+    }
+
+    public function testRecordSeriesEveningRollsBackEntirelyWhenTheSeriesIsUnknown(): void
+    {
+        $seance = $this->repo->ensure('2026-08-15', 'kid');
+
+        try {
+            $this->repo->recordSeriesEvening($seance['id'], 999, [
+                'from' => 1, 'to' => 2, 'label' => 'S1E1 à S1E2', 'finishes' => false,
+            ]);
+            $this->fail('InvalidArgumentException attendue');
+        } catch (\InvalidArgumentException) {
+            // attendu
+        }
+
+        $untouched = $this->repo->findByDate('2026-08-15');
+        $this->assertSame('planned', $untouched['status']);
+        $this->assertNull($untouched['movie_id']);
+        $this->assertNull($untouched['episodes_from']);
+    }
 }
