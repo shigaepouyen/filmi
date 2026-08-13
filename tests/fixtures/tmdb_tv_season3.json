@@ -1,0 +1,13 @@
+{
+  "season_number": 3,
+  "episodes": [
+    {"episode_number": 1, "name": "New", "runtime": 25},
+    {"episode_number": 2, "name": "Adventure", "runtime": 32},
+    {"episode_number": 3, "name": "Trust", "runtime": 29},
+    {"episode_number": 4, "name": "Prom", "runtime": 34},
+    {"episode_number": 5, "name": "Rumours", "runtime": 27},
+    {"episode_number": 6, "name": "Sports Day", "runtime": 30},
+    {"episode_number": 7, "name": "Yes", "runtime": 28},
+    {"episode_number": 8, "name": "Love", "runtime": 33}
+  ]
+}

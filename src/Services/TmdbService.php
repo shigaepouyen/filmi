@@ -53,6 +53,97 @@ final class TmdbService
         return $results;
     }
 
+    /** @return list<array{tmdb_id:int,title:string,original_title:?string,year:?int,poster_url:?string}> */
+    public function searchSeries(string $query): array
+    {
+        $query = trim($query);
+        if (!$this->isConfigured() || mb_strlen($query) < 2) {
+            return [];
+        }
+
+        $payload = $this->get('/search/tv', [
+            'query' => $query,
+            'include_adult' => 'false',
+        ]);
+
+        $results = [];
+        foreach (array_slice($payload['results'] ?? [], 0, self::MAX_RESULTS) as $row) {
+            $results[] = [
+                'tmdb_id' => (int) $row['id'],
+                'title' => (string) ($row['name'] ?? ''),
+                'original_title' => $row['original_name'] ?? null,
+                'year' => self::yearFrom($row['first_air_date'] ?? null),
+                'poster_url' => self::poster($row['poster_path'] ?? null),
+            ];
+        }
+
+        return $results;
+    }
+
+    /**
+     * Construit la suite continue d'épisodes d'une série : un appel série pour
+     * les métadonnées et les plateformes, puis un appel par saison car
+     * episode_run_time est vide au niveau série (vérifié sur Heartstopper) et
+     * seul l'endpoint saison donne la durée de chaque épisode. La saison 0
+     * (specials) est hors suite continue et n'est jamais appelée.
+     *
+     * @return array<string, mixed> prêt pour MovieRepository::addSeries()
+     */
+    public function seriesDetails(int $tmdbId): array
+    {
+        if (!$this->isConfigured()) {
+            throw new TmdbException('Aucune clé TMDb configurée.');
+        }
+
+        $series = $this->get('/tv/' . $tmdbId, [
+            'append_to_response' => 'watch/providers',
+        ]);
+
+        $episodes = [];
+        $number = 0;
+        $seasonNumbers = [];
+        foreach ($series['seasons'] ?? [] as $season) {
+            $seasonNumber = (int) ($season['season_number'] ?? 0);
+            if ($seasonNumber < 1) {
+                continue;
+            }
+            $seasonNumbers[] = $seasonNumber;
+
+            $seasonPayload = $this->get('/tv/' . $tmdbId . '/season/' . $seasonNumber, []);
+            foreach ($seasonPayload['episodes'] ?? [] as $episode) {
+                $number++;
+                $episodes[] = [
+                    'number' => $number,
+                    'season' => $seasonNumber,
+                    'episode_in_season' => (int) ($episode['episode_number'] ?? 0),
+                    'title' => $episode['name'] ?? null,
+                    'runtime' => isset($episode['runtime']) ? (int) $episode['runtime'] : null,
+                ];
+            }
+        }
+
+        return [
+            'kind' => 'series',
+            'tmdb_id' => (int) ($series['id'] ?? $tmdbId),
+            'title' => (string) ($series['name'] ?? ''),
+            'original_title' => $series['original_name'] ?? null,
+            'year' => self::yearFrom($series['first_air_date'] ?? null),
+            'poster_url' => self::poster($series['poster_path'] ?? null),
+            'overview' => $series['overview'] ?? null,
+            'tmdb_rating' => isset($series['vote_average']) ? (float) $series['vote_average'] : null,
+            'providers' => json_encode(
+                $this->providers($series['watch/providers']['results'] ?? []),
+                JSON_UNESCAPED_UNICODE
+            ),
+            'providers_at' => date('Y-m-d H:i:s'),
+            'season_count' => count($seasonNumbers),
+            'episode_count' => count($episodes),
+            'episodes' => json_encode($episodes, JSON_UNESCAPED_UNICODE),
+            'episodes_watched' => 0,
+            'episodes_per_evening' => 2,
+        ];
+    }
+
     /** @return array<string, mixed> prêt pour MovieRepository::add() */
     public function details(int $tmdbId): array
     {

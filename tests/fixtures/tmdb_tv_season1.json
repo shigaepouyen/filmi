@@ -1,0 +1,13 @@
+{
+  "season_number": 1,
+  "episodes": [
+    {"episode_number": 1, "name": "Crush", "runtime": 27},
+    {"episode_number": 2, "name": "Lucky", "runtime": 33},
+    {"episode_number": 3, "name": "Fate", "runtime": 30},
+    {"episode_number": 4, "name": "Girls", "runtime": 29},
+    {"episode_number": 5, "name": "Truth", "runtime": 31},
+    {"episode_number": 6, "name": "Family", "runtime": 28},
+    {"episode_number": 7, "name": "Real", "runtime": 30},
+    {"episode_number": 8, "name": "Kiss", "runtime": 32}
+  ]
+}

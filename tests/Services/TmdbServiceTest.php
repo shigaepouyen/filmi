@@ -160,6 +160,96 @@ class TmdbServiceTest extends TestCase
         $service->search('chihiro');
     }
 
+    public function testSearchSeriesReturnsNormalisedResults(): void
+    {
+        $service = $this->service(['/search/tv' => $this->fixture('tmdb_tv_search.json')]);
+
+        $results = $service->searchSeries('heartstopper');
+
+        $this->assertCount(2, $results);
+        $this->assertSame(124834, $results[0]['tmdb_id']);
+        $this->assertSame('Heartstopper', $results[0]['title']);
+        $this->assertSame(2022, $results[0]['year']);
+        $this->assertSame(TmdbService::POSTER_BASE . '/heartstopper.jpg', $results[0]['poster_url']);
+        $this->assertNull($results[1]['year'], 'Une date vide ne doit pas produire une année');
+        $this->assertNull($results[1]['poster_url']);
+    }
+
+    public function testSearchSeriesIgnoresTooShortQueriesWithoutCallingTheApi(): void
+    {
+        $this->assertSame([], $this->service([])->searchSeries('a'));
+    }
+
+    public function testSearchSeriesWithoutKeyReturnsEmptyWithoutCallingTheApi(): void
+    {
+        $this->assertSame([], $this->service([], '')->searchSeries('heartstopper'));
+    }
+
+    public function testSeriesDetailsBuildsTheContinuousEpisodeSequenceAcrossSeasons(): void
+    {
+        // Les fragments de saisons sont déclarés avant le fragment générique
+        // '/tv/124834' : sinon str_contains() matcherait le générique en premier.
+        $service = $this->service([
+            '/tv/124834/season/1' => $this->fixture('tmdb_tv_season1.json'),
+            '/tv/124834/season/2' => $this->fixture('tmdb_tv_season2.json'),
+            '/tv/124834/season/3' => $this->fixture('tmdb_tv_season3.json'),
+            '/tv/124834' => $this->fixture('tmdb_tv_details.json'),
+        ]);
+
+        $series = $service->seriesDetails(124834);
+
+        $this->assertSame('series', $series['kind']);
+        $this->assertSame(124834, $series['tmdb_id']);
+        $this->assertSame('Heartstopper', $series['title']);
+        $this->assertSame(2022, $series['year']);
+        $this->assertSame(TmdbService::POSTER_BASE . '/heartstopper.jpg', $series['poster_url']);
+        $this->assertSame(8.4, $series['tmdb_rating']);
+        $this->assertSame(3, $series['season_count'], 'La saison 0 (specials) est hors suite continue');
+        $this->assertSame(24, $series['episode_count']);
+        $this->assertSame(0, $series['episodes_watched']);
+        $this->assertSame(2, $series['episodes_per_evening']);
+
+        $providers = json_decode($series['providers'], true);
+        $this->assertSame([['id' => 8, 'name' => 'Netflix', 'logo' => '/netflix.jpg']], $providers);
+
+        $episodes = json_decode($series['episodes'], true);
+        $this->assertCount(24, $episodes);
+        $this->assertSame(
+            ['number' => 1, 'season' => 1, 'episode_in_season' => 1, 'title' => 'Crush', 'runtime' => 27],
+            $episodes[0]
+        );
+        // Frontière de saison : le 9e épisode de la suite est bien S2E1.
+        $this->assertSame(9, $episodes[8]['number']);
+        $this->assertSame(2, $episodes[8]['season']);
+        $this->assertSame(1, $episodes[8]['episode_in_season']);
+        $this->assertSame(26, $episodes[8]['runtime']);
+        $this->assertSame(24, $episodes[23]['number']);
+        $this->assertSame(3, $episodes[23]['season']);
+        $this->assertSame(8, $episodes[23]['episode_in_season']);
+    }
+
+    public function testSeriesDetailsNeverCallsTheSpecialsSeason(): void
+    {
+        // Aucune route pour /tv/124834/season/0 : si le code l'appelait, la
+        // TmdbException "URL inattendue" serait levée et ce test échouerait.
+        $service = $this->service([
+            '/tv/124834/season/1' => $this->fixture('tmdb_tv_season1.json'),
+            '/tv/124834/season/2' => $this->fixture('tmdb_tv_season2.json'),
+            '/tv/124834/season/3' => $this->fixture('tmdb_tv_season3.json'),
+            '/tv/124834' => $this->fixture('tmdb_tv_details.json'),
+        ]);
+
+        $series = $service->seriesDetails(124834);
+
+        $this->assertSame(24, $series['episode_count']);
+    }
+
+    public function testSeriesDetailsWithoutKeyThrows(): void
+    {
+        $this->expectException(TmdbException::class);
+        $this->service([], '')->seriesDetails(124834);
+    }
+
     public function testApiKeyNeverAppearsAnywhereInTheExceptionChain(): void
     {
         $key = 'SECRET123';
