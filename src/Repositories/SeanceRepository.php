@@ -129,11 +129,23 @@ final class SeanceRepository
         }
     }
 
-    /** Le film veto retourne au pool et la séance redevient sans film retenu. */
+    /**
+     * Le film veto retourne au pool et la séance redevient sans film retenu.
+     *
+     * Si la séance portait une soirée de série (episodes_from renseigné), cette
+     * soirée n'a pas eu lieu : la progression doit revenir à ce qu'elle était
+     * juste avant, en utilisant la borne figée sur la séance plutôt qu'en la
+     * recalculant depuis la suite d'épisodes. Sans ce rattrapage, des épisodes
+     * jamais regardés resteraient comptés vus, et si la soirée vetoée était la
+     * dernière, la série resterait bloquée en 'watched' pour toujours.
+     */
     public function recordVeto(int $seanceId, int $movieId, int $profileId, ?string $reason): void
     {
         $this->db->beginTransaction();
         try {
+            $seance = $this->find($seanceId);
+            $movie = $this->movies->find($movieId);
+
             $this->db->prepare(
                 "INSERT INTO seance_picks (seance_id, movie_id, role, by_profile_id, reason)
                  VALUES (?, ?, 'vetoed', ?, ?)"
@@ -150,6 +162,23 @@ final class SeanceRepository
             // Le film vetoté se détache : les notes qu'il avait reçues ne doivent pas
             // se retrouver créditées au film qui le remplacera.
             $this->db->prepare('DELETE FROM ratings WHERE seance_id = ?')->execute([$seanceId]);
+
+            if ($seance !== null
+                && $seance['episodes_from'] !== null
+                && $movie !== null
+                && ($movie['kind'] ?? 'film') === 'series'
+            ) {
+                // episodes_from - 1 est la progression telle qu'elle était avant
+                // cette soirée précise. advanceSeries() remet elle-même le statut
+                // à 'pool' puisque cette valeur est nécessairement inférieure au
+                // total d'épisodes, y compris quand la soirée vetoée finissait la
+                // série.
+                $this->movies->advanceSeries($movieId, max(0, (int) $seance['episodes_from'] - 1));
+
+                $this->db->prepare(
+                    'UPDATE seances SET episodes_from = NULL, episodes_to = NULL, episodes_label = NULL WHERE id = ?'
+                )->execute([$seanceId]);
+            }
 
             $this->movies->returnToPool($movieId);
 

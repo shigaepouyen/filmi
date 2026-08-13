@@ -562,4 +562,87 @@ class SeanceRepositoryTest extends DbTestCase
         $this->assertNull($untouched['movie_id']);
         $this->assertNull($untouched['episodes_from']);
     }
+
+    public function testVetoOnAnIntermediateSeriesEveningRollsBackTheProgression(): void
+    {
+        $seriesId = $this->series('Heartstopper', 24);
+        $seance = $this->repo->ensure('2026-08-15', 'kid');
+        $this->repo->recordSeriesEvening($seance['id'], $seriesId, [
+            'from' => 3, 'to' => 4, 'label' => 'S1E3 à S1E4', 'finishes' => false,
+        ]);
+        // La soirée a fait passer la progression de 2 à 4 : le veto doit la
+        // ramener à 2, ce qu'elle était juste avant cette soirée précise.
+
+        $this->repo->recordVeto($seance['id'], $seriesId, $this->jc, 'Trop tard, pas ce soir');
+
+        $movie = $this->movies->find($seriesId);
+        $this->assertSame(2, (int) $movie['episodes_watched']);
+        $this->assertSame('pool', $movie['status']);
+
+        $updatedSeance = $this->repo->findByDate('2026-08-15');
+        $this->assertNull($updatedSeance['episodes_from']);
+        $this->assertNull($updatedSeance['episodes_to']);
+        $this->assertNull($updatedSeance['episodes_label']);
+
+        $veto = $this->db->query("SELECT * FROM seance_picks WHERE role = 'vetoed'")->fetch();
+        $this->assertSame($this->jc, (int) $veto['by_profile_id']);
+        $this->assertSame('Trop tard, pas ce soir', $veto['reason']);
+    }
+
+    public function testVetoOnTheFinalSeriesEveningReopensTheSeriesInsteadOfStrandingItWatched(): void
+    {
+        $seriesId = $this->series('Heartstopper', 24);
+        $seance = $this->repo->ensure('2026-08-15', 'kid');
+        $this->repo->recordSeriesEvening($seance['id'], $seriesId, [
+            'from' => 23, 'to' => 24, 'label' => 'S3E7 à S3E8', 'finishes' => true,
+        ]);
+        $this->assertSame('watched', $this->movies->find($seriesId)['status'], 'préalable : la série est bien finie');
+
+        // Sans le rattrapage, ce veto laisserait la série 'watched' pour toujours :
+        // c'est exactement le cas qui bloquait la reprise.
+        $this->repo->recordVeto($seance['id'], $seriesId, $this->elodie, 'On regarde autre chose finalement');
+
+        $movie = $this->movies->find($seriesId);
+        $this->assertSame(22, (int) $movie['episodes_watched']);
+        $this->assertSame('pool', $movie['status'], 'la série redevient en cours, pas terminée');
+    }
+
+    public function testVetoOnAFilmSeanceLeavesEpisodeColumnsUntouched(): void
+    {
+        $movieId = $this->movie('Un film contesté');
+        $seance = $this->repo->ensure('2026-08-15', 'kid');
+        $this->repo->recordChoice($seance['id'], [], $movieId);
+
+        $this->repo->recordVeto($seance['id'], $movieId, $this->jc, 'Trop dur pour Soline');
+
+        $updated = $this->repo->findByDate('2026-08-15');
+        $this->assertNull($updated['episodes_from']);
+        $this->assertNull($updated['episodes_to']);
+        $this->assertNull($updated['episodes_label']);
+        $this->assertSame('pool', $this->movies->find($movieId)['status']);
+    }
+
+    public function testTwoVetoesInARowOnRelaunchedSeriesEveningsNeverGoNegative(): void
+    {
+        $seriesId = $this->series('Heartstopper', 24);
+        $seance = $this->repo->ensure('2026-08-15', 'kid');
+
+        $this->repo->recordSeriesEvening($seance['id'], $seriesId, [
+            'from' => 1, 'to' => 2, 'label' => 'S1E1 à S1E2', 'finishes' => false,
+        ]);
+        $this->repo->recordVeto($seance['id'], $seriesId, $this->jc, 'Non');
+        $this->assertSame(0, (int) $this->movies->find($seriesId)['episodes_watched']);
+
+        // La soirée est relancée sur la même séance (redevenue 'planned') puis
+        // vetoée une seconde fois : la progression ne doit jamais passer sous zéro.
+        $this->repo->recordSeriesEvening($seance['id'], $seriesId, [
+            'from' => 1, 'to' => 2, 'label' => 'S1E1 à S1E2', 'finishes' => false,
+        ]);
+        $this->repo->recordVeto($seance['id'], $seriesId, $this->elodie, 'Non plus');
+
+        $movie = $this->movies->find($seriesId);
+        $this->assertSame(0, (int) $movie['episodes_watched']);
+        $this->assertGreaterThanOrEqual(0, (int) $movie['episodes_watched']);
+        $this->assertSame('pool', $movie['status']);
+    }
 }
