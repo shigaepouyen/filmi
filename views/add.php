@@ -1,7 +1,7 @@
 <?php
 use App\Utils\Security;
 ?>
-<h1 class="text-2xl font-semibold mb-1">Ajouter un film</h1>
+<h1 class="text-2xl font-semibold mb-1">Ajouter un film ou une série</h1>
 <p class="mb-6 text-sm text-slate-400">Note l'idée maintenant, tu te remercieras samedi soir.</p>
 
 <?php if ($error !== null): ?>
@@ -10,6 +10,7 @@ use App\Utils\Security;
 
 <form method="post" class="space-y-6"
       x-data="{
+        kind: <?= Security::e(json_encode($old['kind'], JSON_UNESCAPED_UNICODE)) ?>,
         query: '',
         results: [],
         selected: null,
@@ -20,11 +21,15 @@ use App\Utils\Security;
         title: <?= Security::e(json_encode($old['title'], JSON_UNESCAPED_UNICODE)) ?>,
         year: <?= Security::e(json_encode($old['year'], JSON_UNESCAPED_UNICODE)) ?>,
         runtime: <?= Security::e(json_encode($old['runtime'], JSON_UNESCAPED_UNICODE)) ?>,
+        episodesPerEvening: <?= Security::e(json_encode($old['episodes_per_evening'], JSON_UNESCAPED_UNICODE)) ?>,
+        reset() { this.selected = null; this.duplicate = null; this.query = ''; this.results = []; },
+        setKind(value) { this.kind = value; this.manual = value === 'series' ? false : <?= $tmdbConfigured ? 'false' : 'true' ?>; this.reset(); },
         async search() {
             if (this.query.trim().length < 2) { this.results = []; return; }
             this.searching = true;
             try {
-                const response = await fetch('/api/search.php?q=' + encodeURIComponent(this.query));
+                const type = this.kind === 'series' ? 'series' : 'movie';
+                const response = await fetch('/api/search.php?type=' + type + '&q=' + encodeURIComponent(this.query));
                 const payload = await response.json();
                 this.results = payload.results || [];
             } finally {
@@ -44,17 +49,33 @@ use App\Utils\Security;
             if (year) params.set('year', year);
             const response = await fetch('/api/duplicate.php?' + params.toString());
             this.duplicate = (await response.json()).duplicate;
-        },
-        reset() { this.selected = null; this.duplicate = null; this.query = ''; this.results = []; }
+        }
       }">
     <input type="hidden" name="csrf" value="<?= Security::csrfToken() ?>">
     <input type="hidden" name="tmdb_id" :value="selected ? selected.tmdb_id : ''">
+    <input type="hidden" name="kind" :value="kind">
+
+    <section class="space-y-2">
+        <span class="block text-sm font-medium">Un film, ou une série ?</span>
+        <div class="flex gap-2">
+            <label class="flex-1 cursor-pointer rounded-xl px-3 py-2 text-sm ring-1 ring-white/10"
+                   :class="kind === 'film' ? 'bg-white/15' : 'bg-white/5'">
+                <input type="radio" value="film" class="sr-only" :checked="kind === 'film'" @change="setKind('film')">
+                Film
+            </label>
+            <label class="flex-1 cursor-pointer rounded-xl px-3 py-2 text-sm ring-1 ring-white/10"
+                   :class="kind === 'series' ? 'bg-white/15' : 'bg-white/5'">
+                <input type="radio" value="series" class="sr-only" :checked="kind === 'series'" @change="setKind('series')">
+                Série
+            </label>
+        </div>
+    </section>
 
     <?php if ($tmdbConfigured): ?>
         <section x-show="!manual" class="space-y-2">
-            <label class="block text-sm font-medium" for="query">Chercher le film</label>
+            <label class="block text-sm font-medium" for="query" x-text="kind === 'series' ? 'Chercher la série' : 'Chercher le film'"></label>
             <input id="query" type="search" x-model="query" @input.debounce.400ms="search()"
-                   placeholder="Le Voyage de Chihiro" autocomplete="off"
+                   :placeholder="kind === 'series' ? 'Heartstopper' : 'Le Voyage de Chihiro'" autocomplete="off"
                    class="w-full rounded-xl bg-white/10 px-3 py-2">
             <p x-show="searching" class="text-xs text-slate-400">Recherche en cours...</p>
 
@@ -83,13 +104,14 @@ use App\Utils\Security;
                 <button type="button" @click="reset()" class="ml-2 underline text-xs">changer</button>
             </div>
 
-            <button type="button" @click="manual = true; reset()" class="text-xs text-slate-400 underline">
+            <?php /* Une série n'a pas de saisie manuelle : sa suite d'épisodes vient de TMDb, il n'y a rien à saisir à la main. */ ?>
+            <button type="button" x-show="kind === 'film'" @click="manual = true; reset()" class="text-xs text-slate-400 underline">
                 Le film n'est pas dans la liste, je le saisis à la main
             </button>
         </section>
     <?php endif; ?>
 
-    <section x-show="manual" class="space-y-2">
+    <section x-show="manual && kind === 'film'" class="space-y-2">
         <label class="block text-sm font-medium" for="title">Titre</label>
         <input id="title" name="title" x-model="title"
                @blur="checkDuplicate(null, title, year)"
@@ -120,13 +142,21 @@ use App\Utils\Security;
         </p>
     </template>
 
+    <section x-show="kind === 'series'" class="space-y-2">
+        <label class="block text-sm font-medium" for="episodes_per_evening">Épisodes par soirée</label>
+        <input id="episodes_per_evening" name="episodes_per_evening" x-model="episodesPerEvening"
+               type="number" min="1" max="10"
+               class="w-24 rounded-xl bg-white/10 px-3 py-2">
+        <p class="text-xs text-slate-400">2 par défaut. Réglable ensuite depuis la fiche de la série.</p>
+    </section>
+
     <?php $poolLabels = ['adult' => 'Liste des parents', 'kid' => 'Liste des filles']; ?>
     <section class="space-y-2">
         <?php if (count($manageablePools) === 1): ?>
             <?php $seulePool = $manageablePools[0]; ?>
             <input type="hidden" name="pool" value="<?= $seulePool ?>">
             <p class="text-sm text-slate-400">
-                Ce film ira dans la <strong><?= Security::e($poolLabels[$seulePool]) ?></strong>.
+                Ce titre ira dans la <strong><?= Security::e($poolLabels[$seulePool]) ?></strong>.
                 Seuls les parents peuvent alimenter la leur.
             </p>
         <?php else: ?>
@@ -143,7 +173,8 @@ use App\Utils\Security;
         <?php endif; ?>
     </section>
 
-    <section x-show="pool === 'adult'" class="space-y-2">
+    <?php /* Une série n'a jamais de pari : elle ne sort jamais au tirage, la lui demander n'aurait aucun sens et ne doit pas bloquer son ajout. */ ?>
+    <section x-show="pool === 'adult' && kind === 'film'" class="space-y-2">
         <span class="block text-sm font-medium">Quel pari ?</span>
         <div class="flex gap-2">
             <label class="flex-1 cursor-pointer rounded-xl bg-white/5 px-3 py-2 text-sm ring-1 ring-white/10">

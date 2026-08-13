@@ -22,11 +22,15 @@ $old = [
     'pool' => $isPost && in_array($_POST['pool'] ?? '', Access::POOLS, true)
         ? (string) $_POST['pool']
         : (Access::manageablePools((string) $profile['side'])[0] ?? 'kid'),
+    'kind' => $isPost && ($_POST['kind'] ?? '') === 'series' ? 'series' : 'film',
     'bet_type' => $isPost && in_array($_POST['bet_type'] ?? '', ['safe', 'discovery'], true) ? $_POST['bet_type'] : null,
     'memo' => $isPost ? trim((string) ($_POST['memo'] ?? '')) : '',
     'title' => $isPost ? trim((string) ($_POST['title'] ?? '')) : '',
     'year' => $isPost ? (string) ($_POST['year'] ?? '') : '',
     'runtime' => $isPost ? (string) ($_POST['runtime'] ?? '') : '',
+    'episodes_per_evening' => $isPost && ctype_digit((string) ($_POST['episodes_per_evening'] ?? '')) && (int) $_POST['episodes_per_evening'] >= 1
+        ? (string) $_POST['episodes_per_evening']
+        : '2',
 ];
 
 if ($isPost) {
@@ -36,6 +40,7 @@ if ($isPost) {
     }
 
     $pool = $old['pool'];
+    $kind = $old['kind'];
     $tmdbId = ctype_digit((string) ($_POST['tmdb_id'] ?? '')) ? (int) $_POST['tmdb_id'] : null;
     $memo = $old['memo'];
     $betType = $old['bet_type'];
@@ -48,12 +53,40 @@ if ($isPost) {
         exit("Tu ne peux ajouter un film que dans ta propre liste.");
     }
 
-    // Le pool des parents exige un tag, c'est lui qui pilote le tirage.
-    if ($pool === 'adult' && $betType === null) {
+    // Le pool des parents exige un tag, c'est lui qui pilote le tirage. Une
+    // série n'y est jamais soumise : elle ne sort jamais au tirage, donc lui
+    // demander un pari n'aurait aucun sens et ne doit pas bloquer son ajout.
+    if ($kind === 'film' && $pool === 'adult' && $betType === null) {
         $error = "Choisis valeur sûre ou découverte, c'est ce qui permet le tirage des trois films.";
     }
 
-    if ($error === null) {
+    if ($error === null && $kind === 'series') {
+        if ($tmdbId === null) {
+            $error = "Choisis une série dans les résultats de recherche, une série a besoin de sa liste d'épisodes.";
+        } else {
+            try {
+                // La fiche est rechargée côté serveur : le navigateur ne dicte pas les métadonnées.
+                $data = array_merge($app->tmdb->seriesDetails($tmdbId), [
+                    'pool' => $pool,
+                    'memo' => $memo,
+                    'added_by' => (int) $profile['id'],
+                    'episodes_per_evening' => (int) $old['episodes_per_evening'],
+                ]);
+            } catch (TmdbException $e) {
+                $error = 'TMDb est injoignable. Réessaie dans un instant pour ajouter cette série.';
+            }
+        }
+
+        if ($error === null) {
+            try {
+                $app->movies->addSeries($data);
+                header('Location: /pool.php?pool=' . $pool);
+                exit;
+            } catch (InvalidArgumentException $e) {
+                $error = $e->getMessage();
+            }
+        }
+    } elseif ($error === null) {
         $data = ['pool' => $pool, 'bet_type' => $betType, 'memo' => $memo, 'added_by' => (int) $profile['id']];
 
         if ($tmdbId !== null) {

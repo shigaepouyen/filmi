@@ -4,6 +4,8 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/vendor/autoload.php';
 
 use App\App;
+use App\Services\ScheduleService;
+use App\Services\SeriesService;
 use App\Utils\Access;
 use App\Utils\Security;
 
@@ -28,13 +30,53 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
     // Contrôle d'accès côté serveur. Règle asymétrique voulue : les parents
     // gèrent les deux listes, les filles seulement la leur. Masquer le bouton
-    // côté vue ne suffit pas, l'action est donc revérifiée ici.
+    // côté vue ne suffit pas, l'action est donc revérifiée ici. Enregistrer une
+    // soirée de série compte comme gérer, même règle.
     if (!Access::canManagePool((string) $profile['side'], (string) $movie['pool'])) {
         http_response_code(403);
         exit("Cette liste n'est pas la tienne, tu peux la consulter et voter.");
     }
 
     $action = (string) ($_POST['action'] ?? '');
+
+    if ($action === 'set_episodes_per_evening') {
+        $perEvening = (int) ($_POST['episodes_per_evening'] ?? 0);
+        if (($movie['kind'] ?? 'film') === 'series' && $perEvening >= 1) {
+            $app->movies->setEpisodesPerEvening($id, $perEvening);
+        }
+        header('Location: /movie.php?id=' . $id);
+        exit;
+    }
+
+    if ($action === 'record_evening') {
+        $date = ScheduleService::nextSeanceDate()->format('Y-m-d');
+        $defaultSide = ScheduleService::defaultChooserSide($app->seances->recentForSchedule());
+        $seance = $app->seances->ensure($date, $defaultSide);
+
+        // La plage d'épisodes n'est jamais lue depuis le formulaire : elle est
+        // toujours recalculée ici, comme sur tonight.php.
+        $eligible = ($movie['kind'] ?? 'film') === 'series'
+            && $movie['status'] === 'pool'
+            && $seance['status'] === 'planned'
+            && $seance['chooser_side'] === $movie['pool'];
+
+        if (!$eligible) {
+            http_response_code(403);
+            exit("Ce n'est pas le tour de cette liste, la soirée ne peut pas être enregistrée maintenant.");
+        }
+
+        $episodes = json_decode((string) $movie['episodes'], true);
+        $episodes = is_array($episodes) ? $episodes : [];
+        $evening = SeriesService::nextEvening(
+            $episodes,
+            (int) $movie['episodes_watched'],
+            (int) $movie['episodes_per_evening']
+        );
+
+        $app->seances->recordSeriesEvening((int) $seance['id'], $id, $evening);
+        header('Location: /seance.php');
+        exit;
+    }
 
     if ($action === 'archive') {
         $app->movies->archive($id);
@@ -77,6 +119,25 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $movie = $app->movies->find($id);
 }
 
+$seriesEvening = null;
+$canRecordTonight = false;
+if (($movie['kind'] ?? 'film') === 'series' && $movie['status'] === 'pool') {
+    $episodes = json_decode((string) $movie['episodes'], true);
+    $episodes = is_array($episodes) ? $episodes : [];
+    $seriesEvening = SeriesService::nextEvening(
+        $episodes,
+        (int) $movie['episodes_watched'],
+        (int) $movie['episodes_per_evening']
+    );
+
+    $scheduleDate = ScheduleService::nextSeanceDate()->format('Y-m-d');
+    $scheduledSeance = $app->seances->ensure(
+        $scheduleDate,
+        ScheduleService::defaultChooserSide($app->seances->recentForSchedule())
+    );
+    $canRecordTonight = $scheduledSeance['status'] === 'planned' && $scheduledSeance['chooser_side'] === $movie['pool'];
+}
+
 $app->render('movie', [
     'movie' => $movie,
     'proposer' => $app->profiles->find((int) $movie['added_by']),
@@ -86,5 +147,7 @@ $app->render('movie', [
     'subscribedBrands' => $app->settings->subscribedBrands(),
     'canManage' => Access::canManagePool((string) $profile['side'], (string) $movie['pool']),
     'manageablePools' => Access::manageablePools((string) $profile['side']),
+    'seriesEvening' => $seriesEvening,
+    'canRecordTonight' => $canRecordTonight,
     'error' => $error,
 ], 'Filmi, ' . $movie['title']);

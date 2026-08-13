@@ -58,7 +58,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
     if ($action === 'rate') {
         $score = (int) ($_POST['score'] ?? 0);
-        if ($score >= 1 && $score <= 5) {
+        $ratedMovie = $app->movies->find((int) $seance['movie_id']);
+        // Une série n'est notée qu'à son dernier épisode, une seule note sur
+        // l'œuvre entière : les soirées intermédiaires ne doivent pas pouvoir
+        // en enregistrer une, même par une requête forgée directement ici.
+        $ratingAllowed = $ratedMovie !== null
+            && (($ratedMovie['kind'] ?? 'film') !== 'series' || $ratedMovie['status'] === 'watched');
+        if ($score >= 1 && $score <= 5 && $ratingAllowed) {
             $app->seances->rate((int) $seance['id'], (int) $profile['id'], $score);
         }
     }
@@ -68,12 +74,19 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 }
 
 $ratings = $app->seances->ratings((int) $seance['id']);
+$movie = $app->movies->find((int) $seance['movie_id']);
+
+// Même règle que pour l'écriture ci-dessus : une série n'est notée qu'à son
+// dernier épisode, une seule note pour l'œuvre entière.
+$ratingAllowed = $movie !== null
+    && (($movie['kind'] ?? 'film') !== 'series' || $movie['status'] === 'watched');
 
 $app->render('seance', [
     'seance' => $seance,
-    'movie' => $app->movies->find((int) $seance['movie_id']),
+    'movie' => $movie,
     'startTime' => $app->settings->startTime(),
     'ratings' => $ratings,
     'myScore' => (int) (array_column($ratings, 'score', 'profile_id')[(int) $profile['id']] ?? 0),
     'canVeto' => $profile['side'] === 'adult' && $seance['chooser_side'] === 'kid',
+    'ratingAllowed' => $ratingAllowed,
 ], 'Filmi, la séance');

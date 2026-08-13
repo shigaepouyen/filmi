@@ -13,8 +13,12 @@ if (!$app->tmdb->isConfigured()) {
     $app->json(['results' => [], 'configured' => false]);
 }
 
+$isSeries = ($_GET['type'] ?? 'movie') === 'series';
+
 try {
-    $results = $app->tmdb->search((string) ($_GET['q'] ?? ''));
+    $results = $isSeries
+        ? $app->tmdb->searchSeries((string) ($_GET['q'] ?? ''))
+        : $app->tmdb->search((string) ($_GET['q'] ?? ''));
 } catch (TmdbException $e) {
     $app->json(['results' => [], 'configured' => true, 'error' => $e->getMessage()], 502);
 }

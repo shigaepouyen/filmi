@@ -2,7 +2,8 @@
 use App\Utils\FormatUtils;
 use App\Utils\Security;
 
-$endTime = FormatUtils::endTime($startTime, $movie['runtime'] === null ? null : (int) $movie['runtime']);
+$isSeries = ($movie['kind'] ?? 'film') === 'series';
+$endTime = $isSeries ? null : FormatUtils::endTime($startTime, $movie['runtime'] === null ? null : (int) $movie['runtime']);
 $scoresByName = array_column($ratings, 'score', 'name');
 ?>
 <p class="text-xs uppercase tracking-wide text-slate-400">
@@ -10,11 +11,20 @@ $scoresByName = array_column($ratings, 'score', 'name');
     au tour des <?= $seance['chooser_side'] === 'kid' ? 'filles' : 'parents' ?>
 </p>
 <h1 class="mt-1 text-2xl font-semibold"><?= Security::e($movie['title']) ?></h1>
-<p class="text-sm text-slate-400">
-    <?= $movie['year'] !== null ? (int) $movie['year'] . ' · ' : '' ?>
-    <?= Security::e(FormatUtils::humanRuntime($movie['runtime'] === null ? null : (int) $movie['runtime'])) ?>
-    <?= $endTime !== null ? ' · début ' . Security::e($startTime) . ', fin vers ' . Security::e($endTime) : '' ?>
-</p>
+<?php if ($isSeries): ?>
+    <p class="text-sm text-slate-400">
+        <?php if (!empty($seance['episodes_label'])): ?>
+            <?= Security::e($seance['episodes_label']) ?> · début <?= Security::e($startTime) ?>
+        <?php endif; ?>
+        <?= $movie['status'] === 'watched' ? ' · série terminée' : ' · la série continue' ?>
+    </p>
+<?php else: ?>
+    <p class="text-sm text-slate-400">
+        <?= $movie['year'] !== null ? (int) $movie['year'] . ' · ' : '' ?>
+        <?= Security::e(FormatUtils::humanRuntime($movie['runtime'] === null ? null : (int) $movie['runtime'])) ?>
+        <?= $endTime !== null ? ' · début ' . Security::e($startTime) . ', fin vers ' . Security::e($endTime) : '' ?>
+    </p>
+<?php endif; ?>
 
 <div class="mt-4 flex gap-4">
     <?php if (!empty($movie['poster_url'])): ?>
@@ -35,24 +45,31 @@ $scoresByName = array_column($ratings, 'score', 'name');
 </div>
 
 <section class="mt-6 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
-    <h2 class="text-sm font-medium">Ta note, après le film</h2>
-    <form method="post" class="mt-2 flex gap-2">
-        <input type="hidden" name="csrf" value="<?= Security::csrfToken() ?>">
-        <input type="hidden" name="action" value="rate">
-        <?php for ($score = 1; $score <= 5; $score++): ?>
-            <button name="score" value="<?= $score ?>"
-                    class="h-11 w-11 rounded-xl text-lg <?= $myScore === $score ? 'bg-amber-400/30 ring-2 ring-amber-300' : 'bg-white/10' ?>">
-                <?= $score ?>
-            </button>
-        <?php endfor; ?>
-    </form>
+    <?php if ($ratingAllowed): ?>
+        <h2 class="text-sm font-medium">Ta note, après le film</h2>
+        <form method="post" class="mt-2 flex gap-2">
+            <input type="hidden" name="csrf" value="<?= Security::csrfToken() ?>">
+            <input type="hidden" name="action" value="rate">
+            <?php for ($score = 1; $score <= 5; $score++): ?>
+                <button name="score" value="<?= $score ?>"
+                        class="h-11 w-11 rounded-xl text-lg <?= $myScore === $score ? 'bg-amber-400/30 ring-2 ring-amber-300' : 'bg-white/10' ?>">
+                    <?= $score ?>
+                </button>
+            <?php endfor; ?>
+        </form>
 
-    <?php if ($ratings !== []): ?>
-        <ul class="mt-3 space-y-1 text-sm text-slate-300">
-            <?php foreach ($scoresByName as $name => $score): ?>
-                <li><?= Security::e((string) $name) ?> : <?= (int) $score ?> sur 5</li>
-            <?php endforeach; ?>
-        </ul>
+        <?php if ($ratings !== []): ?>
+            <ul class="mt-3 space-y-1 text-sm text-slate-300">
+                <?php foreach ($scoresByName as $name => $score): ?>
+                    <li><?= Security::e((string) $name) ?> : <?= (int) $score ?> sur 5</li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
+    <?php else: ?>
+        <h2 class="text-sm font-medium">La série continue</h2>
+        <p class="mt-1 text-sm text-slate-300">
+            La note sera demandée à la fin de la série, sur l'œuvre entière.
+        </p>
     <?php endif; ?>
 </section>
 

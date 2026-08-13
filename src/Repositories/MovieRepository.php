@@ -330,25 +330,52 @@ final class MovieRepository
      * Modifie le camp et le type de pari d'un film. Aucun contrôle d'accès ici
      * (c'est le rôle de la page), mais refuse une classification incohérente :
      * un pari sur la liste enfant, ou son absence sur la liste adulte.
+     *
+     * Une série n'a jamais de pari, quel que soit son camp : elle ne sort jamais
+     * au tirage (drawCandidates() filtre kind = 'film'), donc l'exigence d'un
+     * pari sur la liste adulte ne doit pas lui être opposée. Même logique que
+     * add()/addSeries(), qui forcent déjà bet_type à null pour une série.
      */
     public function updateClassification(int $id, string $pool, ?string $betType): void
     {
         if (!in_array($pool, self::POOLS, true)) {
             throw new InvalidArgumentException('Pool inconnu : ' . $pool);
         }
+
+        $movie = $this->find($id);
+        $isSeries = $movie !== null && ($movie['kind'] ?? 'film') === 'series';
+
         // Deplacer un film vers la liste enfant retire son pari, sans erreur : le
         // pari ne sert qu'au tirage des parents, et refuser le deplacement pour
         // cette raison n'aurait aucun sens pour la personne qui le demande.
         // C'est le meme comportement que add(), qui force deja bet_type a null.
-        if ($pool === 'kid') {
+        if ($pool === 'kid' || $isSeries) {
             $betType = null;
         }
-        if ($pool === 'adult' && !in_array($betType, self::BET_TYPES, true)) {
+        if ($pool === 'adult' && !$isSeries && !in_array($betType, self::BET_TYPES, true)) {
             throw new InvalidArgumentException('La liste adulte exige un pari (sûr ou découverte).');
         }
 
         $this->db->prepare('UPDATE movies SET pool = ?, bet_type = ? WHERE id = ?')
             ->execute([$pool, $betType, $id]);
+    }
+
+    /**
+     * Série en cours dans ce pool, s'il y en a une. Une série en cours reste en
+     * statut 'pool' (cf. advanceSeries()) et se reconnaît à episodes_watched > 0.
+     * Sert à tonight.php pour la proposer en premier sur les samedis de son camp.
+     */
+    public function seriesInProgress(string $pool): ?array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT * FROM movies
+              WHERE pool = ? AND kind = 'series' AND status = 'pool' AND episodes_watched > 0
+              ORDER BY id
+              LIMIT 1"
+        );
+        $stmt->execute([$pool]);
+
+        return $stmt->fetch() ?: null;
     }
 
     /**

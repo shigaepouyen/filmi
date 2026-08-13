@@ -55,6 +55,11 @@ $statusLabels = [
                         <span class="rounded-full bg-white/10 px-2 py-0.5">
                             choix <?= $seance['chooser_side'] === 'kid' ? 'des filles' : 'des parents' ?>
                         </span>
+                        <?php if (!empty($seance['episodes_label'])): ?>
+                            <span class="rounded-full bg-indigo-500/25 px-2 py-0.5 text-indigo-100">
+                                <?= Security::e($seance['episodes_label']) ?>
+                            </span>
+                        <?php endif; ?>
                         <?php if ((int) $seance['derogation'] === 1): ?>
                             <span class="rounded-full bg-amber-500/25 px-2 py-0.5 text-amber-100">dérogation</span>
                         <?php endif; ?>

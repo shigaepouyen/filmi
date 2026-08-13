@@ -7,7 +7,8 @@ use App\Utils\Security;
 $choosable = $choosable ?? false;
 $subscribedBrands = $subscribedBrands ?? [];
 
-$endTime = FormatUtils::endTime($startTime, $movie['runtime'] === null ? null : (int) $movie['runtime']);
+$isSeries = ($movie['kind'] ?? 'film') === 'series';
+$endTime = $isSeries ? null : FormatUtils::endTime($startTime, $movie['runtime'] === null ? null : (int) $movie['runtime']);
 $providersRaw = json_decode((string) ($movie['providers'] ?? '[]'), true);
 $providersRaw = is_array($providersRaw) ? $providersRaw : [];
 $brands = Providers::brands($providersRaw);
@@ -47,9 +48,14 @@ $truncatedOverview = $overview !== '' && mb_strlen($overview, 'UTF-8') > 160
     <div class="relative min-w-0 flex-1">
         <h3 class="font-medium leading-tight"><?= Security::e($movie['title']) ?></h3>
         <p class="text-xs text-slate-400">
-            <?= $movie['year'] !== null ? (int) $movie['year'] . ' · ' : '' ?>
-            <?= Security::e(FormatUtils::humanRuntime($movie['runtime'] === null ? null : (int) $movie['runtime'])) ?>
-            <?= $endTime !== null ? ' · fin vers ' . Security::e($endTime) : '' ?>
+            <?php if ($isSeries): ?>
+                Série · <?= (int) $movie['episodes_watched'] ?> épisode<?= (int) $movie['episodes_watched'] > 1 ? 's' : '' ?>
+                sur <?= (int) $movie['episode_count'] ?>
+            <?php else: ?>
+                <?= $movie['year'] !== null ? (int) $movie['year'] . ' · ' : '' ?>
+                <?= Security::e(FormatUtils::humanRuntime($movie['runtime'] === null ? null : (int) $movie['runtime'])) ?>
+                <?= $endTime !== null ? ' · fin vers ' . Security::e($endTime) : '' ?>
+            <?php endif; ?>
         </p>
 
         <?php if ($truncatedOverview !== ''): ?>
@@ -103,7 +109,10 @@ $truncatedOverview = $overview !== '' && mb_strlen($overview, 'UTF-8') > 160
             </button>
         </div>
 
-        <?php if ($choosable): ?>
+        <?php /* Une série ne se choisit pas comme un film au tirage : sa soirée
+                  passe par la fiche (progression, réglage des épisodes), pas par
+                  ce raccourci qui n'enregistrerait pas de plage d'épisodes. */ ?>
+        <?php if ($choosable && !$isSeries): ?>
             <form method="post" class="relative z-20 mt-2">
                 <input type="hidden" name="csrf" value="<?= Security::csrfToken() ?>">
                 <input type="hidden" name="action" value="choose">
@@ -112,6 +121,11 @@ $truncatedOverview = $overview !== '' && mb_strlen($overview, 'UTF-8') > 160
                     C'est celui-là ce soir
                 </button>
             </form>
+        <?php elseif ($choosable && $isSeries): ?>
+            <a href="/movie.php?id=<?= (int) $movie['id'] ?>"
+               class="relative z-20 mt-2 block w-full rounded-xl bg-white/10 px-3 py-2 text-center text-sm font-medium">
+                Voir la fiche pour lancer la soirée
+            </a>
         <?php endif; ?>
     </div>
 </article>

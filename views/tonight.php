@@ -43,14 +43,41 @@ $isDone = $seance['status'] === 'done';
             <p class="text-xs italic text-slate-400">« <?= Security::e($seance['derogation_note']) ?> »</p>
         <?php endif; ?>
 
+        <?php if ($seriesInProgress !== null): ?>
+            <div class="mt-4 rounded-2xl bg-indigo-500/15 p-4 ring-1 ring-indigo-400/30">
+                <p class="text-xs uppercase tracking-wide text-indigo-200">Série en cours</p>
+                <div class="mt-2 flex gap-3">
+                    <?php if (!empty($seriesInProgress['poster_url'])): ?>
+                        <img src="<?= Security::e($seriesInProgress['poster_url']) ?>" alt=""
+                             class="h-24 w-16 shrink-0 rounded-xl object-cover bg-slate-800">
+                    <?php endif; ?>
+                    <div class="min-w-0">
+                        <p class="font-medium leading-tight"><?= Security::e($seriesInProgress['title']) ?></p>
+                        <p class="mt-1 text-sm text-indigo-100">
+                            <?= Security::e($seriesEvening['label']) ?>
+                            · <?= Security::e(FormatUtils::humanRuntime($seriesEvening['total_runtime'])) ?>
+                            <?= $seriesEndTime !== null ? ', fin vers ' . Security::e($seriesEndTime) : '' ?>
+                        </p>
+                    </div>
+                </div>
+                <form method="post" class="mt-3">
+                    <input type="hidden" name="csrf" value="<?= Security::csrfToken() ?>">
+                    <input type="hidden" name="action" value="continue_series">
+                    <input type="hidden" name="movie_id" value="<?= (int) $seriesInProgress['id'] ?>">
+                    <button class="rounded-xl bg-violet-500 px-4 py-2.5 font-medium">On continue</button>
+                </form>
+            </div>
+        <?php endif; ?>
+
+        <?php $altButtonClass = $seriesInProgress !== null ? 'rounded-xl bg-white/10 px-4 py-2 text-sm' : 'rounded-xl bg-violet-500 px-4 py-2.5 font-medium'; ?>
         <div class="mt-4 flex flex-wrap gap-2">
             <?php if ($isKidWeek): ?>
-                <a href="/pool.php?pool=kid" class="rounded-xl bg-violet-500 px-4 py-2.5 font-medium">
-                    Choisir dans la liste des filles
+                <a href="/pool.php?pool=kid" class="<?= $altButtonClass ?>">
+                    <?= $seriesInProgress !== null ? 'Choisir autre chose' : 'Choisir dans la liste des filles' ?>
                 </a>
             <?php else: ?>
-                <a href="/draw.php" class="rounded-xl bg-violet-500 px-4 py-2.5 font-medium">
-                    Tirer trois films
+                <a href="/draw.php" class="<?= $altButtonClass ?>">
+                    <?= $seriesInProgress !== null ? 'Choisir autre chose' : 'Tirer trois films' ?>
                 </a>
             <?php endif; ?>
         </div>

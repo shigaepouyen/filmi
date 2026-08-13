@@ -590,4 +590,67 @@ class MovieRepositoryTest extends DbTestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->repo->setEpisodesPerEvening($id, 0);
     }
+
+    public function testUpdateClassificationNeverRequiresABetForASeriesMovingToTheAdultPool(): void
+    {
+        // Ecran mouvant.php : reclasser une serie vers la liste des parents ne
+        // doit jamais etre bloque par l'exigence de pari, une serie n'en ayant
+        // jamais (elle ne sort jamais au tirage).
+        $id = $this->repo->addSeries([
+            'title' => 'Heartstopper',
+            'pool' => 'kid',
+            'added_by' => $this->zoe,
+            'episodes' => [],
+        ]);
+
+        $this->repo->updateClassification($id, 'adult', null);
+
+        $movie = $this->repo->find($id);
+        $this->assertSame('adult', $movie['pool']);
+        $this->assertNull($movie['bet_type']);
+    }
+
+    public function testSeriesInProgressReturnsNullWhenNoSeriesHasStarted(): void
+    {
+        $this->repo->addSeries([
+            'title' => 'Heartstopper',
+            'pool' => 'kid',
+            'added_by' => $this->zoe,
+            'episode_count' => 24,
+            'episodes' => [],
+        ]);
+
+        $this->assertNull($this->repo->seriesInProgress('kid'));
+    }
+
+    public function testSeriesInProgressFindsAStartedSeriesInItsOwnPoolOnly(): void
+    {
+        $id = $this->repo->addSeries([
+            'title' => 'Heartstopper',
+            'pool' => 'kid',
+            'added_by' => $this->zoe,
+            'episode_count' => 24,
+            'episodes' => [],
+        ]);
+        $this->repo->advanceSeries($id, 2);
+
+        $found = $this->repo->seriesInProgress('kid');
+        $this->assertNotNull($found);
+        $this->assertSame($id, (int) $found['id']);
+        $this->assertNull($this->repo->seriesInProgress('adult'));
+    }
+
+    public function testSeriesInProgressIgnoresAFinishedSeries(): void
+    {
+        $id = $this->repo->addSeries([
+            'title' => 'Heartstopper',
+            'pool' => 'kid',
+            'added_by' => $this->zoe,
+            'episode_count' => 24,
+            'episodes' => [],
+        ]);
+        $this->repo->advanceSeries($id, 24);
+
+        $this->assertNull($this->repo->seriesInProgress('kid'));
+    }
 }
