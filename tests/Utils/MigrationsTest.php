@@ -46,6 +46,18 @@ class MigrationsTest extends TestCase
             created_at     DATETIME DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS seances (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            date            DATE NOT NULL UNIQUE,
+            chooser_side    TEXT NOT NULL CHECK (chooser_side IN ('adult','kid')),
+            derogation      INTEGER NOT NULL DEFAULT 0,
+            derogation_note TEXT,
+            status          TEXT NOT NULL DEFAULT 'planned'
+                            CHECK (status IN ('planned','done','skipped')),
+            movie_id        INTEGER REFERENCES movies(id) ON DELETE SET NULL,
+            created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE TABLE IF NOT EXISTS settings (
             key   TEXT PRIMARY KEY,
             value TEXT
@@ -94,9 +106,9 @@ class MigrationsTest extends TestCase
 
         $applied = Migrations::run($db);
 
-        $this->assertSame([2, 3], $applied);
+        $this->assertSame([2, 3, 4], $applied);
         $this->assertContains('trailer_url', $this->columns($db, 'movies'));
-        $this->assertSame(3, Migrations::currentVersion($db));
+        $this->assertSame(4, Migrations::currentVersion($db));
 
         // Preuve d'absence de perte de données : les deux films survivent intacts.
         $rows = $db->query('SELECT title, pool, status, providers, trailer_url FROM movies ORDER BY id')->fetchAll();
@@ -109,6 +121,10 @@ class MigrationsTest extends TestCase
         $this->assertSame('Le Voyage de Chihiro', $rows[1]['title']);
         $this->assertSame('kid', $rows[1]['pool']);
         $this->assertSame('watched', $rows[1]['status']);
+
+        // Preuve supplémentaire : les films existants basculent sur kind = 'film'.
+        $kinds = $db->query('SELECT kind FROM movies ORDER BY id')->fetchAll(PDO::FETCH_COLUMN);
+        $this->assertSame(['film', 'film'], $kinds);
     }
 
     public function testRunTwiceInARowIsANoOpTheSecondTime(): void
@@ -122,19 +138,25 @@ class MigrationsTest extends TestCase
         )->execute();
 
         $first = Migrations::run($db);
-        $this->assertSame([2, 3], $first);
+        $this->assertSame([2, 3, 4], $first);
 
         // Une deuxième exécution ne doit ni lever (ALTER TABLE sur colonne existante
         // lèverait), ni changer quoi que ce soit.
         $second = Migrations::run($db);
         $this->assertSame([], $second, 'La deuxième exécution ne doit rejouer aucune migration');
-        $this->assertSame(3, Migrations::currentVersion($db));
+        $this->assertSame(4, Migrations::currentVersion($db));
 
         $trailerColumns = array_filter(
             $this->columns($db, 'movies'),
             static fn (string $c): bool => $c === 'trailer_url'
         );
         $this->assertCount(1, $trailerColumns, 'La colonne trailer_url ne doit exister qu une seule fois');
+
+        $kindColumns = array_filter(
+            $this->columns($db, 'movies'),
+            static fn (string $c): bool => $c === 'kind'
+        );
+        $this->assertCount(1, $kindColumns, 'La colonne kind ne doit exister qu une seule fois');
     }
 
     public function testRunOnAFreshSchemaThatAlreadyHasTheColumnJustRecordsTheVersion(): void
@@ -147,8 +169,8 @@ class MigrationsTest extends TestCase
 
         $applied = Migrations::run($db);
 
-        $this->assertSame([2, 3], $applied);
-        $this->assertSame(3, Migrations::currentVersion($db));
+        $this->assertSame([2, 3, 4], $applied);
+        $this->assertSame(4, Migrations::currentVersion($db));
     }
 
     public function testMigrationThreeMarksExistingFilmsForProviderRefresh(): void
@@ -174,5 +196,81 @@ class MigrationsTest extends TestCase
             $manuel,
             'Un film saisi a la main n a rien a rafraichir, sa date ne doit pas bouger'
         );
+    }
+
+    public function testMigrationFourAddsTheSeriesColumnsOnMoviesAndSeances(): void
+    {
+        $db = $this->oldStateDatabase();
+
+        Migrations::run($db);
+
+        $movieColumns = $this->columns($db, 'movies');
+        foreach (['kind', 'season_count', 'episode_count', 'episodes_per_evening', 'episodes_watched', 'episodes'] as $column) {
+            $this->assertContains($column, $movieColumns, "colonne movies.{$column} manquante");
+        }
+
+        $seanceColumns = $this->columns($db, 'seances');
+        foreach (['episodes_from', 'episodes_to', 'episodes_label'] as $column) {
+            $this->assertContains($column, $seanceColumns, "colonne seances.{$column} manquante");
+        }
+    }
+
+    public function testMigrationFourDefaultsExistingFilmsToKindFilmAndZeroProgress(): void
+    {
+        $db = $this->oldStateDatabase();
+        $db->prepare(
+            "INSERT INTO profiles (name, slug, side, avatar) VALUES ('JC', 'jc', 'adult', 'detective')"
+        )->execute();
+        $db->exec(
+            "INSERT INTO movies (title, pool, bet_type, added_by) VALUES ('Brazil', 'adult', 'safe', 1)"
+        );
+
+        Migrations::run($db);
+
+        $movie = $db->query('SELECT kind, episodes_per_evening, episodes_watched, episodes FROM movies')->fetch();
+        $this->assertSame('film', $movie['kind']);
+        $this->assertSame(2, (int) $movie['episodes_per_evening']);
+        $this->assertSame(0, (int) $movie['episodes_watched']);
+        $this->assertNull($movie['episodes']);
+    }
+
+    public function testMigrationFourOnAnOldStateWithRealFilmsIsLosslessAndIdempotent(): void
+    {
+        // Reproduit une base de production avant migration 4 : des séances déjà
+        // faites, chacune avec son film. Sert de preuve d'absence de perte de
+        // données au-delà de movies, sur seances également.
+        $db = $this->oldStateDatabase();
+        $db->prepare(
+            "INSERT INTO profiles (name, slug, side, avatar) VALUES ('JC', 'jc', 'adult', 'detective')"
+        )->execute();
+        $db->exec(
+            "INSERT INTO movies (title, pool, bet_type, added_by, status) VALUES ('Brazil', 'adult', 'safe', 1, 'watched')"
+        );
+        $movieId = (int) $db->lastInsertId();
+        $db->exec(
+            "INSERT INTO seances (date, chooser_side, status, movie_id) VALUES ('2026-07-04', 'adult', 'done', {$movieId})"
+        );
+
+        $first = Migrations::run($db);
+        $this->assertSame([2, 3, 4], $first);
+
+        $seance = $db->query('SELECT * FROM seances')->fetch();
+        $this->assertSame('2026-07-04', $seance['date']);
+        $this->assertSame('done', $seance['status']);
+        $this->assertSame($movieId, (int) $seance['movie_id']);
+        $this->assertNull($seance['episodes_from']);
+        $this->assertNull($seance['episodes_to']);
+        $this->assertNull($seance['episodes_label']);
+
+        $movie = $db->query('SELECT title, pool, status, kind FROM movies')->fetch();
+        $this->assertSame('Brazil', $movie['title']);
+        $this->assertSame('adult', $movie['pool']);
+        $this->assertSame('watched', $movie['status']);
+        $this->assertSame('film', $movie['kind']);
+
+        // Rejouer la migration ne change plus rien.
+        $second = Migrations::run($db);
+        $this->assertSame([], $second);
+        $this->assertSame(4, Migrations::currentVersion($db));
     }
 }

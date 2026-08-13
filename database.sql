@@ -23,6 +23,12 @@ CREATE TABLE IF NOT EXISTS movies (
     providers      TEXT,              -- JSON plateformes FR (voir App\Utils\Providers)
     providers_at   DATETIME,          -- date du cache plateformes
     trailer_url    TEXT,              -- URL YouTube complète de la bande-annonce, ou NULL
+    kind                  TEXT NOT NULL DEFAULT 'film' CHECK (kind IN ('film','series')),
+    season_count          INTEGER,    -- nombre de saisons, séries uniquement
+    episode_count          INTEGER,   -- total d'épisodes de la suite continue, séries uniquement
+    episodes_per_evening  INTEGER NOT NULL DEFAULT 2,
+    episodes_watched      INTEGER NOT NULL DEFAULT 0,   -- index dans la suite continue
+    episodes              TEXT,       -- JSON de la suite continue : saison, numéro, durée, titre
     pool           TEXT NOT NULL CHECK (pool IN ('adult','kid')),
     bet_type       TEXT CHECK (bet_type IN ('safe','discovery')),
     memo           TEXT,
@@ -50,6 +56,9 @@ CREATE TABLE IF NOT EXISTS seances (
     status          TEXT NOT NULL DEFAULT 'planned'
                     CHECK (status IN ('planned','done','skipped')),
     movie_id        INTEGER REFERENCES movies(id) ON DELETE SET NULL,
+    episodes_from   INTEGER,           -- bornes dans la suite continue, incluses, séries uniquement
+    episodes_to     INTEGER,
+    episodes_label  TEXT,              -- libellé figé, ex. "S1E3 à S1E4"
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

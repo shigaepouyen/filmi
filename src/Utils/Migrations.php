@@ -48,6 +48,47 @@ final class Migrations
                     $db->exec('UPDATE movies SET providers_at = NULL WHERE tmdb_id IS NOT NULL');
                 },
             ],
+            4 => [
+                'description' => "Ajoute les séries : kind et progression sur movies, plage d'épisodes sur seances",
+                'up' => static function (PDO $db): void {
+                    // Une série en cours reste en statut 'pool' : ALTER TABLE ne peut pas
+                    // modifier la contrainte CHECK sur status, et reconstruire la table sur
+                    // des données réelles serait un risque inutile. episodes_watched > 0
+                    // suffit à distinguer une série en cours d'un film jamais vu.
+                    $movieColumns = array_column(
+                        $db->query('PRAGMA table_info(movies)')->fetchAll(PDO::FETCH_ASSOC),
+                        'name'
+                    );
+                    $movieAlters = [
+                        'kind' => "ALTER TABLE movies ADD COLUMN kind TEXT NOT NULL DEFAULT 'film'",
+                        'season_count' => 'ALTER TABLE movies ADD COLUMN season_count INTEGER',
+                        'episode_count' => 'ALTER TABLE movies ADD COLUMN episode_count INTEGER',
+                        'episodes_per_evening' => 'ALTER TABLE movies ADD COLUMN episodes_per_evening INTEGER NOT NULL DEFAULT 2',
+                        'episodes_watched' => 'ALTER TABLE movies ADD COLUMN episodes_watched INTEGER NOT NULL DEFAULT 0',
+                        'episodes' => 'ALTER TABLE movies ADD COLUMN episodes TEXT',
+                    ];
+                    foreach ($movieAlters as $column => $sql) {
+                        if (!in_array($column, $movieColumns, true)) {
+                            $db->exec($sql);
+                        }
+                    }
+
+                    $seanceColumns = array_column(
+                        $db->query('PRAGMA table_info(seances)')->fetchAll(PDO::FETCH_ASSOC),
+                        'name'
+                    );
+                    $seanceAlters = [
+                        'episodes_from' => 'ALTER TABLE seances ADD COLUMN episodes_from INTEGER',
+                        'episodes_to' => 'ALTER TABLE seances ADD COLUMN episodes_to INTEGER',
+                        'episodes_label' => 'ALTER TABLE seances ADD COLUMN episodes_label TEXT',
+                    ];
+                    foreach ($seanceAlters as $column => $sql) {
+                        if (!in_array($column, $seanceColumns, true)) {
+                            $db->exec($sql);
+                        }
+                    }
+                },
+            ],
         ];
     }
 
