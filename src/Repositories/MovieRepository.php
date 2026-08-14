@@ -327,16 +327,21 @@ final class MovieRepository
     }
 
     /**
-     * Modifie le camp et le type de pari d'un film. Aucun contrôle d'accès ici
-     * (c'est le rôle de la page), mais refuse une classification incohérente :
-     * un pari sur la liste enfant, ou son absence sur la liste adulte.
+     * Modifie le camp, le type de pari et, optionnellement, le proposeur d'un
+     * film. Aucun contrôle d'accès ici (c'est le rôle de la page), mais refuse
+     * une classification incohérente : un pari sur la liste enfant, ou son
+     * absence sur la liste adulte, ou un proposeur qui n'existe pas.
      *
      * Une série n'a jamais de pari, quel que soit son camp : elle ne sort jamais
      * au tirage (drawCandidates() filtre kind = 'film'), donc l'exigence d'un
      * pari sur la liste adulte ne doit pas lui être opposée. Même logique que
      * add()/addSeries(), qui forcent déjà bet_type à null pour une série.
+     *
+     * Le proposeur n'est volontairement pas restreint au camp de la liste : un
+     * parent ajoute légitimement un film pour une de ses filles, et doit pouvoir
+     * le faire apparaître comme proposé par elle plutôt que par lui-même.
      */
-    public function updateClassification(int $id, string $pool, ?string $betType): void
+    public function updateClassification(int $id, string $pool, ?string $betType, ?int $proposerId = null): void
     {
         if (!in_array($pool, self::POOLS, true)) {
             throw new InvalidArgumentException('Pool inconnu : ' . $pool);
@@ -356,8 +361,21 @@ final class MovieRepository
             throw new InvalidArgumentException('La liste adulte exige un pari (sûr ou découverte).');
         }
 
-        $this->db->prepare('UPDATE movies SET pool = ?, bet_type = ? WHERE id = ?')
-            ->execute([$pool, $betType, $id]);
+        if ($proposerId === null) {
+            $this->db->prepare('UPDATE movies SET pool = ?, bet_type = ? WHERE id = ?')
+                ->execute([$pool, $betType, $id]);
+
+            return;
+        }
+
+        $stmt = $this->db->prepare('SELECT 1 FROM profiles WHERE id = ?');
+        $stmt->execute([$proposerId]);
+        if ($stmt->fetchColumn() === false) {
+            throw new InvalidArgumentException('Profil inconnu : ' . $proposerId);
+        }
+
+        $this->db->prepare('UPDATE movies SET pool = ?, bet_type = ?, added_by = ? WHERE id = ?')
+            ->execute([$pool, $betType, $proposerId, $id]);
     }
 
     /**

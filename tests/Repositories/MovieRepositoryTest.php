@@ -445,6 +445,34 @@ class MovieRepositoryTest extends DbTestCase
         $this->assertNull($this->repo->find($id)['bet_type']);
     }
 
+    public function testUpdateClassificationCanChangeTheProposer(): void
+    {
+        // Cas réel : JC ajoute un film pour Zoé, il doit pouvoir apparaître
+        // proposé par elle plutôt que par lui-même.
+        $id = $this->addAdult('Brazil', 'discovery');
+
+        $this->repo->updateClassification($id, 'adult', 'discovery', $this->zoe);
+
+        $this->assertSame($this->zoe, (int) $this->repo->find($id)['added_by']);
+    }
+
+    public function testUpdateClassificationWithoutAProposerLeavesItUntouched(): void
+    {
+        $id = $this->addAdult('Brazil', 'discovery');
+
+        $this->repo->updateClassification($id, 'adult', 'safe');
+
+        $this->assertSame($this->jc, (int) $this->repo->find($id)['added_by']);
+    }
+
+    public function testUpdateClassificationRejectsAnUnknownProposer(): void
+    {
+        $id = $this->addAdult('Brazil', 'discovery');
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->repo->updateClassification($id, 'adult', 'discovery', 999);
+    }
+
     public function testProviderBrandsReturnsDistinctBrandsAcrossAllMovies(): void
     {
         $this->addAdult('Brazil', 'discovery', ['providers' => '["Netflix","Netflix Standard with Ads"]']);

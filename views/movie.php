@@ -218,7 +218,8 @@ $betLabels = ['safe' => 'valeur sûre', 'discovery' => 'découverte'];
     <?php if ($canManage): ?>
         <section class="mt-8 space-y-4 rounded-2xl bg-white/5 p-4">
             <h2 class="text-sm font-medium text-slate-300">Modifier la classification</h2>
-            <form method="post" class="space-y-2" x-data="{ pool: <?= Security::e(json_encode($movie['pool'], JSON_UNESCAPED_UNICODE)) ?> }">
+            <form method="post" class="space-y-2"
+                  x-data="{ pool: <?= Security::e(json_encode($movie['pool'], JSON_UNESCAPED_UNICODE)) ?>, addedBy: <?= (int) $movie['added_by'] ?> }">
                 <input type="hidden" name="csrf" value="<?= Security::csrfToken() ?>">
                 <input type="hidden" name="id" value="<?= (int) $movie['id'] ?>">
                 <input type="hidden" name="action" value="reclassify">
@@ -237,6 +238,22 @@ $betLabels = ['safe' => 'valeur sûre', 'discovery' => 'découverte'];
                         Seuls les parents peuvent deplacer un film vers leur liste.
                     </p>
                 <?php endif; ?>
+
+                <div>
+                    <p class="mb-1.5 text-xs text-slate-400">Proposé par</p>
+                    <div class="flex flex-wrap gap-2">
+                        <?php foreach ($allProfiles as $candidate): ?>
+                            <label class="flex cursor-pointer items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-sm ring-1 ring-white/10"
+                                   :class="addedBy === <?= (int) $candidate['id'] ?> ? 'bg-white/15' : 'bg-white/5'">
+                                <input type="radio" name="added_by" value="<?= (int) $candidate['id'] ?>"
+                                       x-model.number="addedBy" class="sr-only">
+                                <?= Avatars::render($candidate['avatar'], $candidate['color'], 20) ?>
+                                <?= Security::e($candidate['name']) ?>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
                 <?php /* Une série n'a jamais de pari : elle ne sort jamais au tirage. */ ?>
                 <?php if (!$isSeries): ?>
                     <div x-show="pool === 'adult'" class="flex gap-2">

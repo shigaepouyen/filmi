@@ -107,6 +107,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $betType = in_array($_POST['bet_type'] ?? '', ['safe', 'discovery'], true)
             ? $_POST['bet_type']
             : null;
+        // N'importe lequel des quatre profils peut être proposeur, quelle que
+        // soit la liste : un parent ajoute légitimement un film pour une de ses
+        // filles. updateClassification() vérifie que le profil existe vraiment.
+        $proposerId = isset($_POST['added_by']) && $_POST['added_by'] !== ''
+            ? (int) $_POST['added_by']
+            : null;
 
         // Deplacer un film vers une liste interdite serait un contournement de la
         // regle : une fille ne doit pas pouvoir pousser un film chez les parents.
@@ -116,7 +122,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         }
 
         try {
-            $app->movies->updateClassification($id, $pool, $betType);
+            $app->movies->updateClassification($id, $pool, $betType, $proposerId);
             header('Location: /movie.php?id=' . $id);
             exit;
         } catch (InvalidArgumentException $e) {
@@ -159,6 +165,7 @@ $app->render('movie', [
     'subscribedBrands' => $app->settings->subscribedBrands(),
     'canManage' => Access::canManagePool((string) $profile['side'], (string) $movie['pool']),
     'manageablePools' => Access::manageablePools((string) $profile['side']),
+    'allProfiles' => $app->profiles->all(),
     'seriesEvening' => $seriesEvening,
     'canRecordTonight' => $canRecordTonight,
     'error' => $error,
