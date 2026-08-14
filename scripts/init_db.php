@@ -17,7 +17,7 @@ $profiles = [
     ['JC', 'jc', 'adult', 'detective', 'slate'],
     ['Élodie', 'elodie', 'adult', 'aviatrice', 'rose'],
     ['Zoé', 'zoe', 'kid', 'idole', 'violet'],
-    ['Soline', 'soline', 'kid', 'dinosaure', 'emerald'],
+    ['Soline', 'soline', 'kid', 'dragon', 'emerald'],
 ];
 
 $insert = $db->prepare(

@@ -106,9 +106,9 @@ class MigrationsTest extends TestCase
 
         $applied = Migrations::run($db);
 
-        $this->assertSame([2, 3, 4, 5], $applied);
+        $this->assertSame([2, 3, 4, 5, 6], $applied);
         $this->assertContains('trailer_url', $this->columns($db, 'movies'));
-        $this->assertSame(5, Migrations::currentVersion($db));
+        $this->assertSame(6, Migrations::currentVersion($db));
 
         // Preuve d'absence de perte de données : les deux films survivent intacts.
         $rows = $db->query('SELECT title, pool, status, providers, trailer_url FROM movies ORDER BY id')->fetchAll();
@@ -138,13 +138,13 @@ class MigrationsTest extends TestCase
         )->execute();
 
         $first = Migrations::run($db);
-        $this->assertSame([2, 3, 4, 5], $first);
+        $this->assertSame([2, 3, 4, 5, 6], $first);
 
         // Une deuxième exécution ne doit ni lever (ALTER TABLE sur colonne existante
         // lèverait), ni changer quoi que ce soit.
         $second = Migrations::run($db);
         $this->assertSame([], $second, 'La deuxième exécution ne doit rejouer aucune migration');
-        $this->assertSame(5, Migrations::currentVersion($db));
+        $this->assertSame(6, Migrations::currentVersion($db));
 
         $trailerColumns = array_filter(
             $this->columns($db, 'movies'),
@@ -169,8 +169,8 @@ class MigrationsTest extends TestCase
 
         $applied = Migrations::run($db);
 
-        $this->assertSame([2, 3, 4, 5], $applied);
-        $this->assertSame(5, Migrations::currentVersion($db));
+        $this->assertSame([2, 3, 4, 5, 6], $applied);
+        $this->assertSame(6, Migrations::currentVersion($db));
     }
 
     public function testMigrationThreeMarksExistingFilmsForProviderRefresh(): void
@@ -250,7 +250,7 @@ class MigrationsTest extends TestCase
 
         $applied = Migrations::run($db);
 
-        $this->assertSame([2, 3, 4, 5], $applied);
+        $this->assertSame([2, 3, 4, 5, 6], $applied);
         $this->assertContains('backfilled', $this->columns($db, 'seances'));
 
         // Preuve d'absence de perte : la vraie séance de production reste à 0,
@@ -266,11 +266,11 @@ class MigrationsTest extends TestCase
         $db = $this->oldStateDatabase();
 
         $first = Migrations::run($db);
-        $this->assertSame([2, 3, 4, 5], $first);
+        $this->assertSame([2, 3, 4, 5, 6], $first);
 
         $second = Migrations::run($db);
         $this->assertSame([], $second, 'La deuxième exécution ne doit rejouer aucune migration');
-        $this->assertSame(5, Migrations::currentVersion($db));
+        $this->assertSame(6, Migrations::currentVersion($db));
 
         $backfilledColumns = array_filter(
             $this->columns($db, 'seances'),
@@ -297,7 +297,7 @@ class MigrationsTest extends TestCase
         );
 
         $first = Migrations::run($db);
-        $this->assertSame([2, 3, 4, 5], $first);
+        $this->assertSame([2, 3, 4, 5, 6], $first);
 
         $seance = $db->query('SELECT * FROM seances')->fetch();
         $this->assertSame('2026-07-04', $seance['date']);
@@ -317,6 +317,86 @@ class MigrationsTest extends TestCase
         // Rejouer la migration ne change plus rien.
         $second = Migrations::run($db);
         $this->assertSame([], $second);
-        $this->assertSame(5, Migrations::currentVersion($db));
+        $this->assertSame(6, Migrations::currentVersion($db));
+    }
+
+    public function testMigrationSixRemapsTheFourRealProductionProfiles(): void
+    {
+        // Les quatre profils reels de production, avec leurs anciennes cles
+        // d'avatar. creature (JC) et dinosaure (Soline) disparaissent du
+        // nouveau roster ; aviatrice (Elodie) et idole (Zoe) survivent
+        // telles quelles et ne doivent pas bouger.
+        $db = $this->oldStateDatabase();
+        $db->exec(
+            "INSERT INTO profiles (name, slug, side, avatar, color) VALUES
+             ('JC', 'jc', 'adult', 'creature', 'slate'),
+             ('Élodie', 'elodie', 'adult', 'aviatrice', 'rose'),
+             ('Zoé', 'zoe', 'kid', 'idole', 'violet'),
+             ('Soline', 'soline', 'kid', 'dinosaure', 'emerald')"
+        );
+
+        Migrations::run($db);
+
+        $avatars = $db->query('SELECT slug, avatar FROM profiles ORDER BY slug')->fetchAll(PDO::FETCH_KEY_PAIR);
+
+        $this->assertSame('yeti', $avatars['jc'], "creature (JC) doit devenir yeti");
+        $this->assertSame('dragon', $avatars['soline'], "dinosaure (Soline) doit devenir dragon");
+        $this->assertSame('aviatrice', $avatars['elodie'], "aviatrice (Élodie) ne doit pas bouger");
+        $this->assertSame('idole', $avatars['zoe'], "idole (Zoé) ne doit pas bouger");
+    }
+
+    public function testMigrationSixRemapsEveryRemovedAvatarKey(): void
+    {
+        $map = [
+            'creature' => 'yeti',
+            'dinosaure' => 'dragon',
+            'aventuriere' => 'cowboy',
+            'sorcier' => 'sorciere',
+            'gardien' => 'chevalier',
+            'traqueur' => 'fantome',
+            'haechi' => 'dragon',
+            'erudit' => 'dokkaebi',
+            'tigre' => 'gumiho',
+            'zombie' => 'momie',
+            'danseur' => 'idole',
+            'fan' => 'idole',
+            'trainee' => 'idole',
+        ];
+
+        $db = $this->oldStateDatabase();
+        $insert = $db->prepare(
+            'INSERT INTO profiles (name, slug, side, avatar) VALUES (?, ?, ?, ?)'
+        );
+        $i = 0;
+        foreach (array_keys($map) as $oldKey) {
+            $insert->execute(["p{$i}", "p{$i}", 'kid', $oldKey]);
+            $i++;
+        }
+
+        Migrations::run($db);
+
+        $rows = $db->query('SELECT slug, avatar FROM profiles ORDER BY slug')->fetchAll(PDO::FETCH_KEY_PAIR);
+        $i = 0;
+        foreach ($map as $oldKey => $newKey) {
+            $this->assertSame($newKey, $rows["p{$i}"], "{$oldKey} doit devenir {$newKey}");
+            $this->assertTrue(\App\Utils\Avatars::exists($rows["p{$i}"]), "{$newKey} doit exister dans le nouveau roster");
+            $i++;
+        }
+    }
+
+    public function testMigrationSixIsIdempotent(): void
+    {
+        $db = $this->oldStateDatabase();
+        $db->exec(
+            "INSERT INTO profiles (name, slug, side, avatar) VALUES ('JC', 'jc', 'adult', 'creature')"
+        );
+
+        $first = Migrations::run($db);
+        $this->assertSame([2, 3, 4, 5, 6], $first);
+        $this->assertSame('yeti', $db->query("SELECT avatar FROM profiles WHERE slug = 'jc'")->fetchColumn());
+
+        $second = Migrations::run($db);
+        $this->assertSame([], $second, 'La deuxième exécution ne doit rejouer aucune migration');
+        $this->assertSame('yeti', $db->query("SELECT avatar FROM profiles WHERE slug = 'jc'")->fetchColumn());
     }
 }

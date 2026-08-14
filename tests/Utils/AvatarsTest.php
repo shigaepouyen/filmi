@@ -25,10 +25,12 @@ class AvatarsTest extends TestCase
 
     public function testExpectedKeysArePresent(): void
     {
-        foreach (['alien', 'dinosaure', 'aviatrice', 'detective', 'gumiho', 'dokkaebi', 'idole', 'fan'] as $key) {
+        foreach (['alien', 'dragon', 'aviatrice', 'detective', 'gumiho', 'dokkaebi', 'idole', 'yeti'] as $key) {
             $this->assertTrue(Avatars::exists($key), "Clé manquante : {$key}");
         }
         $this->assertFalse(Avatars::exists('mickey'));
+        $this->assertFalse(Avatars::exists('dinosaure'), "dinosaure a été retiré du roster");
+        $this->assertFalse(Avatars::exists('creature'), "creature a été retiré du roster");
     }
 
     public function testByFamilyCoversAllAvatars(): void
@@ -44,7 +46,7 @@ class AvatarsTest extends TestCase
         $svg = Avatars::render('alien', 'violet', 64);
 
         $this->assertStringStartsWith('<svg', $svg);
-        $this->assertStringContainsString('viewBox="0 0 96 96"', $svg);
+        $this->assertStringContainsString('viewBox="0 0 16 16"', $svg);
         $this->assertStringContainsString('width="64"', $svg);
         $this->assertStringNotContainsString('<image', $svg);
         $this->assertStringNotContainsString('xlink:href', $svg);
@@ -73,5 +75,23 @@ class AvatarsTest extends TestCase
     public function testUnknownKeyFallsBackWithoutError(): void
     {
         $this->assertSame(Avatars::render(Avatars::FALLBACK), Avatars::render('inconnu'));
+    }
+
+    public function testEverySpriteStaysUnderTheRectBudget(): void
+    {
+        foreach (array_keys(Avatars::all()) as $key) {
+            $svg = Avatars::render($key);
+            $rects = substr_count($svg, '<rect');
+            $this->assertLessThanOrEqual(55, $rects, "{$key} dépasse le budget de rects (16x16 inlinés x24)");
+        }
+    }
+
+    public function testEverySpriteUsesTheThemeAccentSomewhere(): void
+    {
+        foreach (array_keys(Avatars::all()) as $key) {
+            $svgViolet = Avatars::render($key, 'violet');
+            $svgSky = Avatars::render($key, 'sky');
+            $this->assertNotSame($svgViolet, $svgSky, "{$key} ne semble pas utiliser la couleur de theme");
+        }
     }
 }

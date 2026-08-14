@@ -192,7 +192,7 @@ class AwardsServiceTest extends TestCase
             ['id' => 1, 'name' => 'JC', 'avatar' => 'detective', 'color' => 'slate', 'side' => 'adult'],
             ['id' => 2, 'name' => 'Élodie', 'avatar' => 'aviatrice', 'color' => 'rose', 'side' => 'adult'],
             ['id' => 3, 'name' => 'Zoé', 'avatar' => 'idole', 'color' => 'violet', 'side' => 'kid'],
-            ['id' => 4, 'name' => 'Soline', 'avatar' => 'dinosaure', 'color' => 'emerald', 'side' => 'kid'],
+            ['id' => 4, 'name' => 'Soline', 'avatar' => 'dragon', 'color' => 'emerald', 'side' => 'kid'],
         ];
     }
 

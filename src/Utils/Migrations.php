@@ -106,6 +106,41 @@ final class Migrations
                     }
                 },
             ],
+            6 => [
+                'description' => "Migre les anciennes cles d'avatar vers le nouveau roster pixel art",
+                'up' => static function (PDO $db): void {
+                    // Le roster d'avatars est entierement redessine en pixel art. Onze
+                    // cles survivent telles quelles (alien, robot, astronaute,
+                    // scaphandrier, aviatrice, vampire, detective, cowboy, gumiho,
+                    // dokkaebi, idole) : rien a faire pour elles. Les treize autres
+                    // disparaissent et sont reaffectees vers leur equivalent le plus
+                    // proche du nouveau roster, pour qu'aucun profil ne retombe sur
+                    // l'avatar par defaut en silence. C'est le cas des quatre profils
+                    // reels de production : creature (JC) -> yeti, dinosaure (Soline)
+                    // -> dragon ; aviatrice (Elodie) et idole (Zoe) n'ont pas besoin
+                    // de mapping puisqu'elles survivent.
+                    $map = [
+                        'creature' => 'yeti',
+                        'dinosaure' => 'dragon',
+                        'aventuriere' => 'cowboy',
+                        'sorcier' => 'sorciere',
+                        'gardien' => 'chevalier',
+                        'traqueur' => 'fantome',
+                        'haechi' => 'dragon',
+                        'erudit' => 'dokkaebi',
+                        'tigre' => 'gumiho',
+                        'zombie' => 'momie',
+                        'danseur' => 'idole',
+                        'fan' => 'idole',
+                        'trainee' => 'idole',
+                    ];
+
+                    $stmt = $db->prepare('UPDATE profiles SET avatar = ? WHERE avatar = ?');
+                    foreach ($map as $old => $new) {
+                        $stmt->execute([$new, $old]);
+                    }
+                },
+            ],
         ];
     }
 
