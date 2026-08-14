@@ -417,6 +417,72 @@ class SeanceRepositoryTest extends DbTestCase
         $this->assertSame('JC', $history[0]['proposer_name']);
     }
 
+    public function testHistoryExposesRuntimeKindEpisodesAndProposerForThePalmares(): void
+    {
+        $movieId = $this->movie('Brazil');
+        $this->db->prepare('UPDATE movies SET runtime = 132 WHERE id = ?')->execute([$movieId]);
+        $seance = $this->repo->ensure('2026-08-15', 'adult');
+        $this->repo->recordChoice($seance['id'], [], $movieId);
+
+        $row = $this->repo->history()[0];
+
+        $this->assertSame(132, (int) $row['movie_runtime']);
+        $this->assertSame('film', $row['movie_kind']);
+        $this->assertSame($this->jc, (int) $row['proposer_id']);
+        $this->assertSame('detective', $row['proposer_avatar']);
+        $this->assertSame('slate', $row['proposer_color']);
+    }
+
+    public function testHistoryExposesTheSeriesEpisodesJsonForWatchTimeComputation(): void
+    {
+        $seriesId = $this->series('Heartstopper', 4);
+        $episodes = [
+            ['number' => 1, 'season' => 1, 'episode_in_season' => 1, 'title' => 'E1', 'runtime' => 25],
+            ['number' => 2, 'season' => 1, 'episode_in_season' => 2, 'title' => 'E2', 'runtime' => 28],
+        ];
+        $this->db->prepare('UPDATE movies SET episodes = ? WHERE id = ?')
+            ->execute([json_encode($episodes), $seriesId]);
+        $seance = $this->repo->ensure('2026-08-15', 'kid');
+        $this->repo->recordSeriesEvening($seance['id'], $seriesId, [
+            'from' => 1, 'to' => 2, 'label' => 'S1E1 à S1E2', 'finishes' => false,
+        ]);
+
+        $row = $this->repo->history()[0];
+
+        $this->assertSame('series', $row['movie_kind']);
+        $decoded = json_decode((string) $row['movie_episodes'], true);
+        $this->assertCount(2, $decoded);
+        $this->assertSame(1, (int) $row['episodes_from']);
+        $this->assertSame(2, (int) $row['episodes_to']);
+    }
+
+    public function testVetoCountsExposeTheProfileIdForThePalmares(): void
+    {
+        $seance = $this->repo->ensure('2026-08-15', 'kid');
+        $this->repo->recordVeto($seance['id'], $this->movie('A'), $this->jc, null);
+
+        $counts = $this->repo->vetoCounts();
+
+        $this->assertSame($this->jc, (int) $counts[0]['profile_id']);
+    }
+
+    public function testRatingsHistoryListsEachIndividualScoreWithTheRatersProfile(): void
+    {
+        $movieId = $this->movie('Brazil');
+        $seance = $this->repo->ensure('2026-08-15', 'adult');
+        $this->repo->recordChoice($seance['id'], [], $movieId);
+        $this->repo->rate($seance['id'], $this->zoe, 5);
+        $this->repo->rate($seance['id'], $this->jc, 3);
+
+        $rows = $this->repo->ratingsHistory();
+
+        $this->assertCount(2, $rows);
+        $byName = array_column($rows, 'score', 'name');
+        $this->assertSame(5, (int) $byName['Zoé']);
+        $this->assertSame(3, (int) $byName['JC']);
+        $this->assertSame('2026-08-15', $rows[0]['date']);
+    }
+
     public function testHistoryDefaultLimitCoversSeveralYearsOfWeeklySeances(): void
     {
         $insert = $this->db->prepare(

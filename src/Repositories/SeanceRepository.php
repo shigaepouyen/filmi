@@ -248,11 +248,28 @@ final class SeanceRepository
     public function vetoCounts(): array
     {
         return $this->db->query(
-            "SELECT p.name, COUNT(*) AS total
+            "SELECT p.id AS profile_id, p.name, COUNT(*) AS total
                FROM seance_picks sp JOIN profiles p ON p.id = sp.by_profile_id
               WHERE sp.role = 'vetoed'
               GROUP BY p.id
               ORDER BY total DESC, p.name"
+        )->fetchAll();
+    }
+
+    /**
+     * Chaque note individuelle donnée, avec la date de la séance et le profil
+     * qui note. Sert au palmarès pour distinguer qui note généreusement de qui
+     * est plus sévère : history() ne renvoie qu'une moyenne par séance, jamais
+     * le détail par personne.
+     */
+    public function ratingsHistory(): array
+    {
+        return $this->db->query(
+            'SELECT s.date, r.profile_id, p.name, p.avatar, p.color, r.score
+               FROM ratings r
+               JOIN seances s ON s.id = r.seance_id
+               JOIN profiles p ON p.id = r.profile_id
+              ORDER BY s.date DESC'
         )->fetchAll();
     }
 
@@ -312,7 +329,13 @@ final class SeanceRepository
                     m.title AS movie_title,
                     m.poster_url AS movie_poster,
                     m.year AS movie_year,
+                    m.runtime AS movie_runtime,
+                    m.kind AS movie_kind,
+                    m.episodes AS movie_episodes,
+                    m.added_by AS proposer_id,
                     p.name AS proposer_name,
+                    p.avatar AS proposer_avatar,
+                    p.color AS proposer_color,
                     (SELECT ROUND(AVG(r.score), 2) FROM ratings r WHERE r.seance_id = s.id) AS avg_score,
                     (SELECT COUNT(*) FROM seance_picks sp
                       WHERE sp.seance_id = s.id AND sp.role = \'vetoed\') AS veto_count

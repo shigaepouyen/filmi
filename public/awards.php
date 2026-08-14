@@ -20,7 +20,13 @@ rsort($years);
 $requested = (string) ($_GET['year'] ?? (string) (int) date('Y'));
 ['year' => $year, 'selected' => $selected] = AwardsService::resolveSelection($years, $requested);
 
-$awards = AwardsService::compute($history, $app->seances->vetoCounts(), $year);
+$awards = AwardsService::compute(
+    $history,
+    $app->seances->vetoCounts(),
+    $year,
+    $app->seances->ratingsHistory(),
+    $app->profiles->all()
+);
 
 $data = ['awards' => $awards, 'years' => $years, 'selected' => $selected];
 
