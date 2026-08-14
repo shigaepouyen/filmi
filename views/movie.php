@@ -193,6 +193,28 @@ $betLabels = ['safe' => 'valeur sûre', 'discovery' => 'découverte'];
         </section>
     <?php endif; ?>
 
+    <?php if ($canManage && $movie['status'] === 'pool'): ?>
+        <section class="mt-8 rounded-2xl bg-white/5 p-4">
+            <h2 class="text-sm font-medium text-slate-300">Rattraper l'historique</h2>
+            <p class="mt-1 text-xs text-slate-400">
+                Déjà vu avant l'installation de l'app ? Déclare-le déjà vu à une date passée,
+                sans passer par un tirage : il quitte la liste et rejoint l'historique.
+            </p>
+            <form method="post" class="mt-2 flex flex-wrap items-center gap-2">
+                <input type="hidden" name="csrf" value="<?= Security::csrfToken() ?>">
+                <input type="hidden" name="id" value="<?= (int) $movie['id'] ?>">
+                <input type="hidden" name="action" value="backfill">
+                <label class="text-xs text-slate-400" for="backfill_date">Déjà vu le</label>
+                <input id="backfill_date" name="backfill_date" type="date" required
+                       max="<?= Security::e(date('Y-m-d')) ?>"
+                       class="rounded-xl bg-white/10 px-2 py-1 text-sm">
+                <button class="rounded-xl bg-emerald-500/80 px-3 py-1.5 text-sm font-medium">
+                    Marquer comme vu
+                </button>
+            </form>
+        </section>
+    <?php endif; ?>
+
     <?php if ($canManage): ?>
         <section class="mt-8 space-y-4 rounded-2xl bg-white/5 p-4">
             <h2 class="text-sm font-medium text-slate-300">Modifier la classification</h2>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/vendor/autoload.php';
 
 use App\App;
+use App\Repositories\BackfillException;
 use App\Services\ScheduleService;
 use App\Services\SeriesService;
 use App\Utils\Access;
@@ -76,6 +77,17 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $app->seances->recordSeriesEvening((int) $seance['id'], $id, $evening);
         header('Location: /seance.php');
         exit;
+    }
+
+    if ($action === 'backfill') {
+        $date = (string) ($_POST['backfill_date'] ?? '');
+        try {
+            $app->seances->recordBackfill($id, $date);
+            header('Location: /movie.php?id=' . $id);
+            exit;
+        } catch (BackfillException $e) {
+            $error = $e->getMessage();
+        }
     }
 
     if ($action === 'archive') {

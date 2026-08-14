@@ -4,6 +4,7 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/vendor/autoload.php';
 
 use App\App;
+use App\Repositories\BackfillException;
 use App\Services\TmdbException;
 use App\Utils\Access;
 use App\Utils\Security;
@@ -31,6 +32,9 @@ $old = [
     'episodes_per_evening' => $isPost && ctype_digit((string) ($_POST['episodes_per_evening'] ?? '')) && (int) $_POST['episodes_per_evening'] >= 1
         ? (string) $_POST['episodes_per_evening']
         : '2',
+    // Rattrapage : ajouter puis déclarer immédiatement déjà vu à une date passée.
+    'backfill' => $isPost && ($_POST['backfill'] ?? '') === '1',
+    'backfill_date' => $isPost ? (string) ($_POST['backfill_date'] ?? '') : '',
 ];
 
 if ($isPost) {
@@ -60,6 +64,22 @@ if ($isPost) {
         $error = "Choisis valeur sûre ou découverte, c'est ce qui permet le tirage des trois films.";
     }
 
+    // Le film ou la série existe déjà en base à ce stade : si le rattrapage
+    // échoue (date déjà prise, par exemple), l'œuvre reste dans sa liste au lieu
+    // d'être perdue, et l'erreur s'affiche au lieu d'une redirection silencieuse.
+    $backfillError = null;
+    $applyBackfill = function (int $movieId) use ($app, $old, &$backfillError): void {
+        if (!$old['backfill']) {
+            return;
+        }
+        try {
+            $app->seances->recordBackfill($movieId, $old['backfill_date']);
+        } catch (BackfillException $e) {
+            $backfillError = $e->getMessage() . ' Le titre a bien été ajouté à la liste, '
+                . 'tu peux retenter le rattrapage depuis sa fiche.';
+        }
+    };
+
     if ($error === null && $kind === 'series') {
         if ($tmdbId === null) {
             $error = "Choisis une série dans les résultats de recherche, une série a besoin de sa liste d'épisodes.";
@@ -79,9 +99,13 @@ if ($isPost) {
 
         if ($error === null) {
             try {
-                $app->movies->addSeries($data);
-                header('Location: /pool.php?pool=' . $pool);
-                exit;
+                $movieId = $app->movies->addSeries($data);
+                $applyBackfill($movieId);
+                if ($backfillError === null) {
+                    header('Location: /pool.php?pool=' . $pool);
+                    exit;
+                }
+                $error = $backfillError;
             } catch (InvalidArgumentException $e) {
                 $error = $e->getMessage();
             }
@@ -104,9 +128,13 @@ if ($isPost) {
 
         if ($error === null) {
             try {
-                $app->movies->add($data);
-                header('Location: /pool.php?pool=' . $pool);
-                exit;
+                $movieId = $app->movies->add($data);
+                $applyBackfill($movieId);
+                if ($backfillError === null) {
+                    header('Location: /pool.php?pool=' . $pool);
+                    exit;
+                }
+                $error = $backfillError;
             } catch (InvalidArgumentException $e) {
                 $error = $e->getMessage();
             }

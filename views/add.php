@@ -22,6 +22,7 @@ use App\Utils\Security;
         year: <?= Security::e(json_encode($old['year'], JSON_UNESCAPED_UNICODE)) ?>,
         runtime: <?= Security::e(json_encode($old['runtime'], JSON_UNESCAPED_UNICODE)) ?>,
         episodesPerEvening: <?= Security::e(json_encode($old['episodes_per_evening'], JSON_UNESCAPED_UNICODE)) ?>,
+        backfill: <?= $old['backfill'] ? 'true' : 'false' ?>,
         reset() { this.selected = null; this.duplicate = null; this.query = ''; this.results = []; },
         setKind(value) { this.kind = value; this.manual = value === 'series' ? false : <?= $tmdbConfigured ? 'false' : 'true' ?>; this.reset(); },
         async search() {
@@ -187,6 +188,20 @@ use App\Utils\Security;
             </label>
         </div>
         <p class="text-xs text-slate-400">Le tirage sort une valeur sûre et deux découvertes.</p>
+    </section>
+
+    <section class="space-y-2">
+        <label class="flex items-center gap-2 text-sm font-medium">
+            <input type="checkbox" name="backfill" value="1" x-model="backfill" class="h-4 w-4">
+            Déjà vu le
+        </label>
+        <input x-show="backfill" type="date" name="backfill_date"
+               max="<?= Security::e(date('Y-m-d')) ?>"
+               value="<?= Security::e($old['backfill_date']) ?>"
+               class="w-48 rounded-xl bg-white/10 px-3 py-2">
+        <p x-show="backfill" class="text-xs text-slate-400">
+            L'œuvre part directement en vu à cette date, sans passer par un tirage.
+        </p>
     </section>
 
     <section class="space-y-2">
