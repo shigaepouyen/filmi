@@ -645,4 +645,139 @@ class SeanceRepositoryTest extends DbTestCase
         $this->assertGreaterThanOrEqual(0, (int) $movie['episodes_watched']);
         $this->assertSame('pool', $movie['status']);
     }
+
+    public function testRecordBackfillCreatesADoneSeanceWithThePoolAsChooserSideAndMarksTheMovieWatched(): void
+    {
+        $movieId = $this->movie('Brazil');
+
+        $seance = $this->repo->recordBackfill($movieId, '2026-08-01');
+
+        $this->assertSame('2026-08-01', $seance['date']);
+        $this->assertSame('done', $seance['status']);
+        $this->assertSame('adult', $seance['chooser_side'], 'Le camp vient du pool du film, pas d une saisie');
+        $this->assertSame(1, (int) $seance['backfilled']);
+        $this->assertSame($movieId, (int) $seance['movie_id']);
+
+        $this->assertSame('watched', $this->movies->find($movieId)['status']);
+        $this->assertSame(
+            [],
+            array_column($this->movies->drawCandidates(), 'id'),
+            'Le film rattrapé doit quitter le tirage'
+        );
+    }
+
+    public function testRecordBackfillOnASeriesMarksAllEpisodesWatchedWithTheEpisodeCountLabel(): void
+    {
+        $seriesId = $this->series('Heartstopper', 24);
+
+        $seance = $this->repo->recordBackfill($seriesId, '2026-08-01');
+
+        $this->assertSame(1, (int) $seance['episodes_from']);
+        $this->assertSame(24, (int) $seance['episodes_to']);
+        $this->assertSame('24 épisodes', $seance['episodes_label']);
+
+        $movie = $this->movies->find($seriesId);
+        $this->assertSame(24, (int) $movie['episodes_watched']);
+        $this->assertSame('watched', $movie['status']);
+    }
+
+    public function testRecordBackfillConsumesNoCooldownSlot(): void
+    {
+        $movieId = $this->movie('Brazil');
+        $before = $this->repo->cooldownMovieIds();
+
+        $this->repo->recordBackfill($movieId, '2026-08-01');
+
+        $this->assertSame($before, $this->repo->cooldownMovieIds());
+        $this->assertSame([], $this->repo->cooldownMovieIds());
+    }
+
+    /**
+     * La vérification la plus importante du rattrapage : ScheduleService::defaultChooserSide()
+     * parcourt recentForSchedule() par date décroissante pour déduire le camp du samedi à
+     * venir. Un rattrapage daté après la dernière vraie séance ne doit jamais s'y glisser.
+     */
+    public function testRecordBackfillDatedAfterTheLastRealSeanceDoesNotFlipTheComingSaturdaysSide(): void
+    {
+        $movieId = $this->movie('Brazil');
+        $realSeance = $this->repo->ensure('2026-07-04', 'adult');
+        $this->repo->recordChoice($realSeance['id'], [], $movieId);
+
+        $before = \App\Services\ScheduleService::defaultChooserSide($this->repo->recentForSchedule());
+        $this->assertSame('kid', $before, 'Après une vraie séance adulte, le tour revient aux filles');
+
+        $laterMovieId = $this->movie('Un film rattrapé');
+        $this->repo->recordBackfill($laterMovieId, '2026-08-08');
+
+        $after = \App\Services\ScheduleService::defaultChooserSide($this->repo->recentForSchedule());
+        $this->assertSame($before, $after, 'Un rattrapage plus récent ne doit jamais rejouer l alternance');
+        $this->assertSame('kid', $after);
+    }
+
+    public function testRecentForScheduleExcludesBackfilledSeances(): void
+    {
+        $movieId = $this->movie('Brazil');
+        $this->repo->recordBackfill($movieId, '2026-08-08');
+
+        $this->assertSame([], $this->repo->recentForSchedule());
+    }
+
+    public function testRecordBackfillRefusesAFutureDate(): void
+    {
+        $movieId = $this->movie('Brazil');
+        $future = (new \DateTimeImmutable('tomorrow'))->format('Y-m-d');
+
+        $this->expectException(\App\Repositories\BackfillException::class);
+        try {
+            $this->repo->recordBackfill($movieId, $future);
+        } finally {
+            $this->assertSame('pool', $this->movies->find($movieId)['status'], 'Rien ne doit être écrit');
+            $this->assertNull($this->repo->findByDate($future));
+        }
+    }
+
+    public function testRecordBackfillRefusesAnInvalidDate(): void
+    {
+        $movieId = $this->movie('Brazil');
+
+        $this->expectException(\App\Repositories\BackfillException::class);
+        try {
+            $this->repo->recordBackfill($movieId, 'pas une date');
+        } finally {
+            $this->assertSame('pool', $this->movies->find($movieId)['status']);
+        }
+    }
+
+    public function testRecordBackfillRefusesAnEmptyDate(): void
+    {
+        $movieId = $this->movie('Brazil');
+
+        $this->expectException(\App\Repositories\BackfillException::class);
+        $this->repo->recordBackfill($movieId, '');
+    }
+
+    public function testRecordBackfillRefusesADateAlreadyTaken(): void
+    {
+        $movieId = $this->movie('Brazil');
+        $otherMovieId = $this->movie('Autre film');
+        $this->repo->ensure('2026-08-01', 'adult');
+
+        try {
+            $this->repo->recordBackfill($otherMovieId, '2026-08-01');
+            $this->fail('Une exception était attendue');
+        } catch (\App\Repositories\BackfillException $e) {
+            $this->assertNotSame('', $e->getMessage());
+        }
+
+        $this->assertSame('pool', $this->movies->find($otherMovieId)['status'], 'Rien ne doit être écrit');
+    }
+
+    public function testRecordBackfillRefusesAnAlreadyWatchedMovie(): void
+    {
+        $movieId = $this->movie('Brazil');
+        $this->repo->recordBackfill($movieId, '2026-08-01');
+
+        $this->expectException(\App\Repositories\BackfillException::class);
+        $this->repo->recordBackfill($movieId, '2026-08-08');
+    }
 }

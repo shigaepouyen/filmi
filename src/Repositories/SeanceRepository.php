@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Repositories;
 
+use DateTimeImmutable;
 use InvalidArgumentException;
 use PDO;
 use Throwable;
@@ -338,14 +339,128 @@ final class SeanceRepository
         return $date === false ? null : (string) $date;
     }
 
-    /** @return list<array{status:string,chooser_side:string}> */
+    /**
+     * @return list<array{status:string,chooser_side:string}>
+     *
+     * Filtre backfilled = 0 : un rattrapage est une réécriture du passé, pas une
+     * vraie séance, et ne doit jamais entrer dans le calcul de l'alternance. Voir
+     * ScheduleService::defaultChooserSide(), qui parcourt ce résultat par date
+     * décroissante en supposant que la première ligne est la dernière vraie
+     * séance jouée.
+     */
     public function recentForSchedule(int $limit = 20): array
     {
         $stmt = $this->db->prepare(
-            'SELECT status, chooser_side FROM seances ORDER BY date DESC LIMIT ?'
+            'SELECT status, chooser_side FROM seances WHERE backfilled = 0 ORDER BY date DESC LIMIT ?'
         );
         $stmt->execute([$limit]);
 
         return $stmt->fetchAll();
+    }
+
+    /**
+     * Enregistre une œuvre comme déjà vue à une date passée : une seule ligne,
+     * `status = 'done'`, `backfilled = 1`, le camp pris du pool de l'œuvre plutôt
+     * que saisi. Aucune ligne de shortlist n'est écrite, donc aucun créneau de
+     * cooldown n'est consommé, exactement comme une semaine des filles.
+     *
+     * Pour une série, la totalité de la suite continue passe vue en un seul
+     * geste : pas de saisie épisode par épisode pour du rattrapage.
+     *
+     * Lève BackfillException plutôt que de laisser filer une PDOException ou de
+     * renvoyer un booléen ignorable : les pages l'attrapent pour afficher un
+     * message clair au lieu d'une 500. Toute la validation vit ici, pas dans les
+     * pages, pour n'avoir qu'un seul endroit qui décide ce qui est refusé.
+     */
+    public function recordBackfill(int $movieId, string $date): array
+    {
+        $parsedDate = DateTimeImmutable::createFromFormat('!Y-m-d', $date);
+        $errors = DateTimeImmutable::getLastErrors();
+        if ($parsedDate === false || ($errors !== false && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))) {
+            throw new BackfillException('Choisis une date valide.');
+        }
+
+        if ($parsedDate > new DateTimeImmutable('today')) {
+            throw new BackfillException("« Déjà vu » ne peut pas être daté dans le futur.");
+        }
+
+        $movie = $this->movies->find($movieId);
+        if ($movie === null) {
+            throw new BackfillException('Œuvre introuvable.');
+        }
+        if ($movie['status'] !== 'pool') {
+            throw new BackfillException(sprintf(
+                '« %s » a déjà sa séance, il ne peut pas être rattrapé une deuxième fois.',
+                $movie['title']
+            ));
+        }
+
+        $existing = $this->findByDate($date);
+        if ($existing !== null) {
+            throw new BackfillException(sprintf(
+                'Il y a déjà une séance le %s : %s.',
+                $date,
+                $this->describeSeance($existing)
+            ));
+        }
+
+        $isSeries = ($movie['kind'] ?? 'film') === 'series';
+        $pool = (string) $movie['pool'];
+
+        $this->db->beginTransaction();
+        try {
+            try {
+                if ($isSeries) {
+                    $episodeCount = max(0, (int) ($movie['episode_count'] ?? 0));
+                    $label = $episodeCount . ' épisode' . ($episodeCount > 1 ? 's' : '');
+
+                    $this->db->prepare(
+                        "INSERT INTO seances (date, chooser_side, status, movie_id, backfilled, episodes_from, episodes_to, episodes_label)
+                         VALUES (?, ?, 'done', ?, 1, ?, ?, ?)"
+                    )->execute([
+                        $date,
+                        $pool,
+                        $movieId,
+                        $episodeCount > 0 ? 1 : null,
+                        $episodeCount > 0 ? $episodeCount : null,
+                        $label,
+                    ]);
+                } else {
+                    $this->db->prepare(
+                        "INSERT INTO seances (date, chooser_side, status, movie_id, backfilled)
+                         VALUES (?, ?, 'done', ?, 1)"
+                    )->execute([$date, $pool, $movieId]);
+                }
+            } catch (\PDOException $e) {
+                // Course perdue contre un autre appareil entre la vérification et
+                // l'écriture : la contrainte UNIQUE sur date a fait son travail.
+                throw new BackfillException(sprintf('Il y a déjà une séance le %s.', $date), 0, $e);
+            }
+
+            if ($isSeries) {
+                $this->movies->advanceSeries($movieId, max(0, (int) ($movie['episode_count'] ?? 0)));
+            } else {
+                $this->movies->markWatched($movieId);
+            }
+
+            $this->db->commit();
+        } catch (Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+
+        return $this->findByDate($date);
+    }
+
+    private function describeSeance(array $seance): string
+    {
+        if ($seance['movie_id'] !== null) {
+            $movie = $this->movies->find((int) $seance['movie_id']);
+            if ($movie !== null) {
+                return $movie['title'];
+            }
+        }
+
+        return $seance['status'] === 'skipped' ? 'pas de ciné ce soir-là' : 'une séance déjà prévue';
     }
 }
