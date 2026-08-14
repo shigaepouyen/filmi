@@ -28,6 +28,14 @@ $awards = AwardsService::compute(
     $app->profiles->all()
 );
 
+// Une annee demandee a la main mais sans aucune seance n'est pas dans la liste
+// deduite de l'historique : sans cela le titre annoncerait 2020 pendant que le
+// selecteur afficherait 2026, faute de trouver son option.
+if ($year !== null && !in_array($year, $years, true)) {
+    $years[] = $year;
+    rsort($years);
+}
+
 $data = ['awards' => $awards, 'years' => $years, 'selected' => $selected];
 
 if (isset($_GET['print'])) {
