@@ -106,9 +106,9 @@ class MigrationsTest extends TestCase
 
         $applied = Migrations::run($db);
 
-        $this->assertSame([2, 3, 4], $applied);
+        $this->assertSame([2, 3, 4, 5], $applied);
         $this->assertContains('trailer_url', $this->columns($db, 'movies'));
-        $this->assertSame(4, Migrations::currentVersion($db));
+        $this->assertSame(5, Migrations::currentVersion($db));
 
         // Preuve d'absence de perte de données : les deux films survivent intacts.
         $rows = $db->query('SELECT title, pool, status, providers, trailer_url FROM movies ORDER BY id')->fetchAll();
@@ -138,13 +138,13 @@ class MigrationsTest extends TestCase
         )->execute();
 
         $first = Migrations::run($db);
-        $this->assertSame([2, 3, 4], $first);
+        $this->assertSame([2, 3, 4, 5], $first);
 
         // Une deuxième exécution ne doit ni lever (ALTER TABLE sur colonne existante
         // lèverait), ni changer quoi que ce soit.
         $second = Migrations::run($db);
         $this->assertSame([], $second, 'La deuxième exécution ne doit rejouer aucune migration');
-        $this->assertSame(4, Migrations::currentVersion($db));
+        $this->assertSame(5, Migrations::currentVersion($db));
 
         $trailerColumns = array_filter(
             $this->columns($db, 'movies'),
@@ -169,8 +169,8 @@ class MigrationsTest extends TestCase
 
         $applied = Migrations::run($db);
 
-        $this->assertSame([2, 3, 4], $applied);
-        $this->assertSame(4, Migrations::currentVersion($db));
+        $this->assertSame([2, 3, 4, 5], $applied);
+        $this->assertSame(5, Migrations::currentVersion($db));
     }
 
     public function testMigrationThreeMarksExistingFilmsForProviderRefresh(): void
@@ -234,6 +234,51 @@ class MigrationsTest extends TestCase
         $this->assertNull($movie['episodes']);
     }
 
+    public function testMigrationFiveAddsBackfilledDefaultingToZero(): void
+    {
+        $db = $this->oldStateDatabase();
+        $db->prepare(
+            "INSERT INTO profiles (name, slug, side, avatar) VALUES ('JC', 'jc', 'adult', 'detective')"
+        )->execute();
+        $db->exec(
+            "INSERT INTO movies (title, pool, bet_type, added_by, status) VALUES ('Brazil', 'adult', 'safe', 1, 'watched')"
+        );
+        $movieId = (int) $db->lastInsertId();
+        $db->exec(
+            "INSERT INTO seances (date, chooser_side, status, movie_id) VALUES ('2026-07-04', 'adult', 'done', {$movieId})"
+        );
+
+        $applied = Migrations::run($db);
+
+        $this->assertSame([2, 3, 4, 5], $applied);
+        $this->assertContains('backfilled', $this->columns($db, 'seances'));
+
+        // Preuve d'absence de perte : la vraie séance de production reste à 0,
+        // ce n'est pas un rattrapage.
+        $seance = $db->query('SELECT date, movie_id, backfilled FROM seances')->fetch();
+        $this->assertSame('2026-07-04', $seance['date']);
+        $this->assertSame($movieId, (int) $seance['movie_id']);
+        $this->assertSame(0, (int) $seance['backfilled']);
+    }
+
+    public function testMigrationFiveRunTwiceIsANoOp(): void
+    {
+        $db = $this->oldStateDatabase();
+
+        $first = Migrations::run($db);
+        $this->assertSame([2, 3, 4, 5], $first);
+
+        $second = Migrations::run($db);
+        $this->assertSame([], $second, 'La deuxième exécution ne doit rejouer aucune migration');
+        $this->assertSame(5, Migrations::currentVersion($db));
+
+        $backfilledColumns = array_filter(
+            $this->columns($db, 'seances'),
+            static fn (string $c): bool => $c === 'backfilled'
+        );
+        $this->assertCount(1, $backfilledColumns, 'La colonne backfilled ne doit exister qu une seule fois');
+    }
+
     public function testMigrationFourOnAnOldStateWithRealFilmsIsLosslessAndIdempotent(): void
     {
         // Reproduit une base de production avant migration 4 : des séances déjà
@@ -252,7 +297,7 @@ class MigrationsTest extends TestCase
         );
 
         $first = Migrations::run($db);
-        $this->assertSame([2, 3, 4], $first);
+        $this->assertSame([2, 3, 4, 5], $first);
 
         $seance = $db->query('SELECT * FROM seances')->fetch();
         $this->assertSame('2026-07-04', $seance['date']);
@@ -261,6 +306,7 @@ class MigrationsTest extends TestCase
         $this->assertNull($seance['episodes_from']);
         $this->assertNull($seance['episodes_to']);
         $this->assertNull($seance['episodes_label']);
+        $this->assertSame(0, (int) $seance['backfilled']);
 
         $movie = $db->query('SELECT title, pool, status, kind FROM movies')->fetch();
         $this->assertSame('Brazil', $movie['title']);
@@ -271,6 +317,6 @@ class MigrationsTest extends TestCase
         // Rejouer la migration ne change plus rien.
         $second = Migrations::run($db);
         $this->assertSame([], $second);
-        $this->assertSame(4, Migrations::currentVersion($db));
+        $this->assertSame(5, Migrations::currentVersion($db));
     }
 }

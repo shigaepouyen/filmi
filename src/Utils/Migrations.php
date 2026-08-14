@@ -89,6 +89,23 @@ final class Migrations
                     }
                 },
             ],
+            5 => [
+                'description' => "Ajoute seances.backfilled, pour le rattrapage d'historique",
+                'up' => static function (PDO $db): void {
+                    // Les séances existantes valent 0 par défaut : ce sont de vrais
+                    // samedis, pas des rattrapages. recentForSchedule() s'appuie sur
+                    // cette colonne pour ne jamais laisser un rattrapage plus récent
+                    // que la dernière vraie séance rejouer l'alternance du samedi
+                    // à venir.
+                    $seanceColumns = array_column(
+                        $db->query('PRAGMA table_info(seances)')->fetchAll(PDO::FETCH_ASSOC),
+                        'name'
+                    );
+                    if (!in_array('backfilled', $seanceColumns, true)) {
+                        $db->exec('ALTER TABLE seances ADD COLUMN backfilled INTEGER NOT NULL DEFAULT 0');
+                    }
+                },
+            ],
         ];
     }
 

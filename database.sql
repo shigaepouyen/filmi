@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS seances (
     episodes_from   INTEGER,           -- bornes dans la suite continue, incluses, séries uniquement
     episodes_to     INTEGER,
     episodes_label  TEXT,              -- libellé figé, ex. "S1E3 à S1E4"
+    backfilled      INTEGER NOT NULL DEFAULT 0,  -- 1 = rattrapage d'historique, exclu de l'alternance
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
