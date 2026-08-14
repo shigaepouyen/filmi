@@ -10,7 +10,15 @@ $scoresByName = array_column($ratings, 'score', 'name');
     <?= Security::e(FormatUtils::frenchDate($seance['date'])) ?>,
     au tour des <?= $seance['chooser_side'] === 'kid' ? 'filles' : 'parents' ?>
 </p>
-<h1 class="mt-1 text-2xl font-semibold"><?= Security::e($movie['title']) ?></h1>
+<h1 class="mt-1 text-2xl font-semibold">
+    <a href="/movie.php?id=<?= (int) $movie['id'] ?>" class="hover:underline">
+        <?= Security::e($movie['title']) ?>
+    </a>
+</h1>
+<a href="/movie.php?id=<?= (int) $movie['id'] ?>"
+   class="inline-block text-xs text-slate-400 underline">
+    Voir la fiche, modifier ou archiver
+</a>
 <?php if ($isSeries): ?>
     <p class="text-sm text-slate-400">
         <?php if (!empty($seance['episodes_label'])): ?>
