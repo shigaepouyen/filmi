@@ -683,13 +683,19 @@ class SeanceRepositoryTest extends DbTestCase
 
     public function testRecordBackfillConsumesNoCooldownSlot(): void
     {
-        $movieId = $this->movie('Brazil');
+        // Un vrai tirage laisse une trace de cooldown : on la fabrique pour
+        // prouver que le rattrapage ne l'altère pas, plutôt que de comparer deux
+        // listes vides qui resteraient égales par construction.
+        $shortlisted = $this->movie('Dans le cooldown');
+        $drawnSeance = $this->repo->ensure('2026-07-18', 'adult');
+        $this->repo->recordChoice($drawnSeance['id'], [$shortlisted], $shortlisted);
         $before = $this->repo->cooldownMovieIds();
+        $this->assertSame([$shortlisted], $before);
 
+        $movieId = $this->movie('Brazil');
         $this->repo->recordBackfill($movieId, '2026-08-01');
 
         $this->assertSame($before, $this->repo->cooldownMovieIds());
-        $this->assertSame([], $this->repo->cooldownMovieIds());
     }
 
     /**
