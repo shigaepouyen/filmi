@@ -82,6 +82,61 @@ $statusLabels = [
                             proposé par <?= Security::e($seance['proposer_name']) ?>
                         </p>
                     <?php endif; ?>
+
+                    <?php if ($hasFilm): ?>
+                        <?php
+                        $dejaVote = in_array((int) $seance['movie_id'], array_map('intval', $myVotes), true);
+                        ?>
+                        <?php /* Depuis l'historique, un clic pose le vote directement s'il
+                                  n'existe pas. Retirer un vote deja pose demande une
+                                  confirmation : dans une longue liste qu'on fait defiler,
+                                  un clic malheureux ne doit pas effacer un vote. */ ?>
+                        <div class="relative z-20 mt-2"
+                             x-data="{
+                                voted: <?= $dejaVote ? 'true' : 'false' ?>,
+                                count: <?= (int) ($seance['vote_count'] ?? 0) ?>,
+                                confirme: false,
+                                busy: false,
+                                async cliquer() {
+                                    if (this.busy) return;
+                                    this.busy = true;
+                                    try {
+                                        if (this.voted && !this.confirme) {
+                                            this.confirme = true;
+                                            return;
+                                        }
+                                        const intent = this.confirme ? 'toggle' : 'add';
+                                        const r = await filmiPost('/api/vote.php', {
+                                            movie_id: <?= (int) $seance['movie_id'] ?>,
+                                            intent
+                                        });
+                                        this.voted = r.voted;
+                                        this.count = r.count;
+                                        this.confirme = false;
+                                    } catch (e) {
+                                        // 409 : le vote existait deja, on bascule en confirmation.
+                                        this.voted = true;
+                                        this.confirme = true;
+                                    } finally {
+                                        this.busy = false;
+                                    }
+                                }
+                             }">
+                            <button type="button" :disabled="busy"
+                                    class="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs ring-1 transition"
+                                    :class="confirme
+                                        ? 'bg-rose-500/25 text-rose-100 ring-rose-300/40'
+                                        : (voted
+                                            ? 'bg-amber-400/25 text-amber-100 ring-amber-300/40'
+                                            : 'bg-white/5 text-slate-300 ring-white/10')"
+                                    @click.prevent.stop="cliquer()"
+                                    @mouseleave="confirme = false">
+                                <span aria-hidden="true">▲</span>
+                                <span x-show="!confirme"><span x-text="count"></span></span>
+                                <span x-show="confirme" x-cloak>Retirer mon vote ?</span>
+                            </button>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </<?= $tag ?>>
             </li>

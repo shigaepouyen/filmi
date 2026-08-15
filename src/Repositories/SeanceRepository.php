@@ -338,7 +338,8 @@ final class SeanceRepository
                     p.color AS proposer_color,
                     (SELECT ROUND(AVG(r.score), 2) FROM ratings r WHERE r.seance_id = s.id) AS avg_score,
                     (SELECT COUNT(*) FROM seance_picks sp
-                      WHERE sp.seance_id = s.id AND sp.role = \'vetoed\') AS veto_count
+                      WHERE sp.seance_id = s.id AND sp.role = \'vetoed\') AS veto_count,
+                    (SELECT COUNT(*) FROM votes v WHERE v.movie_id = s.movie_id) AS vote_count
                FROM seances s
                LEFT JOIN movies m ON m.id = s.movie_id
                LEFT JOIN profiles p ON p.id = m.added_by
