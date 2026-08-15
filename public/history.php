@@ -11,5 +11,4 @@ $profile = $app->requireProfile();
 $app->render('history', [
     'seances' => $app->seances->history(),
     'vetoes' => $app->seances->vetoCounts(),
-    'myVotes' => $app->votes->votedMovieIds((int) $profile['id']),
 ], 'Filmi, historique');
