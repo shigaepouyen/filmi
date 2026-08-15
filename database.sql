@@ -87,6 +87,17 @@ CREATE TABLE IF NOT EXISTS ratings (
     UNIQUE (seance_id, profile_id)
 );
 
+-- Qui a ferme la ligne de note : la personne ne notera pas cette seance
+-- (pas la, pas envie). Ce n'est pas une note, donc pas une ligne de ratings :
+-- ni les moyennes ni le palmares n'en tiennent compte.
+CREATE TABLE IF NOT EXISTS rating_skips (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    seance_id  INTEGER NOT NULL REFERENCES seances(id) ON DELETE CASCADE,
+    profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (seance_id, profile_id)
+);
+
 CREATE TABLE IF NOT EXISTS settings (
     key   TEXT PRIMARY KEY,
     value TEXT

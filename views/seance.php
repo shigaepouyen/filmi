@@ -53,23 +53,47 @@ $scoresByName = array_column($ratings, 'score', 'name');
 </div>
 
 <section class="mt-6 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
-    <?php if ($ratingAllowed): ?>
-        <h2 class="text-sm font-medium">Ta note, après le film</h2>
-        <form method="post" class="mt-2 flex gap-2">
+    <?php if ($ratingAllowed && $ratingSkipped): ?>
+        <h2 class="text-sm font-medium">Tu ne notes pas cette séance</h2>
+        <form method="post" class="mt-2">
             <input type="hidden" name="csrf" value="<?= Security::csrfToken() ?>">
-            <input type="hidden" name="action" value="rate">
-            <?php for ($score = 1; $score <= 5; $score++): ?>
-                <button name="score" value="<?= $score ?>"
-                        class="h-11 w-11 rounded-xl text-lg <?= $myScore === $score ? 'bg-amber-400/30 ring-2 ring-amber-300' : 'bg-white/10' ?>">
-                    <?= $score ?>
-                </button>
-            <?php endfor; ?>
+            <input type="hidden" name="action" value="reopen_rating">
+            <button class="rounded-xl bg-white/10 px-3 py-2 text-sm">Tu veux quand même noter ?</button>
         </form>
+    <?php elseif ($ratingAllowed): ?>
+        <h2 class="text-sm font-medium">Ta note, après le film</h2>
+        <div class="mt-2 flex flex-wrap items-center gap-2">
+            <form method="post" class="flex gap-2">
+                <input type="hidden" name="csrf" value="<?= Security::csrfToken() ?>">
+                <input type="hidden" name="action" value="rate">
+                <?php for ($score = 1; $score <= 5; $score++): ?>
+                    <button name="score" value="<?= $score ?>"
+                            class="h-11 w-11 rounded-xl text-lg <?= $myScore === $score ? 'bg-amber-400/30 ring-2 ring-amber-300' : 'bg-white/10' ?>">
+                        <?= $score ?>
+                    </button>
+                <?php endfor; ?>
+            </form>
+            <?php if ($myScore === 0): ?>
+                <form method="post">
+                    <input type="hidden" name="csrf" value="<?= Security::csrfToken() ?>">
+                    <input type="hidden" name="action" value="skip_rating">
+                    <button title="Je ne note pas cette séance" aria-label="Je ne note pas cette séance"
+                            class="h-11 w-11 rounded-xl bg-white/5 text-lg text-slate-400">&times;</button>
+                </form>
+            <?php endif; ?>
+        </div>
 
         <?php if ($ratings !== []): ?>
             <ul class="mt-3 space-y-1 text-sm text-slate-300">
                 <?php foreach ($scoresByName as $name => $score): ?>
                     <li><?= Security::e((string) $name) ?> : <?= (int) $score ?> sur 5</li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
+        <?php if ($ratingSkips !== []): ?>
+            <ul class="mt-1 space-y-1 text-sm text-slate-500">
+                <?php foreach ($ratingSkips as $passe): ?>
+                    <li><?= Security::e((string) $passe['name']) ?> : ne note pas</li>
                 <?php endforeach; ?>
             </ul>
         <?php endif; ?>

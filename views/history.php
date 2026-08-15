@@ -33,10 +33,15 @@ $statusLabels = [
                 $tag = $hasFilm ? 'a' : 'div';
                 $seanceId = (int) $seance['id'];
                 $maNote = $myRatings[$seanceId] ?? null;
-                $notable = $hasFilm && $seance['status'] === 'done';
+                // Une série ne se note qu'une fois, au dernier épisode : les
+                // soirées intermédiaires n'ouvrent pas de ligne de note.
+                $oeuvreNotable = ($seance['movie_kind'] ?? 'film') !== 'series'
+                    || ($seance['movie_status'] ?? null) === 'watched';
+                $notable = $hasFilm && $seance['status'] === 'done' && $oeuvreNotable;
+                $tourPasse = isset($mySkippedRatings[$seanceId]);
             ?>
             <li class="rounded-2xl bg-white/5 ring-1 ring-white/10"
-                <?php if ($notable): ?>x-data="filmiRating(<?= $seanceId ?>, <?= $maNote === null ? 'null' : (int) $maNote ?>, <?= $seance['avg_score'] === null ? 'null' : (float) $seance['avg_score'] ?>)"<?php endif; ?>>
+                <?php if ($notable): ?>x-data="filmiRating(<?= $seanceId ?>, <?= $maNote === null ? 'null' : (int) $maNote ?>, <?= $seance['avg_score'] === null ? 'null' : (float) $seance['avg_score'] ?>, <?= $tourPasse ? 'true' : 'false' ?>)"<?php endif; ?>>
             <<?= $tag ?><?= $hasFilm ? ' href="/seance.php?id=' . (int) $seance['id'] . '"' : '' ?> class="flex items-center gap-3 p-3 no-underline text-inherit">
                 <?php if (!empty($seance['movie_poster'])): ?>
                     <img src="<?= Security::e($seance['movie_poster']) ?>" alt="" loading="lazy"
@@ -95,9 +100,18 @@ $statusLabels = [
             </<?= $tag ?>>
             <?php if ($notable): ?>
                 <div class="flex flex-wrap items-center gap-2 border-t border-white/10 px-3 py-2">
-                    <span class="text-[11px] text-slate-400"
+                    <template x-if="skipped">
+                        <span class="flex items-center gap-2 text-[11px] text-slate-500">
+                            <span>Tu ne notes pas cette séance.</span>
+                            <button type="button" @click="reopen()" :disabled="busy"
+                                    class="rounded-lg bg-white/10 px-2 py-1 text-slate-200">
+                                Noter quand même
+                            </button>
+                        </span>
+                    </template>
+                    <span x-show="!skipped" class="text-[11px] text-slate-400"
                           x-text="score === null ? 'ta note' : 'ta note : ' + score + '/5'"></span>
-                    <div class="flex gap-1">
+                    <div class="flex gap-1" x-show="!skipped">
                         <?php for ($etoile = 1; $etoile <= 5; $etoile++): ?>
                             <button type="button" @click="pick(<?= $etoile ?>)" :disabled="busy"
                                     class="h-8 w-8 rounded-lg text-sm disabled:opacity-40"
@@ -105,6 +119,11 @@ $statusLabels = [
                                 <?= $etoile ?>
                             </button>
                         <?php endfor; ?>
+                        <button type="button" @click="close()" :disabled="busy" x-show="score === null"
+                                title="Je ne note pas cette séance" aria-label="Je ne note pas cette séance"
+                                class="h-8 w-8 rounded-lg bg-white/5 text-sm text-slate-400 disabled:opacity-40">
+                            &times;
+                        </button>
                     </div>
                     <template x-if="pending !== null">
                         <span class="flex items-center gap-2 text-[11px] text-amber-200">
@@ -126,13 +145,55 @@ $statusLabels = [
     // Note sur 5 posee depuis l'historique. Premiere note = direct ; note deja
     // donnee = on demande confirmation avant de l'ecraser (le serveur applique
     // la meme regle, ce bloc n'est que le confort).
-    window.filmiRating = function (seanceId, myScore, average) {
+    window.filmiRating = function (seanceId, myScore, average, skipped) {
         return {
             score: myScore,
             average: average,
+            skipped: skipped,
             pending: null,
             busy: false,
             error: '',
+            async close() {
+                if (this.busy) {
+                    return;
+                }
+                const data = await this.call('/api/rate_skip.php', {});
+                if (data !== null) {
+                    this.skipped = true;
+                    this.pending = null;
+                }
+            },
+            async reopen() {
+                if (this.busy) {
+                    return;
+                }
+                const data = await this.call('/api/rate_skip.php', { intent: 'reopen' });
+                if (data !== null) {
+                    this.skipped = false;
+                }
+            },
+            async call(url, fields) {
+                this.busy = true;
+                this.error = '';
+                const body = new FormData();
+                body.append('csrf', document.querySelector('meta[name="csrf-token"]').content);
+                body.append('seance_id', seanceId);
+                Object.entries(fields).forEach(([key, value]) => body.append(key, value));
+                try {
+                    const response = await fetch(url, { method: 'POST', body });
+                    const data = await response.json();
+                    if (!response.ok) {
+                        this.error = data.error || 'Action impossible.';
+                        return null;
+                    }
+                    return data;
+                } catch (e) {
+                    this.error = 'Action impossible.';
+                    return null;
+                } finally {
+                    this.busy = false;
+                }
+            },
             pick(value) {
                 this.error = '';
                 if (this.busy || this.score === value) {
@@ -163,6 +224,7 @@ $statusLabels = [
                         this.score = data.score;
                         this.average = data.average;
                         this.pending = null;
+                        this.skipped = false;
                     } else if (data.already_rated) {
                         // Une autre page a note entre-temps : on repasse par la confirmation.
                         this.score = data.score;

@@ -165,6 +165,23 @@ final class Migrations
                     }
                 },
             ],
+            8 => [
+                'description' => 'Ajoute rating_skips : les tours de note passes',
+                'up' => static function (PDO $db): void {
+                    // Table additive : tant que personne ne ferme sa ligne, elle
+                    // reste vide et rien ne change. Volontairement separee de
+                    // ratings pour que moyennes et palmares l'ignorent d'office.
+                    $db->exec(
+                        'CREATE TABLE IF NOT EXISTS rating_skips (
+                            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                            seance_id  INTEGER NOT NULL REFERENCES seances(id) ON DELETE CASCADE,
+                            profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                            UNIQUE (seance_id, profile_id)
+                        )'
+                    );
+                },
+            ],
         ];
     }
 

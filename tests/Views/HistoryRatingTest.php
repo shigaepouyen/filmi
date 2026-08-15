@@ -17,6 +17,8 @@ class HistoryRatingTest extends TestCase
             'derogation_note' => null,
             'veto_count' => 0,
             'avg_score' => 4.5,
+            'movie_kind' => 'film',
+            'movie_status' => 'watched',
             'movie_title' => 'Brazil',
             'movie_poster' => null,
             'episodes_label' => null,
@@ -24,12 +26,13 @@ class HistoryRatingTest extends TestCase
         ], $overrides);
     }
 
-    private function render(array $seance, array $myRatings = []): string
+    private function render(array $seance, array $myRatings = [], array $mySkipped = []): string
     {
         return ViewRenderer::page('history', [
             'seances' => [$seance],
             'vetoes' => [],
             'myRatings' => $myRatings,
+            'mySkippedRatings' => $mySkipped,
         ]);
     }
 
@@ -37,7 +40,7 @@ class HistoryRatingTest extends TestCase
     {
         $html = $this->render($this->seance());
 
-        $this->assertStringContainsString('filmiRating(12, null, 4.5)', $html);
+        $this->assertStringContainsString('filmiRating(12, null, 4.5, false)', $html);
         foreach ([1, 2, 3, 4, 5] as $etoile) {
             $this->assertStringContainsString("pick({$etoile})", $html);
         }
@@ -47,7 +50,7 @@ class HistoryRatingTest extends TestCase
     {
         $html = $this->render($this->seance(), [12 => 3]);
 
-        $this->assertStringContainsString('filmiRating(12, 3, 4.5)', $html);
+        $this->assertStringContainsString('filmiRating(12, 3, 4.5, false)', $html);
     }
 
     public function testTheButtonsSitOutsideTheLinkToTheSeance(): void
@@ -82,6 +85,39 @@ class HistoryRatingTest extends TestCase
         $html = $this->render($this->seance(['status' => 'planned', 'avg_score' => null]));
 
         $this->assertStringNotContainsString('filmiRating(', $html);
+    }
+
+    public function testAnIntermediateSeriesEveningOffersNoRating(): void
+    {
+        $html = $this->render($this->seance([
+            'movie_kind' => 'series',
+            'movie_status' => 'pool',
+            'episodes_label' => 'épisodes 3 à 5',
+            'avg_score' => null,
+        ]));
+
+        $this->assertStringNotContainsString('filmiRating(', $html);
+    }
+
+    public function testTheCrossClosesTheLineOnlyWhenNothingIsRatedYet(): void
+    {
+        $vierge = $this->render($this->seance());
+        $this->assertStringContainsString('@click="close()"', $vierge);
+        $this->assertStringContainsString('x-show="score === null"', $vierge);
+
+        // Le bouton reste dans le DOM mais Alpine le masque : c'est la meme
+        // regle des deux cotes, le serveur refusant de fermer une ligne notee.
+        $note = $this->render($this->seance(), [12 => 4]);
+        $this->assertStringContainsString('filmiRating(12, 4, 4.5, false)', $note);
+    }
+
+    public function testAClosedLineIsHandedToTheComponentAndOffersToReopen(): void
+    {
+        $html = $this->render($this->seance(), [], [12 => true]);
+
+        $this->assertStringContainsString('filmiRating(12, null, 4.5, true)', $html);
+        $this->assertStringContainsString('Noter quand même', $html);
+        $this->assertStringContainsString('@click="reopen()"', $html);
     }
 
     public function testTheReplacementConfirmationIsPresent(): void

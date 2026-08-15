@@ -97,6 +97,65 @@ class RatingFromHistoryTest extends DbTestCase
         );
     }
 
+    public function testClosingTheLineIsNotARatingAndCountsNowhere(): void
+    {
+        $seance = $this->seanceVue();
+        $this->seances->skipRating($seance, $this->jc);
+
+        $this->assertTrue($this->seances->hasSkippedRating($seance, $this->jc));
+        $this->assertSame([$seance => true], $this->seances->mySkippedRatings($this->jc));
+        $this->assertNull($this->seances->ratingFor($seance, $this->jc));
+        $this->assertNull(
+            $this->seances->averageFor($seance),
+            'Un tour passe ne doit pas peser sur la moyenne'
+        );
+        $this->assertSame(0, (int) $this->db->query('SELECT COUNT(*) FROM ratings')->fetchColumn());
+    }
+
+    public function testClosingTwiceStaysASingleRow(): void
+    {
+        $seance = $this->seanceVue();
+        $this->seances->skipRating($seance, $this->jc);
+        $this->seances->skipRating($seance, $this->jc);
+
+        $this->assertSame(1, (int) $this->db->query('SELECT COUNT(*) FROM rating_skips')->fetchColumn());
+    }
+
+    public function testReopeningClearsTheSkip(): void
+    {
+        $seance = $this->seanceVue();
+        $this->seances->skipRating($seance, $this->jc);
+        $this->seances->reopenRating($seance, $this->jc);
+
+        $this->assertFalse($this->seances->hasSkippedRating($seance, $this->jc));
+        $this->assertSame([], $this->seances->mySkippedRatings($this->jc));
+    }
+
+    public function testRatingAfterClosingReopensTheLine(): void
+    {
+        $seance = $this->seanceVue();
+        $this->seances->skipRating($seance, $this->jc);
+        $this->seances->rate($seance, $this->jc, 4);
+
+        $this->assertFalse(
+            $this->seances->hasSkippedRating($seance, $this->jc),
+            'Noter, c est revenir sur son tour passe : les deux etats s excluent'
+        );
+        $this->assertSame(4, $this->seances->ratingFor($seance, $this->jc));
+    }
+
+    public function testASkipBelongsToItsOwnProfile(): void
+    {
+        $seance = $this->seanceVue();
+        $this->seances->skipRating($seance, $this->zoe);
+
+        $this->assertFalse($this->seances->hasSkippedRating($seance, $this->jc));
+        $this->assertSame([], $this->seances->mySkippedRatings($this->jc));
+
+        $noms = array_column($this->seances->ratingSkips($seance), 'name');
+        $this->assertSame(['Zoé'], $noms);
+    }
+
     public function testRatingsOutsideTheAllowedRangeAreRefused(): void
     {
         $seance = $this->seanceVue();

@@ -121,6 +121,7 @@ final class SeanceRepository
                 // au second.
                 $this->movies->returnToPool((int) $previousMovieId);
                 $this->db->prepare('DELETE FROM ratings WHERE seance_id = ?')->execute([$seanceId]);
+                $this->db->prepare('DELETE FROM rating_skips WHERE seance_id = ?')->execute([$seanceId]);
             }
 
             $this->db->commit();
@@ -163,6 +164,7 @@ final class SeanceRepository
             // Le film vetoté se détache : les notes qu'il avait reçues ne doivent pas
             // se retrouver créditées au film qui le remplacera.
             $this->db->prepare('DELETE FROM ratings WHERE seance_id = ?')->execute([$seanceId]);
+            $this->db->prepare('DELETE FROM rating_skips WHERE seance_id = ?')->execute([$seanceId]);
 
             if ($seance !== null
                 && $seance['episodes_from'] !== null
@@ -269,6 +271,50 @@ final class SeanceRepository
             'INSERT INTO ratings (seance_id, profile_id, score) VALUES (?, ?, ?)
              ON CONFLICT(seance_id, profile_id) DO UPDATE SET score = excluded.score'
         )->execute([$seanceId, $profileId, $score]);
+
+        // Noter, c'est revenir sur un tour passe : les deux etats s'excluent.
+        $this->reopenRating($seanceId, $profileId);
+    }
+
+    /** La personne ferme sa ligne : elle ne notera pas cette séance. */
+    public function skipRating(int $seanceId, int $profileId): void
+    {
+        $this->db->prepare(
+            'INSERT OR IGNORE INTO rating_skips (seance_id, profile_id) VALUES (?, ?)'
+        )->execute([$seanceId, $profileId]);
+    }
+
+    /** La personne rouvre sa ligne pour noter finalement. */
+    public function reopenRating(int $seanceId, int $profileId): void
+    {
+        $this->db->prepare('DELETE FROM rating_skips WHERE seance_id = ? AND profile_id = ?')
+            ->execute([$seanceId, $profileId]);
+    }
+
+    public function hasSkippedRating(int $seanceId, int $profileId): bool
+    {
+        $stmt = $this->db->prepare('SELECT 1 FROM rating_skips WHERE seance_id = ? AND profile_id = ?');
+        $stmt->execute([$seanceId, $profileId]);
+
+        return $stmt->fetchColumn() !== false;
+    }
+
+    /**
+     * Les séances dont ce profil a fermé la ligne de note.
+     *
+     * @return array<int, true> indexé par séance
+     */
+    public function mySkippedRatings(int $profileId): array
+    {
+        $stmt = $this->db->prepare('SELECT seance_id FROM rating_skips WHERE profile_id = ?');
+        $stmt->execute([$profileId]);
+
+        $passees = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $passees[(int) $row['seance_id']] = true;
+        }
+
+        return $passees;
     }
 
     public function ratings(int $seanceId): array
@@ -277,6 +323,24 @@ final class SeanceRepository
             'SELECT r.profile_id, p.name, r.score
                FROM ratings r JOIN profiles p ON p.id = r.profile_id
               WHERE r.seance_id = ?
+              ORDER BY p.id'
+        );
+        $stmt->execute([$seanceId]);
+
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Qui a ferme sa ligne sur cette seance, pour l'afficher a cote des notes.
+     *
+     * @return list<array{profile_id:int,name:string}>
+     */
+    public function ratingSkips(int $seanceId): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT rs.profile_id, p.name
+               FROM rating_skips rs JOIN profiles p ON p.id = rs.profile_id
+              WHERE rs.seance_id = ?
               ORDER BY p.id'
         );
         $stmt->execute([$seanceId]);
@@ -370,6 +434,7 @@ final class SeanceRepository
                     m.year AS movie_year,
                     m.runtime AS movie_runtime,
                     m.kind AS movie_kind,
+                    m.status AS movie_status,
                     m.episodes AS movie_episodes,
                     m.added_by AS proposer_id,
                     p.name AS proposer_name,

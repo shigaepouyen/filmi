@@ -20,7 +20,7 @@ class DatabaseTest extends TestCase
         )->fetchAll(\PDO::FETCH_COLUMN);
 
         $this->assertSame(
-            ['movies', 'profiles', 'ratings', 'seance_picks', 'seances', 'settings', 'votes'],
+            ['movies', 'profiles', 'rating_skips', 'ratings', 'seance_picks', 'seances', 'settings', 'votes'],
             array_values(array_filter($tables, fn ($t) => !str_starts_with($t, 'sqlite_')))
         );
     }

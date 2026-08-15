@@ -69,11 +69,25 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         }
     }
 
+    // Fermer sa ligne de note : cette personne ne notera pas cette seance.
+    // Une note deja donnee compte dans la moyenne, la fermer donnerait un etat
+    // faux, donc on ne l'accepte que tant que rien n'est note.
+    if ($action === 'skip_rating'
+        && $app->seances->ratingFor((int) $seance['id'], (int) $profile['id']) === null
+    ) {
+        $app->seances->skipRating((int) $seance['id'], (int) $profile['id']);
+    }
+
+    if ($action === 'reopen_rating') {
+        $app->seances->reopenRating((int) $seance['id'], (int) $profile['id']);
+    }
+
     header('Location: ' . $redirectTo);
     exit;
 }
 
 $ratings = $app->seances->ratings((int) $seance['id']);
+$ratingSkips = $app->seances->ratingSkips((int) $seance['id']);
 $movie = $app->movies->find((int) $seance['movie_id']);
 
 // Même règle que pour l'écriture ci-dessus : une série n'est notée qu'à son
@@ -86,6 +100,8 @@ $app->render('seance', [
     'movie' => $movie,
     'startTime' => $app->settings->startTime(),
     'ratings' => $ratings,
+    'ratingSkips' => $ratingSkips,
+    'ratingSkipped' => $app->seances->hasSkippedRating((int) $seance['id'], (int) $profile['id']),
     'myScore' => (int) (array_column($ratings, 'score', 'profile_id')[(int) $profile['id']] ?? 0),
     'canVeto' => $profile['side'] === 'adult' && $seance['chooser_side'] === 'kid',
     'ratingAllowed' => $ratingAllowed,

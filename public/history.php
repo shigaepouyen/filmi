@@ -12,4 +12,5 @@ $app->render('history', [
     'seances' => $app->seances->history(),
     'vetoes' => $app->seances->vetoCounts(),
     'myRatings' => $app->seances->myRatings((int) $profile['id']),
+    'mySkippedRatings' => $app->seances->mySkippedRatings((int) $profile['id']),
 ], 'Filmi, historique');
