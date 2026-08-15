@@ -14,7 +14,8 @@ Filmi est donc d'abord un carnet d'idées partagé, et seulement ensuite une mac
 
 - **Semaine des filles** : elles choisissent le film. Les parents disposent d'un droit de veto, rarement utilisé.
 - **Semaine des parents** : trois films proposés, en visant une valeur sûre et deux découvertes. Les filles tranchent.
-- Un film vu ne revient pas dans les propositions.
+- Un film vu ne revient pas dans les propositions, sauf s'il est explicitement remis en liste pour être revu.
+- Une série se regarde sur plusieurs samedis, deux ou trois épisodes par soirée.
 - **L'alternance n'est pas rigide.** Le tour peut être inversé par dérogation, et un samedi sans ciné reporte le tour prévu au lieu de le brûler.
 
 ## Fonctionnalités
@@ -38,19 +39,41 @@ Deux garde-fous :
 - **Cooldown** : un film proposé mais non retenu est écarté des deux tirages suivants. Les semaines des filles ne produisent pas de shortlist et ne consomment donc pas de créneau : deux tirages de cooldown, c'est environ un mois de calendrier réel.
 - **Re-tirage illimité** : le bouton « pas dans le mood » régénère la sélection autant de fois que voulu. Les shortlists intermédiaires ne sont **jamais** enregistrées, sinon trois re-tirages un samedi soir grilleraient la moitié de la liste.
 
+**Les suites attendent leur tour.** Un film qui appartient à une saga connue de TMDb n'est pas proposé tant qu'un épisode antérieur de la même saga est encore en liste sans avoir été vu : « Violent Night 2 » ne sort pas avant « Violent Night ». Un rang antérieur absent des listes ne bloque rien, on suppose alors qu'il a été vu ailleurs. La fiche du film porte un interrupteur « ignorer l'ordre » pour les sagas où l'ordre est indifférent, et un film remis en liste pour être revu échappe à la règle.
+
 Si une catégorie ne peut pas être servie, l'application le dit clairement et propose d'ajouter un film, plutôt que de compléter en silence.
+
+Sur l'écran des trois films tirés, chaque affiche ouvre une fenêtre de détail : synopsis, durée, heure de fin, plateformes, bande-annonce jouable sur place, et un lien vers la fiche complète. On tranche sans quitter le tirage.
 
 ### La séance
 
 Les semaines des filles, elles choisissent directement dans leur liste. Un parent peut poser un **veto tracé** : auteur, film, raison, et un compteur par personne visible dans l'historique. Le but est l'auto-régulation, le jour où quelqu'un abuse tout le monde le voit. Le film veto retourne dans la liste, il n'est pas consommé.
 
-Après le film, chacun met une note sur 5. Ces notes alimentent l'historique et le palmarès, sans aucun effet sur les tirages suivants.
+Après le film, chacun met une note sur 5, depuis la page de la séance ou directement dans l'historique. Ces notes alimentent l'historique et le palmarès, sans aucun effet sur les tirages suivants.
+
+Une note déjà donnée ne se remplace pas d'un doigt qui dérape : changer d'avis demande une confirmation. Et **qui n'a pas vu le film ferme sa ligne** d'une croix, ce qui la sort de ses séances à noter. Un tour passé n'est pas une note : il ne pèse ni sur la moyenne ni sur le palmarès, et il se rouvre à tout moment par « Noter quand même ». La séance affiche qui a noté et qui ne notera pas, pour savoir quand elle n'attend plus personne.
+
+Une série ne se note **qu'une fois**, à son dernier épisode, sur l'œuvre entière. Les soirées intermédiaires n'ouvrent pas de ligne de note.
+
+### Les séries
+
+Une série s'ajoute comme un film, avec son nombre total d'épisodes récupéré chez TMDb et un **nombre d'épisodes par soirée réglable série par série** : deux pour l'une, trois pour l'autre. Chaque samedi consacré à la série avance la progression et l'historique retient la plage exacte, « épisodes 3 à 5 ». Quand une soirée déborde sur la saison suivante, les deux saisons s'enchaînent dans la même soirée.
+
+La série sort des listes une fois le dernier épisode vu. Un veto sur une soirée de série rembobine la progression : les épisodes non regardés ne restent pas comptés vus.
+
+### Revoir, et rattraper l'historique
+
+**Revoir** : depuis la fiche, un film déjà vu retourne dans sa liste pour un second passage. Il redevient tirable, garde toutes ses visions passées, et n'est pas soumis à la règle des suites puisque la saga a déjà été suivie.
+
+**Rattraper l'historique** : un film vu avant l'installation de l'application s'ajoute avec un « déjà vu le » à une date passée, sur la liste des parents ou des filles selon qui l'avait choisi. Ces séances de rattrapage nourrissent l'historique et le palmarès, mais **ne comptent pas dans l'alternance** : elles ne décalent pas le tour du samedi suivant.
+
+Le « vu le » d'un film se corrige : changer sa date, ou le retirer, ce qui remet l'œuvre dans sa liste.
 
 ### La fiche d'un film
 
 Chaque film a sa page : grande affiche, synopsis complet, réalisateur, genres, note TMDb, avis parental, durée et heure de fin, plateformes, lien vers la bande-annonce quand TMDb en connaît une, mémo, proposeur et votants. La liste affiche le synopsis tronqué et mène à cette fiche.
 
-Depuis la fiche, on peut **changer le pari et la liste** d'un film, et **l'archiver**. Un archivage est réversible : le film disparaît des listes, du tirage et de la détection de doublon, mais rien n'est effacé, donc l'historique et le palmarès gardent leur trace s'il avait déjà été proposé ou veto.
+Depuis la fiche, on peut **changer le pari, la liste et le proposeur** d'un film, corriger son « vu le », le remettre en liste pour le revoir, et **l'archiver**. On y accède depuis la liste, depuis le tirage et depuis n'importe quelle séance de l'historique. Un archivage est réversible : le film disparaît des listes, du tirage et de la détection de doublon, mais rien n'est effacé, donc l'historique et le palmarès gardent leur trace s'il avait déjà été proposé ou veto.
 
 **Qui agit sur quoi**, et la règle est volontairement asymétrique : les parents alimentent et gèrent **les deux listes**, y compris celle des filles, alors que les filles ne gèrent que la leur. En revanche tout le monde voit les deux listes et peut voter partout, c'est ce qui permet aux filles de découvrir ce que les parents ont en réserve et de faire remonter leurs préférences.
 
@@ -64,6 +87,12 @@ Une fois ce périmètre défini, la liste et le tirage n'affichent plus que les 
 
 Tant que rien n'est coché, toutes les plateformes s'affichent. C'est l'état transitoire avant le premier réglage.
 
+### La mise à jour des fiches
+
+Les plateformes changent, les bandes-annonces arrivent après la sortie. Les réglages portent un bouton **« Mettre à jour maintenant »** qui repasse sur les œuvres encore en liste, avec une barre de progression et le détail des échecs. Il récupère les plateformes, l'avis parental, la bande-annonce et la saga. La progression d'une série en cours n'est jamais touchée.
+
+Le même travail peut tourner en tâche planifiée hebdomadaire, mais le bouton suffit à une famille.
+
 ### Les informations qui font trancher un samedi soir
 
 - **Heure de fin estimée** sur chaque film, calculée depuis une heure de démarrage configurable, 19:15 par défaut. Avec des enfants, c'est souvent le critère décisif.
@@ -73,9 +102,9 @@ Tant que rien n'est coché, toutes les plateformes s'affichent. C'est l'état tr
 ### Le reste
 
 - **Alerte de liste faible** dès que la liste des parents passe sous cinq films, avec le détail par catégorie. C'est le rappel préventif qui manquait, en semaine et pas dans la panique du samedi.
-- **Historique** de chaque samedi : film retenu, camp, dérogations, samedis sautés, notes, vetos.
-- **Palmarès** annuel avec une page imprimable autonome.
-- **24 avatars kawaii** en SVG inline, sur des archétypes de cinéma originaux.
+- **Historique** de chaque samedi : film retenu, camp, dérogations, samedis sautés, notes, vetos. Chaque ligne mène à sa séance et se note sur place.
+- **Palmarès** annuel avec une page imprimable autonome : podium, portraits de la saison, anecdotes, qui a choisi quoi.
+- **24 avatars en pixel art** dessinés en SVG inline, sur des archétypes de cinéma originaux.
 - **PWA installable** sur l'écran d'accueil des iPhone.
 
 ## Installation
@@ -137,10 +166,12 @@ public/            # docroot
  ├─ add.php         # ajout d'un film
  ├─ draw.php        # tirage
  ├─ seance.php      # séance en cours, veto, notes
+ ├─ movie.php       # fiche d'une œuvre
  ├─ history.php     # historique
  ├─ awards.php      # palmarès
  ├─ settings.php    # réglages
- ├─ api/            # endpoints JSON (search, duplicate, vote, draw)
+ ├─ api/            # endpoints JSON (search, duplicate, vote, draw,
+ │                  #   rate, rate_skip, refresh)
  └─ assets/icons/   # favicon et icônes PWA
 
 src/
@@ -159,7 +190,7 @@ scripts/           # init_db, build_icons, refresh_providers, deploy
 tests/             # PHPUnit
 ```
 
-**Le découpage qui compte** : les services purs (`DrawService`, `ScheduleService`, `AwardsService`, `FormatUtils`) ne touchent jamais la base, les dépôts sont la seule couche qui parle SQL, et `TmdbService` est la seule classe qui parle au réseau, avec un transport injectable.
+**Le découpage qui compte** : les services purs (`DrawService`, `ScheduleService`, `AwardsService`, `SeriesService`, `SequelService`, `FormatUtils`) ne touchent jamais la base, les dépôts sont la seule couche qui parle SQL, et `TmdbService` est la seule classe qui parle au réseau, avec un transport injectable.
 
 C'est ce qui rend les règles du tirage et de l'alternance testables sans base de données, et c'est pour ça que **la suite de tests ne fait aucun appel réseau**.
 
@@ -169,13 +200,15 @@ C'est ce qui rend les règles du tirage et de l'alternance testables sans base d
 composer test
 ```
 
-Couvert : le tirage (quota, cooldown, anti-répétition, échecs), l'alternance (dérogation, samedi sauté), les agrégats du palmarès, le formatage des durées et dates, le client TMDb sur des fixtures enregistrées, les cinq dépôts sur une base en mémoire, et deux composants de vue.
+Couvert : le tirage (quota, cooldown, anti-répétition, échecs), l'alternance (dérogation, samedi sauté, rattrapage), l'ordre des sagas, la progression des séries, les agrégats du palmarès, le formatage des durées et dates, les migrations rejouées sur d'anciens états de base, le client TMDb sur des fixtures enregistrées, les dépôts sur une base en mémoire, et le rendu de quelques vues.
 
 Non couvert par des tests automatiques : les pages elles-mêmes, vérifiées manuellement en HTTP pendant le développement.
 
 ## Avatars
 
-24 archétypes répartis en sept familles : science-fiction, aventure, fantastique, frissons, classiques, Corée et Kpop.
+24 archétypes en pixel art, répartis en cinq familles : frissons, science-fiction, aventure, fantastique, Corée et Kpop.
+
+Chaque sprite est une petite grille de caractères convertie en rectangles SVG, sans lissage, avec une couleur d'accent qui suit le thème du profil. Pas d'image à charger, pas de dépendance.
 
 **Règle de conception, non négociable** : ce sont des archétypes de genre **originaux**, jamais des personnages identifiables. Aucun trait signature protégé, aucun visage ressemblant à une personne réelle, aucun nom de groupe, aucun logo. Le folklore coréen est du domaine public et se dessine librement.
 
@@ -215,7 +248,7 @@ php scripts/migrate.php
 
 La version courante vit dans `settings.schema_version`, son absence signifiant la version 1. Chaque migration s'applique dans sa propre transaction, vérifie l'état réel de la base avant d'agir, et ne se rejoue jamais. `init_db.php` les applique à la fin, donc un déploiement les passe automatiquement.
 
-**Avant toute migration sur la production, prendre une sauvegarde et répéter la migration sur cette copie.** La procédure qui a servi pour la v2 :
+**Avant toute migration sur la production, prendre une sauvegarde et répéter la migration sur cette copie.** La procédure :
 
 ```bash
 ssh infomaniak-prod 'cd sites/filmi.shi-ga.net && php -r "require \"vendor/autoload.php\"; App\Utils\Database::connect()->exec(\"VACUUM INTO '\''/tmp/sauvegarde.sqlite'\''\");"'
@@ -231,7 +264,7 @@ FILMI_CONFIG=/tmp/ma-copie/config.php php scripts/migrate.php
 
 ### Rafraîchissement des plateformes
 
-Le cache des plateformes de streaming est mis à jour par `scripts/refresh_providers.php`, à planifier une fois par semaine côté Infomaniak :
+Le bouton des réglages suffit au quotidien. Pour automatiser, le même travail tourne en ligne de commande avec `scripts/refresh_providers.php`, à planifier une fois par semaine côté Infomaniak :
 
 L'hébergement mutualisé Infomaniak n'expose pas `crontab`, la tâche se crée donc dans le Manager, rubrique Hébergement puis Tâches cron. Commande exacte, avec les chemins absolus de ce compte :
 
@@ -245,6 +278,6 @@ Le script traite au maximum 25 films par exécution, les jamais interrogés d'ab
 
 ## Réglages
 
-Depuis la page Réglages : le nom, l'avatar et la couleur de chaque profil, et l'heure de démarrage du film qui sert au calcul des heures de fin.
+Depuis la page Réglages : le nom, l'avatar et la couleur de chaque profil, l'heure de démarrage du film qui sert au calcul des heures de fin, les plateformes auxquelles la famille est abonnée, et la mise à jour des fiches.
 
 Le seuil de l'alerte de liste faible se règle dans `config/config.php`, champ `low_pool_threshold`.
