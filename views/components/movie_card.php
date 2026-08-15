@@ -72,6 +72,12 @@ $truncatedOverview = $overview !== '' && mb_strlen($overview, 'UTF-8') > 160
             <?php if (!empty($movie['certification'])): ?>
                 <span class="rounded-full bg-white/10 px-2 py-0.5"><?= Security::e($movie['certification']) ?></span>
             <?php endif; ?>
+            <?php if (!empty($movie['last_seen_on'])): ?>
+                <span class="rounded-full bg-sky-500/20 px-2 py-0.5 text-sky-100"
+                      title="Remis dans la liste pour etre revu">
+                    déjà vu le <?= Security::e(FormatUtils::frenchDate((string) $movie['last_seen_on'])) ?>
+                </span>
+            <?php endif; ?>
             <?php if ($blockedByFilm !== null): ?>
                 <span class="rounded-full bg-amber-500/20 px-2 py-0.5 text-amber-100">
                     à voir après <?= Security::e($blockedByFilm['title']) ?>

@@ -102,6 +102,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         exit;
     }
 
+    if ($action === 'rewatch') {
+        $app->movies->markForRewatch($id);
+        header('Location: /movie.php?id=' . $id);
+        exit;
+    }
+
     if ($action === 'move_watch' || $action === 'remove_watch') {
         $seance = $app->seances->watchSeanceForMovie($id);
 
@@ -191,6 +197,7 @@ $app->render('movie', [
     'voters' => $app->votes->voters($id),
     'watchedOn' => $movie['status'] === 'watched' ? $app->seances->watchedDateForMovie($id) : null,
     'watchSeance' => $movie['status'] === 'watched' ? $app->seances->watchSeanceForMovie($id) : null,
+    'viewings' => $app->seances->viewingsForMovie($id),
     'startTime' => $app->settings->startTime(),
     'subscribedBrands' => $app->settings->subscribedBrands(),
     'canManage' => Access::canManagePool((string) $profile['side'], (string) $movie['pool']),

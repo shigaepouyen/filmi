@@ -439,6 +439,22 @@ final class SeanceRepository
         }
     }
 
+    /**
+     * Toutes les dates auxquelles une oeuvre a ete vue, la plus recente d'abord.
+     * Une oeuvre revue en compte plusieurs.
+     *
+     * @return list<string>
+     */
+    public function viewingsForMovie(int $movieId): array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT date FROM seances WHERE movie_id = ? AND status = 'done' ORDER BY date DESC"
+        );
+        $stmt->execute([$movieId]);
+
+        return array_map('strval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+    }
+
     public function watchedDateForMovie(int $movieId): ?string
     {
         $stmt = $this->db->prepare(

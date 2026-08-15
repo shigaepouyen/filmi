@@ -233,6 +233,32 @@ $betLabels = ['safe' => 'valeur sûre', 'discovery' => 'découverte'];
                 Vu le <strong><?= Security::e(FormatUtils::frenchDate($watchedOn)) ?></strong>
             </p>
 
+            <?php if (count($viewings) > 1): ?>
+                <p class="mt-1 text-xs text-slate-400">
+                    Déjà vu <?= count($viewings) ?> fois :
+                    <?= Security::e(implode(', ', array_map(
+                        static fn (string $d): string => FormatUtils::frenchDate($d),
+                        $viewings
+                    ))) ?>
+                </p>
+            <?php endif; ?>
+
+            <?php if ($canManage): ?>
+                <form method="post" class="mt-3">
+                    <input type="hidden" name="csrf" value="<?= Security::csrfToken() ?>">
+                    <input type="hidden" name="id" value="<?= (int) $movie['id'] ?>">
+                    <input type="hidden" name="action" value="rewatch">
+                    <button class="rounded-xl bg-violet-500 px-4 py-2 text-sm font-medium">
+                        Revoir <?= $isSeries ? 'cette série' : 'ce film' ?>
+                    </button>
+                    <span class="ml-2 text-xs text-slate-400">
+                        <?= $isSeries
+                            ? "La série repart au premier épisode, l'historique est conservé."
+                            : "Le film retourne dans sa liste, l'historique est conservé." ?>
+                    </span>
+                </form>
+            <?php endif; ?>
+
             <?php if ($canManage && $watchSeance !== null): ?>
                 <form method="post" class="mt-3 flex flex-wrap items-end gap-2">
                     <input type="hidden" name="csrf" value="<?= Security::csrfToken() ?>">

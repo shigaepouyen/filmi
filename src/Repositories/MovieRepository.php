@@ -130,7 +130,12 @@ final class MovieRepository
                     (SELECT GROUP_CONCAT(vp.name, \', \')
                        FROM votes v2
                        JOIN profiles vp ON vp.id = v2.profile_id
-                      WHERE v2.movie_id = m.id) AS voter_names
+                      WHERE v2.movie_id = m.id) AS voter_names,
+                    (SELECT s.date FROM seances s
+                      WHERE s.movie_id = m.id AND s.status = \'done\'
+                      ORDER BY s.date DESC LIMIT 1) AS last_seen_on,
+                    EXISTS (SELECT 1 FROM seances s2
+                             WHERE s2.movie_id = m.id AND s2.status = \'done\') AS already_seen
                FROM movies m
                JOIN profiles p ON p.id = m.added_by
               WHERE m.pool = ? AND m.status = \'pool\'
@@ -173,6 +178,32 @@ final class MovieRepository
         ));
     }
 
+    /**
+     * Remet une oeuvre deja vue dans sa liste pour la revoir.
+     *
+     * Les seances passees ne sont pas touchees : l'historique garde la trace des
+     * visionnages precedents, et c'est justement ce qui distingue un "revoir"
+     * d'un retrait du "vu le", lequel efface la seance parce qu'elle etait fausse.
+     *
+     * Une serie repart de zero : la revoir, c'est la reprendre au premier episode.
+     */
+    public function markForRewatch(int $id): void
+    {
+        $movie = $this->find($id);
+        if ($movie === null || $movie['status'] !== 'watched') {
+            return;
+        }
+
+        if (($movie['kind'] ?? 'film') === 'series') {
+            $this->db->prepare("UPDATE movies SET status = 'pool', episodes_watched = 0 WHERE id = ?")
+                     ->execute([$id]);
+
+            return;
+        }
+
+        $this->returnToPool($id);
+    }
+
     /** Neutralise ou retablit le blocage par ordre de saga pour ce film. */
     public function setIgnoreOrder(int $id, bool $ignore): void
     {
@@ -189,9 +220,11 @@ final class MovieRepository
     public function sagaCatalogue(): array
     {
         return $this->db->query(
-            'SELECT id, title, status, collection_id, collection_rank, ignore_order
-               FROM movies
-              WHERE collection_id IS NOT NULL'
+            "SELECT m.id, m.title, m.status, m.collection_id, m.collection_rank, m.ignore_order,
+                    EXISTS (SELECT 1 FROM seances s
+                             WHERE s.movie_id = m.id AND s.status = 'done') AS already_seen
+               FROM movies m
+              WHERE m.collection_id IS NOT NULL"
         )->fetchAll();
     }
 
@@ -203,9 +236,18 @@ final class MovieRepository
      */
     public function blockedBy(int $id): ?array
     {
-        $movie = $this->find($id);
+        // On juge sur la ligne du catalogue, la seule qui porte already_seen.
+        // find() renvoie la ligne brute de movies, sans cette information, et la
+        // fiche annoncerait alors un blocage que le tirage n'applique plus.
+        $catalogue = $this->sagaCatalogue();
 
-        return $movie === null ? null : SequelService::blockedBy($movie, $this->sagaCatalogue());
+        foreach ($catalogue as $row) {
+            if ((int) $row['id'] === $id) {
+                return SequelService::blockedBy($row, $catalogue);
+            }
+        }
+
+        return null;
     }
 
     /**

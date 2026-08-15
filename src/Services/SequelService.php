@@ -34,6 +34,13 @@ final class SequelService
             return null;
         }
 
+        // Un film deja vu n'est jamais retenu : le blocage existe pour ne pas gacher
+        // l'ordre de decouverte, or il n'y a plus rien a gacher. C'est ce qui rend
+        // un "revoir" possible au milieu d'une saga.
+        if ((int) ($movie['already_seen'] ?? 0) === 1) {
+            return null;
+        }
+
         $collection = $movie['collection_id'] ?? null;
         $rank = $movie['collection_rank'] ?? null;
         if ($collection === null || $rank === null) {
