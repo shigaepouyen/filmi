@@ -49,4 +49,6 @@ $app->render('settings', [
     'tmdbConfigured' => $app->tmdb->isConfigured(),
     'providerBrands' => $app->movies->providerBrands(),
     'subscribedBrands' => $app->settings->subscribedBrands(),
+    'refreshableWorks' => $app->movies->refreshableWorks(),
+    'canRefresh' => ($profile['side'] ?? '') === 'adult',
 ], 'Filmi, réglages');

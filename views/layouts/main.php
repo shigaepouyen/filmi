@@ -32,6 +32,7 @@ $tmdbMissing = trim((string) Config::get('tmdb_api_key')) === '';
         .filmi-lightstick { animation: filmi-glow 1.8s ease-in-out infinite; transform-origin: center; }
         @keyframes filmi-glow { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
         body { -webkit-tap-highlight-color: transparent; }
+        [x-cloak] { display: none !important; }
     </style>
 </head>
 <body class="min-h-full bg-slate-900 text-slate-100 antialiased">

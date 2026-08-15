@@ -329,6 +329,58 @@ final class MovieRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * Les oeuvres qu'une mise a jour manuelle peut rafraichir : celles encore en
+     * liste et rattachees a TMDb. Contrairement a staleProviders(), l'anciennete
+     * du cache n'entre pas en compte : quand on clique sur "mettre a jour", on
+     * veut tout revoir, pas seulement ce qui a plus d'une semaine.
+     *
+     * @return list<array{id:int, title:string, kind:string}>
+     */
+    public function refreshableWorks(): array
+    {
+        return $this->db->query(
+            "SELECT id, title, kind
+               FROM movies
+              WHERE status = 'pool' AND tmdb_id IS NOT NULL
+              ORDER BY title COLLATE NOCASE"
+        )->fetchAll();
+    }
+
+    /**
+     * Rafraichit les metadonnees d'une serie sans toucher a sa progression.
+     *
+     * episodes_watched et episodes_per_evening ne sont jamais ecrases : la
+     * famille perdrait sa place dans la serie. La suite continue d'episodes,
+     * elle, est remplacee, car une saison peut avoir ete ajoutee depuis.
+     *
+     * @param array<string, mixed> $fresh sortie de TmdbService::seriesDetails()
+     */
+    public function updateSeriesMetadata(int $id, array $fresh): void
+    {
+        $this->db->prepare(
+            'UPDATE movies
+                SET providers = ?,
+                    providers_at = CURRENT_TIMESTAMP,
+                    overview = COALESCE(?, overview),
+                    poster_url = COALESCE(?, poster_url),
+                    tmdb_rating = COALESCE(?, tmdb_rating),
+                    season_count = COALESCE(?, season_count),
+                    episode_count = COALESCE(?, episode_count),
+                    episodes = COALESCE(?, episodes)
+              WHERE id = ?'
+        )->execute([
+            (string) ($fresh['providers'] ?? '[]'),
+            $fresh['overview'] ?? null,
+            $fresh['poster_url'] ?? null,
+            $fresh['tmdb_rating'] ?? null,
+            $fresh['season_count'] ?? null,
+            $fresh['episode_count'] ?? null,
+            $fresh['episodes'] ?? null,
+            $id,
+        ]);
+    }
+
     public function updateProviders(
         int $id,
         string $providersJson,
