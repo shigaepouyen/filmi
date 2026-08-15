@@ -102,6 +102,26 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         exit;
     }
 
+    if ($action === 'move_watch' || $action === 'remove_watch') {
+        $seance = $app->seances->watchSeanceForMovie($id);
+
+        if ($seance === null) {
+            $error = "Ce film n'a pas de date de visionnage a modifier.";
+        } elseif ($action === 'remove_watch') {
+            $app->seances->removeWatch((int) $seance['id']);
+            header('Location: /movie.php?id=' . $id);
+            exit;
+        } else {
+            try {
+                $app->seances->moveSeance((int) $seance['id'], (string) ($_POST['watched_on'] ?? ''));
+                header('Location: /movie.php?id=' . $id);
+                exit;
+            } catch (BackfillException $e) {
+                $error = $e->getMessage();
+            }
+        }
+    }
+
     if ($action === 'toggle_order') {
         // Echappatoire pour les sagas dont l'ordre de sortie n'est pas l'ordre de
         // visionnage, Star Wars typiquement. Sans elle l'application aurait tort
@@ -170,6 +190,7 @@ $app->render('movie', [
     'proposer' => $app->profiles->find((int) $movie['added_by']),
     'voters' => $app->votes->voters($id),
     'watchedOn' => $movie['status'] === 'watched' ? $app->seances->watchedDateForMovie($id) : null,
+    'watchSeance' => $movie['status'] === 'watched' ? $app->seances->watchSeanceForMovie($id) : null,
     'startTime' => $app->settings->startTime(),
     'subscribedBrands' => $app->settings->subscribedBrands(),
     'canManage' => Access::canManagePool((string) $profile['side'], (string) $movie['pool']),

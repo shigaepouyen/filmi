@@ -351,6 +351,94 @@ final class SeanceRepository
     }
 
     /** Date de la séance la plus récente ayant retenu ce film, ou null s'il n'a jamais été vu. */
+    /**
+     * La seance qui porte le "vu le" d'une oeuvre, avec ce qu'il faut pour
+     * prevenir l'utilisateur de ce qu'une suppression emporterait.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function watchSeanceForMovie(int $movieId): ?array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT s.*,
+                    (SELECT COUNT(*) FROM ratings r WHERE r.seance_id = s.id) AS rating_count,
+                    (SELECT COUNT(*) FROM seance_picks p
+                      WHERE p.seance_id = s.id AND p.role = 'shortlist') AS shortlist_count
+               FROM seances s
+              WHERE s.movie_id = ? AND s.status = 'done'
+              ORDER BY s.date DESC
+              LIMIT 1"
+        );
+        $stmt->execute([$movieId]);
+
+        return $stmt->fetch() ?: null;
+    }
+
+    /**
+     * Deplace la date d'une seance.
+     *
+     * seances.date est UNIQUE, contrainte posee pour empecher deux telephones de
+     * creer deux seances le meme samedi : viser une date deja prise est refuse
+     * explicitement plutot que de laisser remonter une erreur SQL brute.
+     */
+    public function moveSeance(int $seanceId, string $date): void
+    {
+        if (\DateTimeImmutable::createFromFormat('!Y-m-d', $date) === false
+            || \DateTimeImmutable::createFromFormat('!Y-m-d', $date)->format('Y-m-d') !== $date) {
+            throw new BackfillException('Date invalide.');
+        }
+
+        if ($date > (new \DateTimeImmutable('today'))->format('Y-m-d')) {
+            throw new BackfillException("Une seance vue ne peut pas etre datee dans le futur.");
+        }
+
+        $occupee = $this->findByDate($date);
+        if ($occupee !== null && (int) $occupee['id'] !== $seanceId) {
+            throw new BackfillException("Une seance existe deja le {$date}.");
+        }
+
+        $this->db->prepare('UPDATE seances SET date = ? WHERE id = ?')->execute([$date, $seanceId]);
+    }
+
+    /**
+     * Retire le "vu le" : la seance disparait et l'oeuvre repart en liste.
+     *
+     * Une serie voit sa progression rembobinee de la plage que cette soiree avait
+     * fait avancer, sinon les episodes resteraient comptes comme vus.
+     */
+    public function removeWatch(int $seanceId): void
+    {
+        $seance = $this->find($seanceId);
+        if ($seance === null || $seance['movie_id'] === null) {
+            return;
+        }
+
+        $movieId = (int) $seance['movie_id'];
+
+        $this->db->beginTransaction();
+        try {
+            $movie = $this->movies->find($movieId);
+
+            if ($movie !== null
+                && ($movie['kind'] ?? 'film') === 'series'
+                && $seance['episodes_from'] !== null) {
+                $avant = max(0, (int) $seance['episodes_from'] - 1);
+                $this->db->prepare('UPDATE movies SET episodes_watched = ? WHERE id = ?')
+                         ->execute([$avant, $movieId]);
+            }
+
+            // ON DELETE CASCADE emporte les notes et les lignes de shortlist.
+            $this->db->prepare('DELETE FROM seances WHERE id = ?')->execute([$seanceId]);
+
+            $this->movies->returnToPool($movieId);
+
+            $this->db->commit();
+        } catch (Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
     public function watchedDateForMovie(int $movieId): ?string
     {
         $stmt = $this->db->prepare(

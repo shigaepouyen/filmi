@@ -228,8 +228,58 @@ $betLabels = ['safe' => 'valeur sûre', 'discovery' => 'découverte'];
     <?php endif; ?>
 
     <?php if ($watchedOn !== null): ?>
-        <section class="mt-3 text-sm text-slate-300">
-            Vu le <?= Security::e(FormatUtils::frenchDate($watchedOn)) ?>
+        <section class="mt-3 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
+            <p class="text-sm text-slate-200">
+                Vu le <strong><?= Security::e(FormatUtils::frenchDate($watchedOn)) ?></strong>
+            </p>
+
+            <?php if ($canManage && $watchSeance !== null): ?>
+                <form method="post" class="mt-3 flex flex-wrap items-end gap-2">
+                    <input type="hidden" name="csrf" value="<?= Security::csrfToken() ?>">
+                    <input type="hidden" name="id" value="<?= (int) $movie['id'] ?>">
+                    <input type="hidden" name="action" value="move_watch">
+                    <label class="text-xs text-slate-400" for="watched_on">
+                        Corriger la date
+                        <input id="watched_on" name="watched_on" type="date" required
+                               value="<?= Security::e($watchedOn) ?>"
+                               max="<?= Security::e((new DateTimeImmutable('today'))->format('Y-m-d')) ?>"
+                               class="mt-1 block rounded-xl bg-white/10 px-3 py-2 text-sm text-slate-100">
+                    </label>
+                    <button class="rounded-xl bg-white/10 px-3 py-2 text-sm">Enregistrer la date</button>
+                </form>
+
+                <?php
+                $estRattrapage = (int) ($watchSeance['backfilled'] ?? 0) === 1;
+                $notes = (int) ($watchSeance['rating_count'] ?? 0);
+                $shortlist = (int) ($watchSeance['shortlist_count'] ?? 0);
+                ?>
+                <form method="post" class="mt-3 border-t border-white/10 pt-3"
+                      x-data="{ confirme: false }">
+                    <input type="hidden" name="csrf" value="<?= Security::csrfToken() ?>">
+                    <input type="hidden" name="id" value="<?= (int) $movie['id'] ?>">
+                    <input type="hidden" name="action" value="remove_watch">
+
+                    <p class="text-xs text-slate-400">
+                        Retirer le « vu le » remet <?= $isSeries ? 'la série' : 'le film' ?> dans sa liste.
+                        <?php if (!$estRattrapage): ?>
+                            <span class="text-amber-200">
+                                Attention, cette séance est un vrai samedi
+                                <?php if ($notes > 0): ?>
+                                    et ses <?= $notes ?> note<?= $notes > 1 ? 's' : '' ?> seront perdues<?php endif; ?><?php if ($shortlist > 0): ?><?= $notes > 0 ? ', ' : ' et ' ?>sa sélection de <?= $shortlist ?> films disparaîtra de l'historique et du cooldown<?php endif; ?>.
+                            </span>
+                        <?php endif; ?>
+                    </p>
+
+                    <label class="mt-2 flex items-center gap-2 text-xs text-slate-300">
+                        <input type="checkbox" x-model="confirme" class="rounded">
+                        Oui, retirer cette date
+                    </label>
+                    <button class="mt-2 rounded-xl bg-rose-500/80 px-3 py-2 text-sm font-medium disabled:opacity-40"
+                            :disabled="!confirme">
+                        Retirer le « vu le »
+                    </button>
+                </form>
+            <?php endif; ?>
         </section>
     <?php endif; ?>
 
