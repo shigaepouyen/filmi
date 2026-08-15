@@ -159,7 +159,8 @@ final class MovieRepository
     {
         $candidats = $this->db->query(
             'SELECT m.id, m.bet_type, m.title, m.year, m.runtime, m.poster_url,
-                    m.overview, m.certification, m.providers, m.memo,
+                    m.overview, m.certification, m.providers, m.memo, m.trailer_url,
+                    m.director, m.genres, m.tmdb_rating,
                     m.collection_id, m.collection_rank, m.ignore_order, m.status,
                     p.name AS proposer_name
                FROM movies m

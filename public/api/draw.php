@@ -63,6 +63,11 @@ $movies = array_map(static function (array $movie) use ($subscribedBrands): arra
     return $movie;
 }, $result['movies']);
 
+// La selection courante est memorisee pour la soiree : on peut aller voir une
+// fiche ou une bande-annonce et revenir sans que les trois films changent sous
+// les yeux de la famille. Seul un re-tirage explicite la remplace.
+$_SESSION['filmi_current_' . (int) $seance['id']] = $movies;
+
 $app->json([
     'movies' => $movies,
     'reset' => $result['reset'],

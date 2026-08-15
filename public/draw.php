@@ -33,6 +33,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     if ($chosen > 0 && in_array($chosen, $shortlist, true)) {
         $app->seances->recordChoice((int) $seance['id'], $shortlist, $chosen);
         unset($_SESSION['filmi_shown_' . (int) $seance['id']]);
+        unset($_SESSION['filmi_current_' . (int) $seance['id']]);
         header('Location: /seance.php');
         exit;
     }
@@ -41,4 +42,5 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 $app->render('draw', [
     'seance' => $seance,
     'startTime' => $app->settings->startTime(),
+    'currentMovies' => $_SESSION['filmi_current_' . (int) $seance['id']] ?? null,
 ], 'Filmi, le tirage');
