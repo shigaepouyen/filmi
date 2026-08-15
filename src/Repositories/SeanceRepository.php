@@ -220,6 +220,45 @@ final class SeanceRepository
         }
     }
 
+    /** La moyenne des notes d'une seance, ou null si personne n'a note. */
+    public function averageFor(int $seanceId): ?float
+    {
+        $stmt = $this->db->prepare('SELECT ROUND(AVG(score), 2) FROM ratings WHERE seance_id = ?');
+        $stmt->execute([$seanceId]);
+        $moyenne = $stmt->fetchColumn();
+
+        return $moyenne === null || $moyenne === false ? null : (float) $moyenne;
+    }
+
+    /** La note qu'un profil a deja donnee a cette seance, ou null. */
+    public function ratingFor(int $seanceId, int $profileId): ?int
+    {
+        $stmt = $this->db->prepare('SELECT score FROM ratings WHERE seance_id = ? AND profile_id = ?');
+        $stmt->execute([$seanceId, $profileId]);
+        $score = $stmt->fetchColumn();
+
+        return $score === false ? null : (int) $score;
+    }
+
+    /**
+     * Les notes deja donnees par un profil, indexees par seance.
+     * L'historique en a besoin pour afficher d'un coup ou il en est.
+     *
+     * @return array<int, int>
+     */
+    public function myRatings(int $profileId): array
+    {
+        $stmt = $this->db->prepare('SELECT seance_id, score FROM ratings WHERE profile_id = ?');
+        $stmt->execute([$profileId]);
+
+        $notes = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $notes[(int) $row['seance_id']] = (int) $row['score'];
+        }
+
+        return $notes;
+    }
+
     public function rate(int $seanceId, int $profileId, int $score): void
     {
         if ($score < 1 || $score > 5) {

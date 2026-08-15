@@ -31,8 +31,12 @@ $statusLabels = [
             <?php
                 $hasFilm = $seance['movie_title'] !== null;
                 $tag = $hasFilm ? 'a' : 'div';
+                $seanceId = (int) $seance['id'];
+                $maNote = $myRatings[$seanceId] ?? null;
+                $notable = $hasFilm && $seance['status'] === 'done';
             ?>
-            <li class="rounded-2xl bg-white/5 ring-1 ring-white/10">
+            <li class="rounded-2xl bg-white/5 ring-1 ring-white/10"
+                <?php if ($notable): ?>x-data="filmiRating(<?= $seanceId ?>, <?= $maNote === null ? 'null' : (int) $maNote ?>, <?= $seance['avg_score'] === null ? 'null' : (float) $seance['avg_score'] ?>)"<?php endif; ?>>
             <<?= $tag ?><?= $hasFilm ? ' href="/seance.php?id=' . (int) $seance['id'] . '"' : '' ?> class="flex items-center gap-3 p-3 no-underline text-inherit">
                 <?php if (!empty($seance['movie_poster'])): ?>
                     <img src="<?= Security::e($seance['movie_poster']) ?>" alt="" loading="lazy"
@@ -68,7 +72,12 @@ $statusLabels = [
                                 <?= (int) $seance['veto_count'] ?> veto<?= $seance['veto_count'] > 1 ? 's' : '' ?>
                             </span>
                         <?php endif; ?>
-                        <?php if ($seance['avg_score'] !== null): ?>
+                        <?php if ($notable): ?>
+                            <span class="rounded-full bg-amber-400/25 px-2 py-0.5 text-amber-100"
+                                  x-show="average !== null" x-cloak>
+                                <span x-text="average"></span> sur 5
+                            </span>
+                        <?php elseif ($seance['avg_score'] !== null): ?>
                             <span class="rounded-full bg-amber-400/25 px-2 py-0.5 text-amber-100">
                                 <?= Security::e((string) $seance['avg_score']) ?> sur 5
                             </span>
@@ -84,7 +93,92 @@ $statusLabels = [
                     <?php endif; ?>
                 </div>
             </<?= $tag ?>>
+            <?php if ($notable): ?>
+                <div class="flex flex-wrap items-center gap-2 border-t border-white/10 px-3 py-2">
+                    <span class="text-[11px] text-slate-400"
+                          x-text="score === null ? 'ta note' : 'ta note : ' + score + '/5'"></span>
+                    <div class="flex gap-1">
+                        <?php for ($etoile = 1; $etoile <= 5; $etoile++): ?>
+                            <button type="button" @click="pick(<?= $etoile ?>)" :disabled="busy"
+                                    class="h-8 w-8 rounded-lg text-sm disabled:opacity-40"
+                                    :class="score === <?= $etoile ?> ? 'bg-amber-400/30 ring-2 ring-amber-300' : 'bg-white/10'">
+                                <?= $etoile ?>
+                            </button>
+                        <?php endfor; ?>
+                    </div>
+                    <template x-if="pending !== null">
+                        <span class="flex items-center gap-2 text-[11px] text-amber-200">
+                            <span>Remplacer ta note par <span x-text="pending"></span>/5 ?</span>
+                            <button type="button" @click="confirmReplace()" :disabled="busy"
+                                    class="rounded-lg bg-amber-400/30 px-2 py-1">Oui</button>
+                            <button type="button" @click="pending = null"
+                                    class="rounded-lg bg-white/10 px-2 py-1">Non</button>
+                        </span>
+                    </template>
+                    <span x-show="error" x-text="error" class="text-[11px] text-rose-300"></span>
+                </div>
+            <?php endif; ?>
             </li>
         <?php endforeach; ?>
     </ol>
+
+    <script>
+    // Note sur 5 posee depuis l'historique. Premiere note = direct ; note deja
+    // donnee = on demande confirmation avant de l'ecraser (le serveur applique
+    // la meme regle, ce bloc n'est que le confort).
+    window.filmiRating = function (seanceId, myScore, average) {
+        return {
+            score: myScore,
+            average: average,
+            pending: null,
+            busy: false,
+            error: '',
+            pick(value) {
+                this.error = '';
+                if (this.busy || this.score === value) {
+                    return;
+                }
+                if (this.score !== null) {
+                    this.pending = value;
+                    return;
+                }
+                this.send(value, false);
+            },
+            confirmReplace() {
+                this.send(this.pending, true);
+            },
+            async send(value, replace) {
+                this.busy = true;
+                const body = new FormData();
+                body.append('csrf', document.querySelector('meta[name="csrf-token"]').content);
+                body.append('seance_id', seanceId);
+                body.append('score', value);
+                if (replace) {
+                    body.append('intent', 'replace');
+                }
+                try {
+                    const response = await fetch('/api/rate.php', { method: 'POST', body });
+                    const data = await response.json();
+                    if (response.ok) {
+                        this.score = data.score;
+                        this.average = data.average;
+                        this.pending = null;
+                    } else if (data.already_rated) {
+                        // Une autre page a note entre-temps : on repasse par la confirmation.
+                        this.score = data.score;
+                        this.average = data.average;
+                        this.pending = value;
+                    } else {
+                        this.error = data.error || 'La note n\'a pas été enregistrée.';
+                        this.pending = null;
+                    }
+                } catch (e) {
+                    this.error = 'La note n\'a pas été enregistrée.';
+                } finally {
+                    this.busy = false;
+                }
+            },
+        };
+    };
+    </script>
 <?php endif; ?>

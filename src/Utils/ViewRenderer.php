@@ -15,4 +15,15 @@ final class ViewRenderer
 
         return (string) ob_get_clean();
     }
+
+    /** Rend une vue de page (sans layout), pour la tester hors serveur web. */
+    public static function page(string $name, array $data = []): string
+    {
+        extract($data, EXTR_SKIP);
+
+        ob_start();
+        require dirname(__DIR__, 2) . '/views/' . $name . '.php';
+
+        return (string) ob_get_clean();
+    }
 }
