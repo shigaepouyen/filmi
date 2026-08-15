@@ -176,6 +176,52 @@ final class TmdbService
             ),
             'providers_at' => date('Y-m-d H:i:s'),
             'trailer_url' => self::trailerUrl($movie['videos']['results'] ?? []),
+        ] + $this->collection($movie['belongs_to_collection'] ?? null, (int) ($movie['id'] ?? $tmdbId));
+    }
+
+    /**
+     * La saga du film et son rang dedans, pour ne jamais proposer une suite avant
+     * son precedent. Le rang vient des dates de sortie, donc un appel de plus a
+     * /collection/{id}, fait une seule fois a l'ajout puis fige en base.
+     *
+     * @param array<string, mixed>|null $belongsTo
+     * @return array{collection_id: ?int, collection_name: ?string, collection_rank: ?int}
+     */
+    private function collection(?array $belongsTo, int $tmdbId): array
+    {
+        $vide = ['collection_id' => null, 'collection_name' => null, 'collection_rank' => null];
+
+        if ($belongsTo === null || !isset($belongsTo['id'])) {
+            return $vide;
+        }
+
+        try {
+            $collection = $this->get('/collection/' . (int) $belongsTo['id'], []);
+        } catch (TmdbException) {
+            // Une saga introuvable ne doit pas empecher d'ajouter le film : sans
+            // rang il ne sera ni bloque ni bloquant, ce qui est le comportement
+            // d'un film sans saga.
+            return $vide;
+        }
+
+        $parts = $collection['parts'] ?? [];
+        usort($parts, static function (array $a, array $b): int {
+            // Une part sans date passe en fin de saga plutot qu'en tete.
+            return strcmp((string) ($a['release_date'] ?: '9999'), (string) ($b['release_date'] ?: '9999'));
+        });
+
+        $rang = null;
+        foreach ($parts as $index => $part) {
+            if ((int) ($part['id'] ?? 0) === $tmdbId) {
+                $rang = $index + 1;
+                break;
+            }
+        }
+
+        return [
+            'collection_id' => (int) $belongsTo['id'],
+            'collection_name' => $belongsTo['name'] ?? null,
+            'collection_rank' => $rang,
         ];
     }
 

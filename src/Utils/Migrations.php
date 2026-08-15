@@ -141,6 +141,30 @@ final class Migrations
                     }
                 },
             ],
+            7 => [
+                'description' => "Ajoute les sagas : collection TMDb, rang et echappatoire d'ordre",
+                'up' => static function (PDO $db): void {
+                    // Les films deja en base restent a NULL, donc ni bloquants ni
+                    // bloques : le comportement ne change pas tant qu'aucune saga
+                    // n'est renseignee. Le rafraichissement des plateformes les
+                    // completera au fil de l'eau.
+                    $columns = array_column(
+                        $db->query('PRAGMA table_info(movies)')->fetchAll(PDO::FETCH_ASSOC),
+                        'name'
+                    );
+                    $alters = [
+                        'collection_id' => 'ALTER TABLE movies ADD COLUMN collection_id INTEGER',
+                        'collection_name' => 'ALTER TABLE movies ADD COLUMN collection_name TEXT',
+                        'collection_rank' => 'ALTER TABLE movies ADD COLUMN collection_rank INTEGER',
+                        'ignore_order' => 'ALTER TABLE movies ADD COLUMN ignore_order INTEGER NOT NULL DEFAULT 0',
+                    ];
+                    foreach ($alters as $column => $sql) {
+                        if (!in_array($column, $columns, true)) {
+                            $db->exec($sql);
+                        }
+                    }
+                },
+            ],
         ];
     }
 

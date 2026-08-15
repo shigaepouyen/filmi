@@ -43,6 +43,7 @@ $sorts = ['votes' => 'Les plus votés', 'recent' => 'Les plus récents', 'runtim
                 'profile' => $profile,
                 'choosable' => $kidWeek && $pool === 'kid',
                 'subscribedBrands' => $subscribedBrands,
+                'blockedByFilm' => \App\Services\SequelService::blockedBy($movie, $sagaCatalogue),
             ]) ?>
         <?php endforeach; ?>
     </div>

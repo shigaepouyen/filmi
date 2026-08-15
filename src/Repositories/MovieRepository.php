@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Repositories;
 
 use App\Utils\Providers;
+use App\Services\SequelService;
 use InvalidArgumentException;
 use PDO;
 
@@ -19,6 +20,7 @@ final class MovieRepository
         'overview', 'genres', 'director', 'tmdb_rating', 'certification',
         'providers', 'providers_at', 'trailer_url', 'kind', 'season_count',
         'episode_count', 'episodes_per_evening', 'episodes_watched', 'episodes',
+        'collection_id', 'collection_name', 'collection_rank', 'ignore_order',
         'pool', 'bet_type', 'memo', 'added_by',
     ];
 
@@ -65,6 +67,9 @@ final class MovieRepository
         $row['episodes_watched'] = isset($data['episodes_watched'])
             ? (int) $data['episodes_watched']
             : 0;
+        // Colonne NOT NULL : l'echappatoire d'ordre de saga est desactivee par
+        // defaut, elle se pose ensuite depuis la fiche du film.
+        $row['ignore_order'] = (int) (bool) ($data['ignore_order'] ?? 0);
 
         $placeholders = implode(', ', array_map(static fn ($c) => ':' . $c, self::COLUMNS));
         $stmt = $this->db->prepare(
@@ -147,14 +152,60 @@ final class MovieRepository
      */
     public function drawCandidates(): array
     {
-        return $this->db->query(
+        $candidats = $this->db->query(
             'SELECT m.id, m.bet_type, m.title, m.year, m.runtime, m.poster_url,
                     m.overview, m.certification, m.providers, m.memo,
+                    m.collection_id, m.collection_rank, m.ignore_order, m.status,
                     p.name AS proposer_name
                FROM movies m
                JOIN profiles p ON p.id = m.added_by
               WHERE m.pool = \'adult\' AND m.status = \'pool\' AND m.kind = \'film\''
         )->fetchAll();
+
+        // Une suite dont le precedent attend encore dans une liste ne doit jamais
+        // sortir au tirage. Le catalogue de reference couvre les DEUX listes : un
+        // precedent range chez les filles retient tout autant sa suite.
+        $bloques = SequelService::blockedIds($this->sagaCatalogue());
+
+        return array_values(array_filter(
+            $candidats,
+            static fn (array $movie): bool => !in_array((int) $movie['id'], $bloques, true)
+        ));
+    }
+
+    /** Neutralise ou retablit le blocage par ordre de saga pour ce film. */
+    public function setIgnoreOrder(int $id, bool $ignore): void
+    {
+        $this->db->prepare('UPDATE movies SET ignore_order = ? WHERE id = ?')
+                 ->execute([$ignore ? 1 : 0, $id]);
+    }
+
+    /**
+     * Les films des deux listes portant une saga, tous statuts confondus.
+     * C'est le catalogue dont SequelService a besoin pour trancher.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function sagaCatalogue(): array
+    {
+        return $this->db->query(
+            'SELECT id, title, status, collection_id, collection_rank, ignore_order
+               FROM movies
+              WHERE collection_id IS NOT NULL'
+        )->fetchAll();
+    }
+
+    /**
+     * Le film qui retient celui-ci, ou null. Pratique pour une page qui n'a qu'un
+     * film sous la main.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function blockedBy(int $id): ?array
+    {
+        $movie = $this->find($id);
+
+        return $movie === null ? null : SequelService::blockedBy($movie, $this->sagaCatalogue());
     }
 
     /**
@@ -282,16 +333,33 @@ final class MovieRepository
         int $id,
         string $providersJson,
         ?string $certification = null,
-        ?string $trailerUrl = null
+        ?string $trailerUrl = null,
+        ?int $collectionId = null,
+        ?string $collectionName = null,
+        ?int $collectionRank = null
     ): void {
+        // COALESCE partout : le rafraichissement enrichit, il n'efface jamais une
+        // valeur deja connue si TMDb ne la renvoie plus. C'est ce qui permet aussi
+        // de renseigner les sagas des films ajoutes avant leur prise en charge.
         $this->db->prepare(
             'UPDATE movies
                 SET providers = ?,
                     providers_at = CURRENT_TIMESTAMP,
                     certification = COALESCE(?, certification),
-                    trailer_url = COALESCE(?, trailer_url)
+                    trailer_url = COALESCE(?, trailer_url),
+                    collection_id = COALESCE(?, collection_id),
+                    collection_name = COALESCE(?, collection_name),
+                    collection_rank = COALESCE(?, collection_rank)
               WHERE id = ?'
-        )->execute([$providersJson, $certification, $trailerUrl, $id]);
+        )->execute([
+            $providersJson,
+            $certification,
+            $trailerUrl,
+            $collectionId,
+            $collectionName,
+            $collectionRank,
+            $id,
+        ]);
     }
 
     /**

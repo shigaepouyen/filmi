@@ -29,7 +29,10 @@ foreach ($stale as $movie) {
             (int) $movie['id'],
             (string) $fresh['providers'],
             $fresh['certification'],
-            $fresh['trailer_url'] ?? null
+            $fresh['trailer_url'] ?? null,
+            $fresh['collection_id'] ?? null,
+            $fresh['collection_name'] ?? null,
+            $fresh['collection_rank'] ?? null
         );
         $done++;
     } catch (TmdbException $e) {

@@ -29,6 +29,10 @@ CREATE TABLE IF NOT EXISTS movies (
     episodes_per_evening  INTEGER NOT NULL DEFAULT 2,
     episodes_watched      INTEGER NOT NULL DEFAULT 0,   -- index dans la suite continue
     episodes              TEXT,       -- JSON de la suite continue : saison, numéro, durée, titre
+    collection_id         INTEGER,    -- saga TMDb, NULL si le film n'en fait pas partie
+    collection_name       TEXT,
+    collection_rank       INTEGER,    -- rang dans la saga, déduit des dates de sortie
+    ignore_order          INTEGER NOT NULL DEFAULT 0,  -- 1 = ce film n'est jamais retenu par son ordre de saga
     pool           TEXT NOT NULL CHECK (pool IN ('adult','kid')),
     bet_type       TEXT CHECK (bet_type IN ('safe','discovery')),
     memo           TEXT,

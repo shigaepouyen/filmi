@@ -118,6 +118,46 @@ $betLabels = ['safe' => 'valeur sûre', 'discovery' => 'découverte'];
         </section>
     <?php endif; ?>
 
+    <?php if (!empty($movie['collection_name'])): ?>
+        <section class="mt-4 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
+            <h2 class="text-sm font-medium text-slate-300">Saga</h2>
+            <p class="mt-1 text-sm text-slate-200">
+                <?= Security::e($movie['collection_name']) ?>
+                <?php if ($movie['collection_rank'] !== null): ?>
+                    · film n<sup>o</sup> <?= (int) $movie['collection_rank'] ?>
+                <?php endif; ?>
+            </p>
+
+            <?php if ($blockedByFilm !== null): ?>
+                <p class="mt-2 rounded-xl bg-amber-500/20 px-3 py-2 text-sm text-amber-100">
+                    À voir après <strong><?= Security::e($blockedByFilm['title']) ?></strong>,
+                    qui attend encore dans une liste. Ce film ne sortira pas au tirage
+                    et ne peut pas être choisi tant que le précédent n'est pas vu.
+                </p>
+            <?php elseif ((int) ($movie['ignore_order'] ?? 0) === 1): ?>
+                <p class="mt-2 text-xs text-slate-400">
+                    L'ordre de la saga est ignoré pour ce film.
+                </p>
+            <?php endif; ?>
+
+            <?php if ($canManage): ?>
+                <form method="post" class="mt-2">
+                    <input type="hidden" name="csrf" value="<?= Security::csrfToken() ?>">
+                    <input type="hidden" name="id" value="<?= (int) $movie['id'] ?>">
+                    <input type="hidden" name="action" value="toggle_order">
+                    <button class="rounded-xl bg-white/10 px-3 py-1.5 text-xs">
+                        <?= ((int) ($movie['ignore_order'] ?? 0) === 1)
+                            ? "Tenir compte de l'ordre de la saga"
+                            : "Ignorer l'ordre pour ce film" ?>
+                    </button>
+                </form>
+                <p class="mt-1 text-xs text-slate-500">
+                    Utile quand l'ordre de sortie n'est pas l'ordre de l'histoire, comme Star Wars.
+                </p>
+            <?php endif; ?>
+        </section>
+    <?php endif; ?>
+
     <?php if ($isSeries): ?>
         <section class="mt-4 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
             <h2 class="text-sm font-medium text-slate-300">Série</h2>

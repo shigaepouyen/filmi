@@ -5,6 +5,7 @@ use App\Utils\Providers;
 use App\Utils\Security;
 
 $choosable = $choosable ?? false;
+$blockedByFilm = $blockedByFilm ?? null;
 $subscribedBrands = $subscribedBrands ?? [];
 
 $isSeries = ($movie['kind'] ?? 'film') === 'series';
@@ -71,6 +72,11 @@ $truncatedOverview = $overview !== '' && mb_strlen($overview, 'UTF-8') > 160
             <?php if (!empty($movie['certification'])): ?>
                 <span class="rounded-full bg-white/10 px-2 py-0.5"><?= Security::e($movie['certification']) ?></span>
             <?php endif; ?>
+            <?php if ($blockedByFilm !== null): ?>
+                <span class="rounded-full bg-amber-500/20 px-2 py-0.5 text-amber-100">
+                    à voir après <?= Security::e($blockedByFilm['title']) ?>
+                </span>
+            <?php endif; ?>
             <?php if ($brands === []): ?>
                 <span class="text-slate-500">aucune plateforme connue</span>
             <?php elseif ($display['warning']): ?>
@@ -112,7 +118,7 @@ $truncatedOverview = $overview !== '' && mb_strlen($overview, 'UTF-8') > 160
         <?php /* Une série ne se choisit pas comme un film au tirage : sa soirée
                   passe par la fiche (progression, réglage des épisodes), pas par
                   ce raccourci qui n'enregistrerait pas de plage d'épisodes. */ ?>
-        <?php if ($choosable && !$isSeries): ?>
+        <?php if ($choosable && !$isSeries && $blockedByFilm === null): ?>
             <form method="post" class="relative z-20 mt-2">
                 <input type="hidden" name="csrf" value="<?= Security::csrfToken() ?>">
                 <input type="hidden" name="action" value="choose">

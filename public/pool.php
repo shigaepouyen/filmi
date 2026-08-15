@@ -5,6 +5,7 @@ require dirname(__DIR__) . '/vendor/autoload.php';
 
 use App\App;
 use App\Services\ScheduleService;
+use App\Services\SequelService;
 use App\Utils\Security;
 
 $app = App::boot();
@@ -25,9 +26,16 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         && $seance['chooser_side'] === 'kid';
 
     $movie = $movieId > 0 ? $app->movies->find($movieId) : null;
+
+    // Une suite dont le precedent attend encore dans une liste ne se choisit pas
+    // davantage a la main qu'elle ne sort au tirage : verifie ici, cote serveur,
+    // et pas seulement par le bouton retire de la carte.
+    $retenuPar = $movie !== null ? $app->movies->blockedBy((int) $movie['id']) : null;
+
     $isChoosableMovie = $movie !== null
         && $movie['status'] === 'pool'
-        && $movie['pool'] === 'kid';
+        && $movie['pool'] === 'kid'
+        && $retenuPar === null;
 
     if (($_POST['action'] ?? '') === 'choose' && $choosable && $isChoosableMovie) {
         // Semaine filles : aucune shortlist, il n'y a pas eu de tirage. Elles choisissent
@@ -48,6 +56,8 @@ $app->render('pool', [
     'pool' => $pool,
     'sort' => $sort,
     'movies' => $app->movies->pool($pool, $sort),
+    'blockedIds' => SequelService::blockedIds($app->movies->sagaCatalogue()),
+    'sagaCatalogue' => $app->movies->sagaCatalogue(),
     'counts' => ['adult' => $app->movies->countPool('adult'), 'kid' => $app->movies->countPool('kid')],
     'startTime' => $app->settings->startTime(),
     'myVotes' => $app->votes->votedMovieIds((int) $profile['id']),

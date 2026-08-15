@@ -102,6 +102,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         exit;
     }
 
+    if ($action === 'toggle_order') {
+        // Echappatoire pour les sagas dont l'ordre de sortie n'est pas l'ordre de
+        // visionnage, Star Wars typiquement. Sans elle l'application aurait tort
+        // sans recours possible.
+        $app->movies->setIgnoreOrder($id, ((int) ($movie['ignore_order'] ?? 0)) === 0);
+        header('Location: /movie.php?id=' . $id);
+        exit;
+    }
+
     if ($action === 'reclassify') {
         $pool = ($_POST['pool'] ?? '') === 'kid' ? 'kid' : 'adult';
         $betType = in_array($_POST['bet_type'] ?? '', ['safe', 'discovery'], true)
@@ -164,6 +173,7 @@ $app->render('movie', [
     'startTime' => $app->settings->startTime(),
     'subscribedBrands' => $app->settings->subscribedBrands(),
     'canManage' => Access::canManagePool((string) $profile['side'], (string) $movie['pool']),
+    'blockedByFilm' => $app->movies->blockedBy($id),
     'manageablePools' => Access::manageablePools((string) $profile['side']),
     'allProfiles' => $app->profiles->all(),
     'seriesEvening' => $seriesEvening,
