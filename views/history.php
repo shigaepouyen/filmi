@@ -1,4 +1,5 @@
 <?php
+use App\Services\RatingRules;
 use App\Utils\FormatUtils;
 use App\Utils\Security;
 
@@ -33,11 +34,13 @@ $statusLabels = [
                 $tag = $hasFilm ? 'a' : 'div';
                 $seanceId = (int) $seance['id'];
                 $maNote = $myRatings[$seanceId] ?? null;
-                // Une série ne se note qu'une fois, au dernier épisode : les
-                // soirées intermédiaires n'ouvrent pas de ligne de note.
-                $oeuvreNotable = ($seance['movie_kind'] ?? 'film') !== 'series'
-                    || ($seance['movie_status'] ?? null) === 'watched';
-                $notable = $hasFilm && $seance['status'] === 'done' && $oeuvreNotable;
+                // Meme regle que la page de la seance et que les endpoints :
+                // une serie ne se note qu'une fois, sur l'oeuvre entiere.
+                $notable = $hasFilm && RatingRules::isRatable(
+                    $seance['status'],
+                    $seance['movie_kind'] ?? null,
+                    $seance['movie_status'] ?? null
+                );
                 $tourPasse = isset($mySkippedRatings[$seanceId]);
             ?>
             <li class="rounded-2xl bg-white/5 ring-1 ring-white/10"

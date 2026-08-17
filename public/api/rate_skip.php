@@ -4,6 +4,7 @@ declare(strict_types=1);
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 use App\App;
+use App\Services\RatingRules;
 
 /**
  * Fermer, ou rouvrir, sa ligne de note sur une seance.
@@ -13,7 +14,7 @@ use App\App;
  */
 
 $app = App::boot();
-$profile = $app->requireProfile();
+$profile = $app->requireProfileJson();
 $app->requirePost();
 
 $seanceId = (int) ($_POST['seance_id'] ?? 0);
@@ -21,8 +22,15 @@ $profileId = (int) $profile['id'];
 $intent = (string) ($_POST['intent'] ?? 'skip');
 
 $seance = $app->seances->find($seanceId);
-if ($seance === null || $seance['status'] !== 'done' || $seance['movie_id'] === null) {
+if ($seance === null || $seance['movie_id'] === null) {
     $app->json(['error' => 'Séance introuvable ou sans film.'], 404);
+}
+
+// Fermer une ligne qui ne pourra jamais etre notee n'a pas de sens : meme regle
+// que pour la note elle-meme.
+$oeuvre = $app->movies->find((int) $seance['movie_id']);
+if (!RatingRules::isRatable($seance['status'], $oeuvre['kind'] ?? null, $oeuvre['status'] ?? null)) {
+    $app->json(['error' => "Cette séance ne se note pas."], 409);
 }
 
 if ($intent === 'reopen') {

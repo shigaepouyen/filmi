@@ -10,7 +10,7 @@ use App\Services\ScheduleService;
 use App\Utils\Providers;
 
 $app = App::boot();
-$app->requireProfile();
+$app->requireProfileJson();
 $app->requirePost();
 
 $date = ScheduleService::nextSeanceDate()->format('Y-m-d');

@@ -52,6 +52,26 @@ final class App
         return Session::requireProfile($this->profiles);
     }
 
+    /**
+     * Meme garde que requireProfile(), mais pour un endpoint JSON : sans profil,
+     * une redirection renverrait du HTML a du code qui attend du JSON, et le
+     * navigateur echouerait sur un message illisible plutot que sur un 401 clair.
+     *
+     * @return array<string, mixed>
+     */
+    public function requireProfileJson(): array
+    {
+        Session::start();
+        $id = Session::currentProfileId();
+        $profile = $id !== null ? $this->profiles->find($id) : null;
+
+        if ($profile === null) {
+            $this->json(['error' => 'Choisis un profil pour continuer.'], 401);
+        }
+
+        return $profile;
+    }
+
     public function requirePost(): void
     {
         $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';

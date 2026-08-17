@@ -1,8 +1,9 @@
 <?php
+use App\Utils\Avatars;
 use App\Utils\Providers;
 use App\Utils\Security;
 
-$colors = ['slate', 'rose', 'violet', 'emerald', 'amber', 'sky', 'indigo'];
+$colors = Avatars::colors();
 ?>
 <h1 class="text-2xl font-semibold mb-6">Réglages</h1>
 

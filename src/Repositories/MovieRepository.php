@@ -28,6 +28,9 @@ final class MovieRepository
     {
     }
 
+    public const TITLE_MAX = 200;
+    public const MEMO_MAX = 500;
+
     /** @param array<string, mixed> $data */
     public function add(array $data): int
     {
@@ -52,9 +55,15 @@ final class MovieRepository
                 $row[$column] = $data[$column];
             }
         }
-        $row['title'] = $title;
+        // Les longueurs sont bornees ici, pas seulement par le maxlength du
+        // formulaire : rien n'oblige un POST a le respecter, et une saisie a
+        // rallonge finirait en base pour deformer chaque liste qui l'affiche.
+        $row['title'] = mb_substr($title, 0, self::TITLE_MAX);
         $row['pool'] = $pool;
         $row['bet_type'] = $betType;
+        if (isset($row['memo']) && is_string($row['memo'])) {
+            $row['memo'] = mb_substr(trim($row['memo']), 0, self::MEMO_MAX);
+        }
 
         // Chaque colonne est nommée explicitement dans l'INSERT ci-dessous : les
         // DEFAULT de schéma ne s'appliquent qu'aux colonnes omises, jamais à une

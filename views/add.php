@@ -114,7 +114,7 @@ use App\Utils\Security;
 
     <section x-show="manual && kind === 'film'" class="space-y-2">
         <label class="block text-sm font-medium" for="title">Titre</label>
-        <input id="title" name="title" x-model="title"
+        <input id="title" name="title" x-model="title" maxlength="200"
                @blur="checkDuplicate(null, title, year)"
                class="w-full rounded-xl bg-white/10 px-3 py-2">
         <div class="flex gap-2">

@@ -681,4 +681,20 @@ class MovieRepositoryTest extends DbTestCase
 
         $this->assertNull($this->repo->seriesInProgress('kid'));
     }
+
+    public function testAddCapsTitleAndMemoLengths(): void
+    {
+        $id = $this->repo->add([
+            'title' => str_repeat('a', 400),
+            'memo' => str_repeat('é', 900),
+            'pool' => 'adult',
+            'bet_type' => 'safe',
+            'added_by' => $this->jc,
+        ]);
+
+        $film = $this->repo->find($id);
+
+        $this->assertSame(200, mb_strlen($film['title']));
+        $this->assertSame(500, mb_strlen($film['memo']));
+    }
 }

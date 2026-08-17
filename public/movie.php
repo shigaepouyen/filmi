@@ -13,7 +13,7 @@ use App\Utils\Security;
 $app = App::boot();
 $profile = $app->requireProfile();
 
-$id = (int) ($_REQUEST['id'] ?? 0);
+$id = (int) ($_GET['id'] ?? 0);
 $movie = $id > 0 ? $app->movies->find($id) : null;
 
 if ($movie === null) {

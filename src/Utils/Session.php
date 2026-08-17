@@ -51,7 +51,15 @@ final class Session
 
     public static function clear(): void
     {
-        setcookie(self::COOKIE, '', ['expires' => time() - 3600, 'path' => '/']);
+        // Memes attributs que setCurrentProfile() : un cookie de suppression pose
+        // avec d'autres attributs n'est pas garanti d'ecraser l'original.
+        setcookie(self::COOKIE, '', [
+            'expires' => time() - 3600,
+            'path' => '/',
+            'httponly' => true,
+            'samesite' => 'Lax',
+            'secure' => self::isHttps(),
+        ]);
         unset($_COOKIE[self::COOKIE]);
     }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/vendor/autoload.php';
 
 use App\App;
+use App\Services\ChoiceRules;
 use App\Services\ScheduleService;
 use App\Utils\Security;
 
@@ -30,13 +31,29 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     )));
     $chosen = (int) ($_POST['movie_id'] ?? 0);
 
-    if ($chosen > 0 && in_array($chosen, $shortlist, true)) {
-        $app->seances->recordChoice((int) $seance['id'], $shortlist, $chosen);
-        unset($_SESSION['filmi_shown_' . (int) $seance['id']]);
-        unset($_SESSION['filmi_current_' . (int) $seance['id']]);
-        header('Location: /seance.php');
-        exit;
+    // La shortlist arrive du navigateur : c'est ChoiceRules qui dit si elle
+    // correspond a un vrai tirage, pas le formulaire.
+    $memorise = $_SESSION['filmi_current_' . (int) $seance['id']] ?? null;
+    $drawnIds = is_array($memorise)
+        ? array_map(static fn (array $m): int => (int) $m['id'], $memorise)
+        : null;
+
+    // Le repli ne sert que si la session a oublie le tirage : inutile de payer la
+    // requete sinon.
+    $tirables = $drawnIds === null
+        ? array_map(static fn (array $m): int => (int) $m['id'], $app->movies->drawCandidates())
+        : [];
+
+    if (!ChoiceRules::accepts($shortlist, $chosen, $drawnIds, $tirables)) {
+        http_response_code(409);
+        exit('Cette sélection ne correspond pas au tirage en cours. Relance le tirage.');
     }
+
+    $app->seances->recordChoice((int) $seance['id'], $shortlist, $chosen);
+    unset($_SESSION['filmi_shown_' . (int) $seance['id']]);
+    unset($_SESSION['filmi_current_' . (int) $seance['id']]);
+    header('Location: /seance.php');
+    exit;
 }
 
 $app->render('draw', [

@@ -62,6 +62,41 @@ class ProfileRepositoryTest extends DbTestCase
         $this->assertSame('detective', $this->repo->find($id)['avatar']);
     }
 
+    public function testUpdateRejectsAColourOutsideThePaletteAndKeepsPrevious(): void
+    {
+        $id = $this->repo->findBySlug('jc')['id'];
+        $avant = $this->repo->find($id)['color'];
+
+        $this->repo->update($id, 'JC', 'detective', 'chartreuse');
+
+        $apres = $this->repo->find($id);
+        $this->assertSame($avant, $apres['color'], 'Une couleur hors palette ne doit pas etre ecrite');
+        $this->assertSame('JC', $apres['name'], 'Le reste de la mise a jour passe quand meme');
+    }
+
+    public function testUpdateAcceptsEveryColourOfThePalette(): void
+    {
+        $id = $this->repo->findBySlug('jc')['id'];
+
+        foreach (\App\Utils\Avatars::colors() as $couleur) {
+            $this->repo->update($id, 'JC', 'detective', $couleur);
+            $this->assertSame($couleur, $this->repo->find($id)['color']);
+        }
+    }
+
+    public function testUpdateTrimsAnOverlongName(): void
+    {
+        $id = $this->repo->findBySlug('jc')['id'];
+
+        $this->repo->update($id, str_repeat('é', 200), 'detective', 'slate');
+
+        $this->assertSame(
+            30,
+            mb_strlen($this->repo->find($id)['name']),
+            'Le nom doit etre borne cote serveur, pas seulement par le formulaire'
+        );
+    }
+
     public function testFindReturnsNullOnUnknownId(): void
     {
         $this->assertNull($this->repo->find(999));

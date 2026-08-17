@@ -4,6 +4,7 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/vendor/autoload.php';
 
 use App\App;
+use App\Services\RatingRules;
 use App\Services\ScheduleService;
 use App\Utils\Security;
 
@@ -62,8 +63,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         // Une série n'est notée qu'à son dernier épisode, une seule note sur
         // l'œuvre entière : les soirées intermédiaires ne doivent pas pouvoir
         // en enregistrer une, même par une requête forgée directement ici.
-        $ratingAllowed = $ratedMovie !== null
-            && (($ratedMovie['kind'] ?? 'film') !== 'series' || $ratedMovie['status'] === 'watched');
+        $ratingAllowed = $ratedMovie !== null && RatingRules::isRatable(
+            $seance['status'],
+            $ratedMovie['kind'] ?? null,
+            $ratedMovie['status'] ?? null
+        );
         if ($score >= 1 && $score <= 5 && $ratingAllowed) {
             $app->seances->rate((int) $seance['id'], (int) $profile['id'], $score);
         }
@@ -92,8 +96,11 @@ $movie = $app->movies->find((int) $seance['movie_id']);
 
 // Même règle que pour l'écriture ci-dessus : une série n'est notée qu'à son
 // dernier épisode, une seule note pour l'œuvre entière.
-$ratingAllowed = $movie !== null
-    && (($movie['kind'] ?? 'film') !== 'series' || $movie['status'] === 'watched');
+$ratingAllowed = $movie !== null && RatingRules::isRatable(
+    $seance['status'],
+    $movie['kind'] ?? null,
+    $movie['status'] ?? null
+);
 
 $app->render('seance', [
     'seance' => $seance,

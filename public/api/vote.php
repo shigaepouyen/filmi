@@ -6,7 +6,7 @@ require dirname(__DIR__, 2) . '/vendor/autoload.php';
 use App\App;
 
 $app = App::boot();
-$profile = $app->requireProfile();
+$profile = $app->requireProfileJson();
 $app->requirePost();
 
 $movieId = (int) ($_POST['movie_id'] ?? 0);

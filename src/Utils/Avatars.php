@@ -550,6 +550,23 @@ final class Avatars
         return isset(self::all()[$key]);
     }
 
+    /**
+     * Les couleurs d'accent utilisables par un profil. Une seule source, celle
+     * que render() consulte, pour qu'aucune couleur validee ailleurs ne finisse
+     * silencieusement remplacee par la couleur de repli.
+     *
+     * @return list<string>
+     */
+    public static function colors(): array
+    {
+        return array_keys(self::COLORS);
+    }
+
+    public static function colorExists(string $color): bool
+    {
+        return isset(self::COLORS[$color]);
+    }
+
     public static function render(string $key, string $color = 'indigo', int $size = 96): string
     {
         if (!self::exists($key)) {

@@ -6,7 +6,7 @@ require dirname(__DIR__, 2) . '/vendor/autoload.php';
 use App\App;
 
 $app = App::boot();
-$app->requireProfile();
+$app->requireProfileJson();
 
 $tmdbId = isset($_GET['tmdb_id']) && ctype_digit((string) $_GET['tmdb_id'])
     ? (int) $_GET['tmdb_id']

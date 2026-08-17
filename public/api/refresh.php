@@ -19,7 +19,7 @@ use App\Services\TmdbException;
 const LOT_MAX = 5;
 
 $app = App::boot();
-$profile = $app->requireProfile();
+$profile = $app->requireProfileJson();
 $app->requirePost();
 
 // Action d'entretien, qui consomme le quota TMDb de la famille : reservee aux

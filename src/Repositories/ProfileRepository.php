@@ -44,24 +44,39 @@ final class ProfileRepository
         return $stmt->fetchAll();
     }
 
-    /** L'avatar inconnu est ignoré, l'ancien est conservé. Le slug et le camp ne bougent pas. */
+    public const NAME_MAX = 30;
+
+    /**
+     * L'avatar inconnu est ignoré, l'ancien est conservé. Le slug et le camp ne
+     * bougent pas. Une couleur hors palette est ignorée de la même façon : sans
+     * ce filtre elle serait écrite en base pour finir remplacée en silence par la
+     * couleur de repli à chaque affichage.
+     */
     public function update(int $id, string $name, string $avatar, string $color): void
     {
         $name = trim($name);
         if ($name === '') {
             throw new \InvalidArgumentException("Le nom du profil ne peut pas être vide.");
         }
+        $name = mb_substr($name, 0, self::NAME_MAX);
 
-        $avatarExists = Avatars::exists($avatar);
+        $sets = ['name = ?'];
+        $params = [$name];
 
-        $sql = $avatarExists
-            ? 'UPDATE profiles SET name = ?, avatar = ?, color = ? WHERE id = ?'
-            : 'UPDATE profiles SET name = ?, color = ? WHERE id = ?';
+        if (Avatars::exists($avatar)) {
+            $sets[] = 'avatar = ?';
+            $params[] = $avatar;
+        }
 
-        $params = $avatarExists
-            ? [$name, $avatar, $color, $id]
-            : [$name, $color, $id];
+        if (Avatars::colorExists($color)) {
+            $sets[] = 'color = ?';
+            $params[] = $color;
+        }
 
-        $this->db->prepare($sql)->execute($params);
+        $params[] = $id;
+
+        $this->db->prepare(
+            'UPDATE profiles SET ' . implode(', ', $sets) . ' WHERE id = ?'
+        )->execute($params);
     }
 }

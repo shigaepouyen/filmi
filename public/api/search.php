@@ -7,7 +7,7 @@ use App\App;
 use App\Services\TmdbException;
 
 $app = App::boot();
-$app->requireProfile();
+$app->requireProfileJson();
 
 if (!$app->tmdb->isConfigured()) {
     $app->json(['results' => [], 'configured' => false]);
