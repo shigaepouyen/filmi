@@ -72,7 +72,12 @@ final class Session
 
         if ($profile === null) {
             self::clear();
-            header('Location: /index.php');
+            // La page demandee est memorisee dans l'URL du choix de profil, pour
+            // qu'un lien partage a la famille mene bien la ou il pointait.
+            header('Location: ' . Redirects::profileChoiceUrl(
+                $_SERVER['REQUEST_URI'] ?? null,
+                $_SERVER['REQUEST_METHOD'] ?? 'GET'
+            ));
             exit;
         }
 

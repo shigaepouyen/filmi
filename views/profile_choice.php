@@ -5,8 +5,17 @@ use App\Utils\Security;
 <h1 class="text-2xl font-semibold mb-1">Qui regarde ce soir ?</h1>
 <p class="text-slate-400 mb-6 text-sm">Choisis ton profil, Filmi s'en souviendra sur cet appareil.</p>
 
+<?php if ($next !== null): ?>
+    <p class="mb-6 -mt-4 text-xs text-slate-500">
+        Filmi t'emmènera ensuite sur la page que tu voulais voir.
+    </p>
+<?php endif; ?>
+
 <form method="post" class="grid grid-cols-2 gap-4 sm:grid-cols-4">
     <input type="hidden" name="csrf" value="<?= Security::csrfToken() ?>">
+    <?php if ($next !== null): ?>
+        <input type="hidden" name="next" value="<?= Security::e($next) ?>">
+    <?php endif; ?>
     <?php foreach ($profiles as $item): ?>
         <button type="submit" name="profile_id" value="<?= (int) $item['id'] ?>"
                 class="flex flex-col items-center gap-2 rounded-3xl bg-white/5 p-4 ring-1 ring-white/10 transition hover:bg-white/10 active:scale-95">

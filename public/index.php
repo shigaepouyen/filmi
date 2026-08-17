@@ -4,6 +4,7 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/vendor/autoload.php';
 
 use App\App;
+use App\Utils\Redirects;
 use App\Utils\Security;
 use App\Utils\Session;
 
@@ -18,7 +19,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $profile = $app->profiles->find((int) ($_POST['profile_id'] ?? 0));
     if ($profile !== null) {
         Session::setCurrentProfile((int) $profile['id']);
-        header('Location: /tonight.php');
+        header('Location: ' . Redirects::target($_POST['next'] ?? null));
         exit;
     }
 }
@@ -26,4 +27,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 // Arriver ici volontairement remet le compteur à zéro : c'est le "ce n'est pas moi".
 Session::clear();
 
-$app->render('profile_choice', ['profiles' => $app->profiles->all()], 'Filmi, qui es-tu ?');
+$app->render('profile_choice', [
+    'profiles' => $app->profiles->all(),
+    'next' => Redirects::sanitize($_GET['next'] ?? null),
+], 'Filmi, qui es-tu ?');
