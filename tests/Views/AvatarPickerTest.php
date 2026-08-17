@@ -6,7 +6,7 @@ use PHPUnit\Framework\TestCase;
 
 class AvatarPickerTest extends TestCase
 {
-    private function render(string $currentAvatar = 'alien', string $currentColor = 'violet'): string
+    private function render(string $currentAvatar = 'renard', string $currentColor = 'violet'): string
     {
         $inputName = 'avatar';
 
@@ -20,7 +20,7 @@ class AvatarPickerTest extends TestCase
     {
         $html = $this->render();
 
-        $this->assertStringContainsString('x-data="{ choix: \'alien\' }"', $html);
+        $this->assertStringContainsString('x-data="{ choix: \'renard\' }"', $html);
         $this->assertStringNotContainsString('choix: "', $html);
     }
 
@@ -28,16 +28,16 @@ class AvatarPickerTest extends TestCase
     {
         $html = $this->render();
 
-        $this->assertSame(24, preg_match_all('/<input type="radio"/', $html));
-        $this->assertSame(24, preg_match_all('/<svg /', $html));
+        $this->assertSame(20, preg_match_all('/<input type="radio"/', $html));
+        $this->assertSame(20, preg_match_all('/<svg /', $html));
     }
 
     public function testTheCurrentAvatarIsTheOnlyCheckedRadio(): void
     {
-        $html = $this->render('gumiho');
+        $html = $this->render('corbeau');
 
         $this->assertSame(1, preg_match_all('/checked/', $html));
-        $this->assertMatchesRegularExpression('/value="gumiho"[^>]*checked/', $html);
+        $this->assertMatchesRegularExpression('/value="corbeau"[^>]*checked/', $html);
     }
 
     public function testEveryFamilyLegendIsRendered(): void

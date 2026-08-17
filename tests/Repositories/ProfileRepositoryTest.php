@@ -44,11 +44,11 @@ class ProfileRepositoryTest extends DbTestCase
     {
         $id = $this->repo->findBySlug('soline')['id'];
 
-        $this->repo->update($id, 'Soso', 'gumiho', 'amber');
+        $this->repo->update($id, 'Soso', 'renard', 'amber');
         $updated = $this->repo->find($id);
 
         $this->assertSame('Soso', $updated['name']);
-        $this->assertSame('gumiho', $updated['avatar']);
+        $this->assertSame('renard', $updated['avatar']);
         $this->assertSame('amber', $updated['color']);
         $this->assertSame('soline', $updated['slug'], 'Le slug ne doit jamais bouger');
     }

@@ -104,7 +104,7 @@ Le même travail peut tourner en tâche planifiée hebdomadaire, mais le bouton 
 - **Alerte de liste faible** dès que la liste des parents passe sous cinq films, avec le détail par catégorie. C'est le rappel préventif qui manquait, en semaine et pas dans la panique du samedi.
 - **Historique** de chaque samedi : film retenu, camp, dérogations, samedis sautés, notes, vetos. Chaque ligne mène à sa séance et se note sur place.
 - **Palmarès** annuel avec une page imprimable autonome : podium, portraits de la saison, anecdotes, qui a choisi quoi.
-- **24 avatars en pixel art** dessinés en SVG inline, sur des archétypes de cinéma originaux.
+- **20 avatars en pixel art 32x32** dessinés en SVG inline, sur des archétypes originaux.
 - **PWA installable** sur l'écran d'accueil des iPhone.
 
 ## Installation
@@ -206,11 +206,15 @@ Non couvert par des tests automatiques : les pages elles-mêmes, vérifiées man
 
 ## Avatars
 
-24 archétypes en pixel art, répartis en cinq familles : frissons, science-fiction, aventure, fantastique, Corée et Kpop.
+20 personnages en pixel art, répartis en cinq familles : nature et exploration, espace et machines, créatures, magie et mystère, guerriers.
 
-Chaque sprite est une petite grille de caractères convertie en rectangles SVG, sans lissage, avec une couleur d'accent qui suit le thème du profil. Pas d'image à charger, pas de dépendance.
+Chaque sprite est une grille de caractères 32x32, une lettre par couleur, convertie en rectangles SVG sans lissage. Pas d'image à charger, pas de dépendance, et un fichier qui reste lisible et corrigeable à la main.
 
-**Règle de conception, non négociable** : ce sont des archétypes de genre **originaux**, jamais des personnages identifiables. Aucun trait signature protégé, aucun visage ressemblant à une personne réelle, aucun nom de groupe, aucun logo. Le folklore coréen est du domaine public et se dessine librement.
+**Pourquoi 32x32 et pas 16x16** : à seize pixels de côté, une capuche, des lunettes ou un museau ne tiennent pas, et tous les personnages finissent par se ressembler. Le doublement de la grille est ce qui rend chacun reconnaissable, y compris à 36 pixels dans l'en-tête.
+
+Les conventions sont communes aux vingt : contour d'un pixel noir posé autour de la silhouette, lumière en haut à gauche, trois niveaux de teinte, fond transparent, vue de face, grosse tête. Chacun porte le même écusson, seul élément dont la couleur suit le thème du profil.
+
+**Règle de conception, non négociable** : ce sont des archétypes originaux, jamais des personnages identifiables. Aucun trait signature protégé, aucun visage ressemblant à une personne réelle, aucun nom de groupe, aucun logo.
 
 Pour les visualiser :
 

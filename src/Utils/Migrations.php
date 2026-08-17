@@ -182,6 +182,58 @@ final class Migrations
                     );
                 },
             ],
+            9 => [
+                'description' => "Migre les cles d'avatar vers le roster 32x32",
+                'up' => static function (PDO $db): void {
+                    // Le roster passe a vingt personnages dessines en 32x32 : la
+                    // grille 16x16 ne permettait pas de rendre une capuche ou des
+                    // lunettes lisibles. Six cles survivent (dragon, fantome, robot,
+                    // pirate, ninja, fee), les autres sont reaffectees vers le
+                    // personnage le plus proche pour qu'aucun profil ne retombe en
+                    // silence sur l'avatar par defaut. Les quatre profils reels sont
+                    // couverts : tentacule (JC) -> slime, aviatrice (Elodie) ->
+                    // exploratrice, idole (Zoe) -> fee, dragon (Soline) inchange.
+                    $map = [
+                        'tentacule' => 'slime',
+                        'aviatrice' => 'exploratrice',
+                        'idole' => 'fee',
+                        'alien' => 'slime',
+                        'astronaute' => 'pilote',
+                        'scaphandrier' => 'pilote',
+                        'squelette' => 'gardien',
+                        'momie' => 'nomade',
+                        'vampire' => 'corbeau',
+                        'loupgarou' => 'renard',
+                        'yeti' => 'panda',
+                        'detective' => 'inventeur',
+                        'cowboy' => 'nomade',
+                        'chevalier' => 'champignon',
+                        'samourai' => 'ninja',
+                        'sorciere' => 'elfe',
+                        'gumiho' => 'renard',
+                        'dokkaebi' => 'corbeau',
+                    ];
+
+                    $stmt = $db->prepare('UPDATE profiles SET avatar = ? WHERE avatar = ?');
+                    foreach ($map as $old => $new) {
+                        $stmt->execute([$new, $old]);
+                    }
+
+                    // Filet : une cle inconnue du nouveau roster, laissee par une
+                    // base bricolee a la main, prend l'avatar par defaut plutot que
+                    // d'afficher un carre rose au rendu.
+                    $connues = [
+                        'ranger', 'exploratrice', 'nomade', 'pilote', 'robot', 'inventeur',
+                        'chat', 'dragon', 'panda', 'fantome', 'slime', 'gardien',
+                        'renard', 'elfe', 'fee', 'corbeau', 'ninja', 'viking',
+                        'pirate', 'champignon',
+                    ];
+                    $trous = implode(',', array_fill(0, count($connues), '?'));
+                    $db->prepare(
+                        "UPDATE profiles SET avatar = 'fantome' WHERE avatar NOT IN ({$trous})"
+                    )->execute($connues);
+                },
+            ],
         ];
     }
 

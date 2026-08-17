@@ -6,9 +6,9 @@ use PHPUnit\Framework\TestCase;
 
 class AvatarsTest extends TestCase
 {
-    public function testCatalogueHasTwentyFourAvatars(): void
+    public function testCatalogueHasTwentyAvatars(): void
     {
-        $this->assertCount(24, Avatars::all());
+        $this->assertCount(20, Avatars::all());
     }
 
     public function testEveryAvatarBelongsToADeclaredFamily(): void
@@ -25,28 +25,34 @@ class AvatarsTest extends TestCase
 
     public function testExpectedKeysArePresent(): void
     {
-        foreach (['alien', 'dragon', 'aviatrice', 'detective', 'gumiho', 'dokkaebi', 'idole', 'yeti'] as $key) {
+        foreach ([
+            'ranger', 'pilote', 'dragon', 'robot', 'renard', 'elfe', 'ninja',
+            'exploratrice', 'panda', 'fantome', 'viking', 'inventeur', 'slime',
+            'nomade', 'chat', 'pirate', 'fee', 'champignon', 'corbeau', 'gardien',
+        ] as $key) {
             $this->assertTrue(Avatars::exists($key), "Clé manquante : {$key}");
         }
         $this->assertFalse(Avatars::exists('mickey'));
-        $this->assertFalse(Avatars::exists('dinosaure'), "dinosaure a été retiré du roster");
-        $this->assertFalse(Avatars::exists('creature'), "creature a été retiré du roster");
+        // Anciennes clés du roster 16x16 : la migration 9 les réaffecte.
+        foreach (['tentacule', 'aviatrice', 'idole', 'gumiho', 'yeti', 'alien'] as $ancienne) {
+            $this->assertFalse(Avatars::exists($ancienne), "{$ancienne} a été retiré du roster");
+        }
     }
 
     public function testByFamilyCoversAllAvatars(): void
     {
         $total = array_sum(array_map('count', Avatars::byFamily()));
 
-        $this->assertSame(24, $total);
+        $this->assertSame(20, $total);
         $this->assertSame(array_keys(Avatars::FAMILIES), array_keys(Avatars::byFamily()));
     }
 
     public function testRenderProducesInlineSvgWithoutExternalReference(): void
     {
-        $svg = Avatars::render('alien', 'violet', 64);
+        $svg = Avatars::render('renard', 'violet', 64);
 
         $this->assertStringStartsWith('<svg', $svg);
-        $this->assertStringContainsString('viewBox="0 0 16 16"', $svg);
+        $this->assertStringContainsString('viewBox="0 0 32 32"', $svg);
         $this->assertStringContainsString('width="64"', $svg);
         $this->assertStringNotContainsString('<image', $svg);
         $this->assertStringNotContainsString('xlink:href', $svg);
@@ -82,7 +88,9 @@ class AvatarsTest extends TestCase
         foreach (array_keys(Avatars::all()) as $key) {
             $svg = Avatars::render($key);
             $rects = substr_count($svg, '<rect');
-            $this->assertLessThanOrEqual(55, $rects, "{$key} dépasse le budget de rects (16x16 inlinés x24)");
+            // 32x32 coûte plus de formes que 16x16, mais la fusion verticale les
+            // divise par deux : au-delà de 200, c'est qu'un sprite part en confettis.
+            $this->assertLessThanOrEqual(200, $rects, "{$key} dépasse le budget de rects");
         }
     }
 
