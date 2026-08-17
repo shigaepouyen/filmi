@@ -6,7 +6,7 @@ use PHPUnit\Framework\TestCase;
 
 class AvatarPickerTest extends TestCase
 {
-    private function render(string $currentAvatar = 'renard', string $currentColor = 'violet'): string
+    private function render(string $currentAvatar = 'crabe', string $currentColor = 'violet'): string
     {
         $inputName = 'avatar';
 
@@ -20,7 +20,7 @@ class AvatarPickerTest extends TestCase
     {
         $html = $this->render();
 
-        $this->assertStringContainsString('x-data="{ choix: \'renard\' }"', $html);
+        $this->assertStringContainsString('x-data="{ choix: \'crabe\' }"', $html);
         $this->assertStringNotContainsString('choix: "', $html);
     }
 
@@ -34,10 +34,10 @@ class AvatarPickerTest extends TestCase
 
     public function testTheCurrentAvatarIsTheOnlyCheckedRadio(): void
     {
-        $html = $this->render('corbeau');
+        $html = $this->render('blob');
 
         $this->assertSame(1, preg_match_all('/checked/', $html));
-        $this->assertMatchesRegularExpression('/value="corbeau"[^>]*checked/', $html);
+        $this->assertMatchesRegularExpression('/value="blob"[^>]*checked/', $html);
     }
 
     public function testEveryFamilyLegendIsRendered(): void

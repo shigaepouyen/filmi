@@ -30,7 +30,7 @@ class ProfileRepositoryTest extends DbTestCase
 
         $this->assertSame('Zoé', $zoe['name']);
         $this->assertSame('kid', $zoe['side']);
-        $this->assertSame('idole', $zoe['avatar']);
+        $this->assertSame('meduse', $zoe['avatar']);
         $this->assertNull($this->repo->findBySlug('inconnu'));
     }
 
@@ -44,11 +44,11 @@ class ProfileRepositoryTest extends DbTestCase
     {
         $id = $this->repo->findBySlug('soline')['id'];
 
-        $this->repo->update($id, 'Soso', 'renard', 'amber');
+        $this->repo->update($id, 'Soso', 'tourelle', 'amber');
         $updated = $this->repo->find($id);
 
         $this->assertSame('Soso', $updated['name']);
-        $this->assertSame('renard', $updated['avatar']);
+        $this->assertSame('tourelle', $updated['avatar']);
         $this->assertSame('amber', $updated['color']);
         $this->assertSame('soline', $updated['slug'], 'Le slug ne doit jamais bouger');
     }
@@ -59,7 +59,7 @@ class ProfileRepositoryTest extends DbTestCase
 
         $this->repo->update($id, 'JC', 'mickey', 'slate');
 
-        $this->assertSame('detective', $this->repo->find($id)['avatar']);
+        $this->assertSame('blob', $this->repo->find($id)['avatar']);
     }
 
     public function testUpdateRejectsAColourOutsideThePaletteAndKeepsPrevious(): void
@@ -67,7 +67,7 @@ class ProfileRepositoryTest extends DbTestCase
         $id = $this->repo->findBySlug('jc')['id'];
         $avant = $this->repo->find($id)['color'];
 
-        $this->repo->update($id, 'JC', 'detective', 'chartreuse');
+        $this->repo->update($id, 'JC', 'blob', 'chartreuse');
 
         $apres = $this->repo->find($id);
         $this->assertSame($avant, $apres['color'], 'Une couleur hors palette ne doit pas etre ecrite');
@@ -79,7 +79,7 @@ class ProfileRepositoryTest extends DbTestCase
         $id = $this->repo->findBySlug('jc')['id'];
 
         foreach (\App\Utils\Avatars::colors() as $couleur) {
-            $this->repo->update($id, 'JC', 'detective', $couleur);
+            $this->repo->update($id, 'JC', 'blob', $couleur);
             $this->assertSame($couleur, $this->repo->find($id)['color']);
         }
     }
@@ -88,7 +88,7 @@ class ProfileRepositoryTest extends DbTestCase
     {
         $id = $this->repo->findBySlug('jc')['id'];
 
-        $this->repo->update($id, str_repeat('é', 200), 'detective', 'slate');
+        $this->repo->update($id, str_repeat('é', 200), 'blob', 'slate');
 
         $this->assertSame(
             30,
@@ -108,7 +108,7 @@ class ProfileRepositoryTest extends DbTestCase
 
         foreach (['', '   '] as $emptyName) {
             try {
-                $this->repo->update($id, $emptyName, 'detective', 'slate');
+                $this->repo->update($id, $emptyName, 'blob', 'slate');
                 $this->fail('InvalidArgumentException attendue pour un nom vide.');
             } catch (\InvalidArgumentException $e) {
                 // attendu
@@ -117,7 +117,7 @@ class ProfileRepositoryTest extends DbTestCase
 
         $unchanged = $this->repo->find($id);
         $this->assertSame('JC', $unchanged['name']);
-        $this->assertSame('detective', $unchanged['avatar']);
+        $this->assertSame('blob', $unchanged['avatar']);
         $this->assertSame('slate', $unchanged['color']);
     }
 }

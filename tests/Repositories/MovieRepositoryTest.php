@@ -109,7 +109,7 @@ class MovieRepositoryTest extends DbTestCase
         $row = $this->repo->pool('adult')[0];
 
         $this->assertSame('JC', $row['proposer_name']);
-        $this->assertSame('detective', $row['proposer_avatar']);
+        $this->assertSame('blob', $row['proposer_avatar']);
         $this->assertSame(1, $row['vote_count']);
         $this->assertSame('Zoé', $row['voter_names']);
     }

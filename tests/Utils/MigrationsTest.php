@@ -106,9 +106,9 @@ class MigrationsTest extends TestCase
 
         $applied = Migrations::run($db);
 
-        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9], $applied);
+        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10], $applied);
         $this->assertContains('trailer_url', $this->columns($db, 'movies'));
-        $this->assertSame(9, Migrations::currentVersion($db));
+        $this->assertSame(10, Migrations::currentVersion($db));
 
         // Preuve d'absence de perte de données : les deux films survivent intacts.
         $rows = $db->query('SELECT title, pool, status, providers, trailer_url FROM movies ORDER BY id')->fetchAll();
@@ -138,13 +138,13 @@ class MigrationsTest extends TestCase
         )->execute();
 
         $first = Migrations::run($db);
-        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9], $first);
+        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10], $first);
 
         // Une deuxième exécution ne doit ni lever (ALTER TABLE sur colonne existante
         // lèverait), ni changer quoi que ce soit.
         $second = Migrations::run($db);
         $this->assertSame([], $second, 'La deuxième exécution ne doit rejouer aucune migration');
-        $this->assertSame(9, Migrations::currentVersion($db));
+        $this->assertSame(10, Migrations::currentVersion($db));
 
         $trailerColumns = array_filter(
             $this->columns($db, 'movies'),
@@ -169,8 +169,8 @@ class MigrationsTest extends TestCase
 
         $applied = Migrations::run($db);
 
-        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9], $applied);
-        $this->assertSame(9, Migrations::currentVersion($db));
+        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10], $applied);
+        $this->assertSame(10, Migrations::currentVersion($db));
     }
 
     public function testMigrationThreeMarksExistingFilmsForProviderRefresh(): void
@@ -250,7 +250,7 @@ class MigrationsTest extends TestCase
 
         $applied = Migrations::run($db);
 
-        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9], $applied);
+        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10], $applied);
         $this->assertContains('backfilled', $this->columns($db, 'seances'));
 
         // Preuve d'absence de perte : la vraie séance de production reste à 0,
@@ -266,11 +266,11 @@ class MigrationsTest extends TestCase
         $db = $this->oldStateDatabase();
 
         $first = Migrations::run($db);
-        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9], $first);
+        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10], $first);
 
         $second = Migrations::run($db);
         $this->assertSame([], $second, 'La deuxième exécution ne doit rejouer aucune migration');
-        $this->assertSame(9, Migrations::currentVersion($db));
+        $this->assertSame(10, Migrations::currentVersion($db));
 
         $backfilledColumns = array_filter(
             $this->columns($db, 'seances'),
@@ -297,7 +297,7 @@ class MigrationsTest extends TestCase
         );
 
         $first = Migrations::run($db);
-        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9], $first);
+        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10], $first);
 
         $seance = $db->query('SELECT * FROM seances')->fetch();
         $this->assertSame('2026-07-04', $seance['date']);
@@ -317,7 +317,7 @@ class MigrationsTest extends TestCase
         // Rejouer la migration ne change plus rien.
         $second = Migrations::run($db);
         $this->assertSame([], $second);
-        $this->assertSame(9, Migrations::currentVersion($db));
+        $this->assertSame(10, Migrations::currentVersion($db));
     }
 
     public function testMigrationSixRemapsTheFourRealProductionProfiles(): void
@@ -339,10 +339,10 @@ class MigrationsTest extends TestCase
 
         $avatars = $db->query('SELECT slug, avatar FROM profiles ORDER BY slug')->fetchAll(PDO::FETCH_KEY_PAIR);
 
-        $this->assertSame('panda', $avatars['jc'], "creature (JC) : yeti en 6, puis panda en 9");
-        $this->assertSame('dragon', $avatars['soline'], "dinosaure (Soline) : dragon, cle qui survit aux deux");
-        $this->assertSame('exploratrice', $avatars['elodie'], "aviatrice (Élodie) devient exploratrice en 9");
-        $this->assertSame('fee', $avatars['zoe'], "idole (Zoé) devient fee en 9");
+        $this->assertSame('scarabee', $avatars['jc'], "creature (JC) : yeti, panda, puis scarabee");
+        $this->assertSame('chauve', $avatars['soline'], "dinosaure (Soline) : dragon, puis chauve");
+        $this->assertSame('soucoupe', $avatars['elodie'], "aviatrice (Élodie) : exploratrice, puis soucoupe");
+        $this->assertSame('meduse', $avatars['zoe'], "idole (Zoé) : fee, puis meduse");
 
         foreach ($avatars as $slug => $avatar) {
             $this->assertTrue(
@@ -356,19 +356,19 @@ class MigrationsTest extends TestCase
     {
         // Cle d'origine => cle attendue apres la chaine complete des migrations.
         $map = [
-            'creature' => 'panda',
-            'dinosaure' => 'dragon',
-            'aventuriere' => 'nomade',
-            'sorcier' => 'elfe',
+            'creature' => 'scarabee',
+            'dinosaure' => 'chauve',
+            'aventuriere' => 'ver',
+            'sorcier' => 'meduse',
             'gardien' => 'champignon',
-            'traqueur' => 'fantome',
-            'haechi' => 'dragon',
-            'erudit' => 'corbeau',
-            'tigre' => 'renard',
-            'zombie' => 'nomade',
-            'danseur' => 'fee',
-            'fan' => 'fee',
-            'trainee' => 'fee',
+            'traqueur' => 'blob',
+            'haechi' => 'chauve',
+            'erudit' => 'chauve',
+            'tigre' => 'mite',
+            'zombie' => 'ver',
+            'danseur' => 'meduse',
+            'fan' => 'meduse',
+            'trainee' => 'meduse',
         ];
 
         $db = $this->oldStateDatabase();
@@ -392,7 +392,7 @@ class MigrationsTest extends TestCase
         }
     }
 
-    public function testMigrationNineFallsBackOnAnUnknownAvatarKey(): void
+    public function testTheLastAvatarMigrationFallsBackOnAnUnknownKey(): void
     {
         // Une base bricolee a la main peut porter une cle qu'aucun roster n'a
         // jamais connue : mieux vaut le fantome que le carre rose du rendu.
@@ -404,7 +404,7 @@ class MigrationsTest extends TestCase
         Migrations::run($db);
 
         $this->assertSame(
-            'fantome',
+            \App\Utils\Avatars::FALLBACK,
             $db->query("SELECT avatar FROM profiles WHERE slug = 'test'")->fetchColumn()
         );
     }
@@ -417,11 +417,11 @@ class MigrationsTest extends TestCase
         );
 
         $first = Migrations::run($db);
-        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9], $first);
-        $this->assertSame('panda', $db->query("SELECT avatar FROM profiles WHERE slug = 'jc'")->fetchColumn());
+        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10], $first);
+        $this->assertSame('scarabee', $db->query("SELECT avatar FROM profiles WHERE slug = 'jc'")->fetchColumn());
 
         $second = Migrations::run($db);
         $this->assertSame([], $second, 'La deuxième exécution ne doit rejouer aucune migration');
-        $this->assertSame('panda', $db->query("SELECT avatar FROM profiles WHERE slug = 'jc'")->fetchColumn());
+        $this->assertSame('scarabee', $db->query("SELECT avatar FROM profiles WHERE slug = 'jc'")->fetchColumn());
     }
 }

@@ -19,7 +19,7 @@ class MovieCardTest extends TestCase
             'certification' => 'Tous publics',
             'providers' => '["Netflix","Max"]',
             'proposer_name' => 'JC',
-            'proposer_avatar' => 'detective',
+            'proposer_avatar' => 'blob',
             'proposer_color' => 'slate',
             'vote_count' => 2,
             'voter_names' => 'Zoé, Soline',

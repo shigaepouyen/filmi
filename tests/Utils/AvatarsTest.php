@@ -26,15 +26,16 @@ class AvatarsTest extends TestCase
     public function testExpectedKeysArePresent(): void
     {
         foreach ([
-            'ranger', 'pilote', 'dragon', 'robot', 'renard', 'elfe', 'ninja',
-            'exploratrice', 'panda', 'fantome', 'viking', 'inventeur', 'slime',
-            'nomade', 'chat', 'pirate', 'fee', 'champignon', 'corbeau', 'gardien',
+            'crabe', 'meduse', 'mite', 'scarabee', 'araignee', 'ver',
+            'chasseur', 'navette', 'soucoupe', 'intercepteur', 'croiseur',
+            'tourelle', 'satellite', 'drone', 'sentinelle', 'mine',
+            'blob', 'oeil', 'champignon', 'chauve',
         ] as $key) {
             $this->assertTrue(Avatars::exists($key), "Clé manquante : {$key}");
         }
         $this->assertFalse(Avatars::exists('mickey'));
-        // Anciennes clés du roster 16x16 : la migration 9 les réaffecte.
-        foreach (['tentacule', 'aviatrice', 'idole', 'gumiho', 'yeti', 'alien'] as $ancienne) {
+        // Clés des rosters précédents : les migrations 6, 9 et 10 les réaffectent.
+        foreach (['tentacule', 'aviatrice', 'idole', 'gumiho', 'slime', 'renard', 'pirate'] as $ancienne) {
             $this->assertFalse(Avatars::exists($ancienne), "{$ancienne} a été retiré du roster");
         }
     }
@@ -49,10 +50,10 @@ class AvatarsTest extends TestCase
 
     public function testRenderProducesInlineSvgWithoutExternalReference(): void
     {
-        $svg = Avatars::render('renard', 'violet', 64);
+        $svg = Avatars::render('crabe', 'violet', 64);
 
         $this->assertStringStartsWith('<svg', $svg);
-        $this->assertStringContainsString('viewBox="0 0 32 32"', $svg);
+        $this->assertStringContainsString('viewBox="0 0 16 16"', $svg);
         $this->assertStringContainsString('width="64"', $svg);
         $this->assertStringNotContainsString('<image', $svg);
         $this->assertStringNotContainsString('xlink:href', $svg);
@@ -88,9 +89,9 @@ class AvatarsTest extends TestCase
         foreach (array_keys(Avatars::all()) as $key) {
             $svg = Avatars::render($key);
             $rects = substr_count($svg, '<rect');
-            // 32x32 coûte plus de formes que 16x16, mais la fusion verticale les
-            // divise par deux : au-delà de 200, c'est qu'un sprite part en confettis.
-            $this->assertLessThanOrEqual(200, $rects, "{$key} dépasse le budget de rects");
+            // Une silhouette monochrome tient en une trentaine de rectangles.
+            // Au-delà de 45, c'est que le sprite part en confettis.
+            $this->assertLessThanOrEqual(45, $rects, "{$key} dépasse le budget de rects");
         }
     }
 

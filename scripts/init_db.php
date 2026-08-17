@@ -14,10 +14,10 @@ $db = Database::connect($path);
 $db->exec(Database::schemaSql());
 
 $profiles = [
-    ['JC', 'jc', 'adult', 'detective', 'slate'],
-    ['Élodie', 'elodie', 'adult', 'aviatrice', 'rose'],
-    ['Zoé', 'zoe', 'kid', 'idole', 'violet'],
-    ['Soline', 'soline', 'kid', 'dragon', 'emerald'],
+    ['JC', 'jc', 'adult', 'blob', 'slate'],
+    ['Élodie', 'elodie', 'adult', 'soucoupe', 'rose'],
+    ['Zoé', 'zoe', 'kid', 'meduse', 'violet'],
+    ['Soline', 'soline', 'kid', 'chauve', 'emerald'],
 ];
 
 $insert = $db->prepare(

@@ -429,7 +429,7 @@ class SeanceRepositoryTest extends DbTestCase
         $this->assertSame(132, (int) $row['movie_runtime']);
         $this->assertSame('film', $row['movie_kind']);
         $this->assertSame($this->jc, (int) $row['proposer_id']);
-        $this->assertSame('detective', $row['proposer_avatar']);
+        $this->assertSame('blob', $row['proposer_avatar']);
         $this->assertSame('slate', $row['proposer_color']);
     }
 

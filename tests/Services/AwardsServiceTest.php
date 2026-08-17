@@ -189,9 +189,9 @@ class AwardsServiceTest extends TestCase
     private function profiles(): array
     {
         return [
-            ['id' => 1, 'name' => 'JC', 'avatar' => 'detective', 'color' => 'slate', 'side' => 'adult'],
-            ['id' => 2, 'name' => 'Élodie', 'avatar' => 'aviatrice', 'color' => 'rose', 'side' => 'adult'],
-            ['id' => 3, 'name' => 'Zoé', 'avatar' => 'idole', 'color' => 'violet', 'side' => 'kid'],
+            ['id' => 1, 'name' => 'JC', 'avatar' => 'blob', 'color' => 'slate', 'side' => 'adult'],
+            ['id' => 2, 'name' => 'Élodie', 'avatar' => 'soucoupe', 'color' => 'rose', 'side' => 'adult'],
+            ['id' => 3, 'name' => 'Zoé', 'avatar' => 'meduse', 'color' => 'violet', 'side' => 'kid'],
             ['id' => 4, 'name' => 'Soline', 'avatar' => 'dragon', 'color' => 'emerald', 'side' => 'kid'],
         ];
     }
@@ -278,9 +278,9 @@ class AwardsServiceTest extends TestCase
     public function testByPersonAggregatesProposalsRatingsAndVetoesPerProfile(): void
     {
         $ratings = [
-            ['date' => '2026-08-15', 'profile_id' => 1, 'name' => 'JC', 'avatar' => 'detective', 'color' => 'slate', 'score' => 3],
-            ['date' => '2026-08-15', 'profile_id' => 3, 'name' => 'Zoé', 'avatar' => 'idole', 'color' => 'violet', 'score' => 5],
-            ['date' => '2026-07-25', 'profile_id' => 1, 'name' => 'JC', 'avatar' => 'detective', 'color' => 'slate', 'score' => 2],
+            ['date' => '2026-08-15', 'profile_id' => 1, 'name' => 'JC', 'avatar' => 'blob', 'color' => 'slate', 'score' => 3],
+            ['date' => '2026-08-15', 'profile_id' => 3, 'name' => 'Zoé', 'avatar' => 'meduse', 'color' => 'violet', 'score' => 5],
+            ['date' => '2026-07-25', 'profile_id' => 1, 'name' => 'JC', 'avatar' => 'blob', 'color' => 'slate', 'score' => 2],
         ];
         $vetoCounts = [['profile_id' => 1, 'name' => 'JC', 'total' => 2]];
 

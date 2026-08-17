@@ -104,7 +104,7 @@ Le même travail peut tourner en tâche planifiée hebdomadaire, mais le bouton 
 - **Alerte de liste faible** dès que la liste des parents passe sous cinq films, avec le détail par catégorie. C'est le rappel préventif qui manquait, en semaine et pas dans la panique du samedi.
 - **Historique** de chaque samedi : film retenu, camp, dérogations, samedis sautés, notes, vetos. Chaque ligne mène à sa séance et se note sur place.
 - **Palmarès** annuel avec une page imprimable autonome : podium, portraits de la saison, anecdotes, qui a choisi quoi.
-- **20 avatars en pixel art 32x32** dessinés en SVG inline, sur des archétypes originaux.
+- **20 avatars façon borne d'arcade**, silhouettes monochromes en SVG inline, à la couleur du profil.
 - **PWA installable** sur l'écran d'accueil des iPhone.
 
 ## Installation
@@ -206,15 +206,15 @@ Non couvert par des tests automatiques : les pages elles-mêmes, vérifiées man
 
 ## Avatars
 
-20 personnages en pixel art, répartis en cinq familles : nature et exploration, espace et machines, créatures, magie et mystère, guerriers.
+20 silhouettes façon borne d'arcade, réparties en quatre familles : envahisseurs, vaisseaux, machines, créatures.
 
-Chaque sprite est une grille de caractères 32x32, une lettre par couleur, convertie en rectangles SVG sans lissage. Pas d'image à charger, pas de dépendance, et un fichier qui reste lisible et corrigeable à la main.
+Chaque sprite est une grille de caractères 16x16, convertie en rectangles SVG sans lissage. Le corps entier prend **la couleur du profil** : les bornes des années 80 étaient monochromes, et cette contrainte tombe bien, puisque quatre personnes deviennent quatre couleurs reconnaissables de l'autre bout du canapé. Seul le détail sombre, les yeux ou le cockpit, garde la teinte du fond.
 
-**Pourquoi 32x32 et pas 16x16** : à seize pixels de côté, une capuche, des lunettes ou un museau ne tiennent pas, et tous les personnages finissent par se ressembler. Le doublement de la grille est ce qui rend chacun reconnaissable, y compris à 36 pixels dans l'en-tête.
+**Ce qui distingue les vingt n'est pas le détail mais l'emprise au sol** : large et plate pour le crabe, étroite et haute pour la méduse, en croix pour l'intercepteur, en flèche pour le chasseur. C'est ce qui les sépare encore à 36 pixels dans l'en-tête, là où un dessin détaillé redevient une tache. Un roster de personnages fouillés a été essayé avant celui-ci et abandonné pour cette raison.
 
-Les conventions sont communes aux vingt : contour d'un pixel noir posé autour de la silhouette, lumière en haut à gauche, trois niveaux de teinte, fond transparent, vue de face, grosse tête. Chacun porte le même écusson, seul élément dont la couleur suit le thème du profil.
+Les sprites sont symétriques par construction : le script de dessin n'en décrit que la moitié gauche et la reflète.
 
-**Règle de conception, non négociable** : ce sont des archétypes originaux, jamais des personnages identifiables. Aucun trait signature protégé, aucun visage ressemblant à une personne réelle, aucun nom de groupe, aucun logo.
+**Règle de conception, non négociable** : ce sont des formes originales. Le vocabulaire graphique de l'arcade est emprunté, jamais les dessins de Taito ou de Namco, qui restent leur propriété. Aucun personnage identifiable, aucun logo.
 
 Pour les visualiser :
 

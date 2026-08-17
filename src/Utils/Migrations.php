@@ -219,19 +219,56 @@ final class Migrations
                         $stmt->execute([$new, $old]);
                     }
 
-                    // Filet : une cle inconnue du nouveau roster, laissee par une
-                    // base bricolee a la main, prend l'avatar par defaut plutot que
-                    // d'afficher un carre rose au rendu.
-                    $connues = [
-                        'ranger', 'exploratrice', 'nomade', 'pilote', 'robot', 'inventeur',
-                        'chat', 'dragon', 'panda', 'fantome', 'slime', 'gardien',
-                        'renard', 'elfe', 'fee', 'corbeau', 'ninja', 'viking',
-                        'pirate', 'champignon',
+                    // Pas de filet ici : c'est la derniere migration d'avatars qui
+                    // s'en charge, en s'appuyant sur le roster courant.
+                },
+            ],
+            10 => [
+                'description' => "Migre les cles d'avatar vers le roster arcade",
+                'up' => static function (PDO $db): void {
+                    // Les personnages detailles laissent place a des silhouettes
+                    // d'arcade : plus lisibles a petite taille, et la couleur du
+                    // profil habille desormais tout le sprite. Chaque ancienne cle
+                    // rejoint la forme la plus proche. Les quatre profils reels :
+                    // slime (JC) -> blob, exploratrice (Elodie) -> soucoupe,
+                    // fee (Zoe) -> meduse, dragon (Soline) -> chauve.
+                    $map = [
+                        'slime' => 'blob',
+                        'exploratrice' => 'soucoupe',
+                        'fee' => 'meduse',
+                        'dragon' => 'chauve',
+                        'ranger' => 'scarabee',
+                        'nomade' => 'ver',
+                        'pilote' => 'chasseur',
+                        'robot' => 'sentinelle',
+                        'inventeur' => 'tourelle',
+                        'chat' => 'drone',
+                        'panda' => 'scarabee',
+                        'fantome' => 'blob',
+                        'gardien' => 'mine',
+                        'renard' => 'mite',
+                        'elfe' => 'meduse',
+                        'corbeau' => 'chauve',
+                        'ninja' => 'intercepteur',
+                        'viking' => 'croiseur',
+                        'pirate' => 'navette',
+                        // 'champignon' existe dans les deux rosters : rien a faire.
                     ];
-                    $trous = implode(',', array_fill(0, count($connues), '?'));
-                    $db->prepare(
-                        "UPDATE profiles SET avatar = 'fantome' WHERE avatar NOT IN ({$trous})"
-                    )->execute($connues);
+
+                    $stmt = $db->prepare('UPDATE profiles SET avatar = ? WHERE avatar = ?');
+                    foreach ($map as $old => $new) {
+                        $stmt->execute([$new, $old]);
+                    }
+
+                    // Filet, appuye sur le roster courant plutot que sur une liste
+                    // recopiee : toute cle qui ne s'affiche plus prend l'avatar par
+                    // defaut, au lieu de rendre un sprite vide.
+                    foreach ($db->query('SELECT id, avatar FROM profiles')->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                        if (!Avatars::exists((string) $row['avatar'])) {
+                            $db->prepare('UPDATE profiles SET avatar = ? WHERE id = ?')
+                               ->execute([Avatars::FALLBACK, (int) $row['id']]);
+                        }
+                    }
                 },
             ],
         ];
