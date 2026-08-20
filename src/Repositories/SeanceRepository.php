@@ -223,33 +223,62 @@ final class SeanceRepository
     }
 
     /**
-     * La note familiale d'une oeuvre : la moyenne, et le detail de qui a note quoi.
+     * La note familiale d'une oeuvre, regroupee par personne.
      *
-     * Les notes sont portees par les seances, pas par les films : une oeuvre revue
-     * en a donc plusieurs series. On les rassemble ici, avec la date de la seance,
-     * pour que la fiche puisse distinguer deux visionnages.
+     * Les notes sont portees par les seances, pas par les films : une oeuvre
+     * revue en porte donc plusieurs. On agrege par personne, pour deux raisons.
+     * D'abord la lisibilite : la fiche montre une ligne par membre de la famille
+     * plutot que le meme prenom repete. Ensuite la justesse : faire la moyenne
+     * des notes brutes donnerait deux voix a qui a note deux visionnages, alors
+     * que la moyenne des moyennes donne une voix a chacun.
      *
-     * @return array{average: ?float, count: int, rows: list<array{name: string, avatar: string, color: string, score: int, date: string}>}
+     * @return array{average: ?float, count: int, rows: list<array{
+     *     profile_id: int, name: string, avatar: string, color: string,
+     *     average: float, scores: list<array{score: int, date: string}>
+     * }>}
      */
     public function familyRating(int $movieId): array
     {
         $stmt = $this->db->prepare(
-            'SELECT p.name, p.avatar, p.color, r.score, s.date
+            'SELECT r.profile_id, p.name, p.avatar, p.color, r.score, s.date
                FROM ratings r
                JOIN seances s ON s.id = r.seance_id
                JOIN profiles p ON p.id = r.profile_id
               WHERE s.movie_id = ?
-              ORDER BY s.date DESC, p.id'
+              ORDER BY p.id, s.date DESC'
         );
         $stmt->execute([$movieId]);
-        $rows = $stmt->fetchAll();
 
-        $scores = array_map(static fn (array $r): int => (int) $r['score'], $rows);
+        $parPersonne = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $id = (int) $row['profile_id'];
+            $parPersonne[$id] ??= [
+                'profile_id' => $id,
+                'name' => (string) $row['name'],
+                'avatar' => (string) $row['avatar'],
+                'color' => (string) $row['color'],
+                'average' => 0.0,
+                'scores' => [],
+            ];
+            $parPersonne[$id]['scores'][] = [
+                'score' => (int) $row['score'],
+                'date' => (string) $row['date'],
+            ];
+        }
+
+        foreach ($parPersonne as $id => $personne) {
+            $notes = array_column($personne['scores'], 'score');
+            $parPersonne[$id]['average'] = round(array_sum($notes) / count($notes), 2);
+        }
+
+        $moyennes = array_column($parPersonne, 'average');
 
         return [
-            'average' => $scores === [] ? null : round(array_sum($scores) / count($scores), 2),
-            'count' => count($scores),
-            'rows' => $rows,
+            // Moyenne des moyennes : une voix par personne, quel que soit le
+            // nombre de fois qu'elle a vu l'oeuvre.
+            'average' => $moyennes === [] ? null : round(array_sum($moyennes) / count($moyennes), 2),
+            'count' => count($moyennes),
+            'rows' => array_values($parPersonne),
         ];
     }
 

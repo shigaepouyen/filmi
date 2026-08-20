@@ -156,7 +156,7 @@ class RatingFromHistoryTest extends DbTestCase
         $this->assertSame(['Zoé'], $noms);
     }
 
-    public function testFamilyRatingGathersEveryScoreOfAWork(): void
+    public function testFamilyRatingGivesOneLinePerPerson(): void
     {
         $film = $this->movies->add([
             'title' => 'Brazil', 'pool' => 'adult', 'bet_type' => 'safe', 'added_by' => $this->jc,
@@ -170,10 +170,10 @@ class RatingFromHistoryTest extends DbTestCase
         $note = $this->seances->familyRating($film);
 
         $this->assertSame(4.5, $note['average']);
-        $this->assertSame(2, $note['count']);
+        $this->assertSame(2, $note['count'], 'Le compteur compte les personnes, pas les notes');
         $this->assertSame(['JC', 'Zoé'], array_column($note['rows'], 'name'));
-        $this->assertSame([4, 5], array_map('intval', array_column($note['rows'], 'score')));
-        $this->assertSame('2026-07-04', $note['rows'][0]['date']);
+        $this->assertSame([4.0, 5.0], array_column($note['rows'], 'average'));
+        $this->assertSame('2026-07-04', $note['rows'][0]['scores'][0]['date']);
     }
 
     public function testFamilyRatingIsEmptyWhenNobodyRated(): void
@@ -190,27 +190,35 @@ class RatingFromHistoryTest extends DbTestCase
         $this->assertSame([], $note['rows']);
     }
 
-    public function testFamilyRatingCoversBothViewingsOfARewatchedFilm(): void
+    public function testARewatchGivesTheSamePersonASingleAveragedLine(): void
     {
-        // Une oeuvre revue porte deux series de notes : la fiche doit les montrer
-        // toutes les deux, avec leur date, sinon la seconde soiree disparait.
-        $film = $this->movies->add([
-            'title' => 'Solaris', 'pool' => 'adult', 'bet_type' => 'safe', 'added_by' => $this->jc,
-        ]);
-        $this->seances->recordBackfill($film, '2026-06-06');
-        $premiere = (int) $this->seances->watchSeanceForMovie($film)['id'];
-        $this->seances->rate($premiere, $this->jc, 3);
-
-        $this->movies->markForRewatch($film);
-        $this->seances->recordBackfill($film, '2026-07-18');
-        $this->seances->rate((int) $this->seances->watchSeanceForMovie($film)['id'], $this->jc, 5);
+        $film = $this->revuDeuxFois();
 
         $note = $this->seances->familyRating($film);
 
-        $this->assertSame(4.0, $note['average']);
+        $this->assertSame(1, $note['count'], 'JC a note deux fois mais reste une seule personne');
+        $this->assertSame(4.0, $note['rows'][0]['average'], 'Moyenne de ses deux notes');
+        $this->assertSame([5, 3], array_column($note['rows'][0]['scores'], 'score'));
+        // Le plus recent d'abord, pour que le detail se lise du dernier au premier.
+        $this->assertSame(
+            ['2026-07-18', '2026-06-06'],
+            array_column($note['rows'][0]['scores'], 'date')
+        );
+    }
+
+    public function testEachPersonWeighsTheSameWhateverTheNumberOfViewings(): void
+    {
+        // Le piege que la moyenne des notes brutes tendait : JC note deux fois,
+        // Zoe une seule, et JC pesait deux tiers de la note familiale.
+        $film = $this->revuDeuxFois();
+        $seconde = (int) $this->seances->watchSeanceForMovie($film)['id'];
+        $this->seances->rate($seconde, $this->zoe, 1);
+
+        $note = $this->seances->familyRating($film);
+
+        // Moyenne des moyennes : (4 + 1) / 2, et non (5 + 3 + 1) / 3 = 3.
+        $this->assertSame(2.5, $note['average']);
         $this->assertSame(2, $note['count']);
-        // Le plus recent d'abord.
-        $this->assertSame(['2026-07-18', '2026-06-06'], array_column($note['rows'], 'date'));
     }
 
     public function testFamilyRatingIgnoresOtherWorks(): void
@@ -228,6 +236,22 @@ class RatingFromHistoryTest extends DbTestCase
 
         $this->assertSame(2.0, $this->seances->familyRating($brazil)['average']);
         $this->assertSame(5.0, $this->seances->familyRating($alien)['average']);
+    }
+
+    /** Un film vu le 6 juin puis revu le 18 juillet, note 3 puis 5 par JC. */
+    private function revuDeuxFois(): int
+    {
+        $film = $this->movies->add([
+            'title' => 'Solaris', 'pool' => 'adult', 'bet_type' => 'safe', 'added_by' => $this->jc,
+        ]);
+        $this->seances->recordBackfill($film, '2026-06-06');
+        $this->seances->rate((int) $this->seances->watchSeanceForMovie($film)['id'], $this->jc, 3);
+
+        $this->movies->markForRewatch($film);
+        $this->seances->recordBackfill($film, '2026-07-18');
+        $this->seances->rate((int) $this->seances->watchSeanceForMovie($film)['id'], $this->jc, 5);
+
+        return $film;
     }
 
     public function testRatingsOutsideTheAllowedRangeAreRefused(): void

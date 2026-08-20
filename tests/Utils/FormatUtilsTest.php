@@ -86,4 +86,17 @@ class FormatUtilsTest extends TestCase
         $this->assertSame('2026-02-30', FormatUtils::shortDate('2026-02-30'));
         $this->assertSame('n importe quoi', FormatUtils::shortDate('n importe quoi'));
     }
+
+    public function testScoreDropsTheDecimalWhenItIsRound(): void
+    {
+        $this->assertSame('4', FormatUtils::score(4.0));
+        $this->assertSame('5', FormatUtils::score(5.0));
+    }
+
+    public function testScoreUsesAFrenchComma(): void
+    {
+        $this->assertSame('4,5', FormatUtils::score(4.5));
+        $this->assertSame('4,3', FormatUtils::score(4.33));
+        $this->assertSame('4,7', FormatUtils::score(4.67));
+    }
 }

@@ -72,6 +72,17 @@ final class FormatUtils
     }
 
     /**
+     * Une note telle qu'on l'ecrit : « 4 » et non « 4.0 », « 4,5 » et non « 4.5 ».
+     * Une moyenne ronde ne merite pas de decimale, et la virgule est francaise.
+     */
+    public static function score(float $note): string
+    {
+        return $note === round($note)
+            ? (string) (int) $note
+            : number_format($note, 1, ',', '');
+    }
+
+    /**
      * Date courte, sans le jour de la semaine : « 4 juil. ». Sert la ou la place
      * manque, dans une pastille ou une liste serree.
      */
