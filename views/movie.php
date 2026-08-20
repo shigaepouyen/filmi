@@ -17,6 +17,12 @@ $isSeries = ($movie['kind'] ?? 'film') === 'series';
 $endTime = $isSeries ? null : FormatUtils::endTime($startTime, $movie['runtime'] === null ? null : (int) $movie['runtime']);
 $seriesEndTime = $seriesEvening !== null ? FormatUtils::endTime($startTime, $seriesEvening['total_runtime']) : null;
 $betLabels = ['safe' => 'valeur sûre', 'discovery' => 'découverte'];
+
+// Note familiale : une oeuvre revue porte plusieurs series de notes, on n'affiche
+// alors la date que dans ce cas, sinon elle n'apprend rien.
+$notesFamille = $familyRating['rows'];
+$datesNotees = array_unique(array_column($notesFamille, 'date'));
+$plusieursVisionnages = count($datesNotees) > 1;
 ?>
 <div class="mx-auto max-w-3xl">
     <a href="/pool.php?pool=<?= Security::e($movie['pool']) ?>" class="mb-4 inline-block text-sm text-slate-400 underline">
@@ -61,6 +67,31 @@ $betLabels = ['safe' => 'valeur sûre', 'discovery' => 'découverte'];
                 <?php if ($movie['tmdb_rating'] !== null): ?>
                     <span class="rounded-full bg-white/10 px-2 py-0.5">
                         ★ <?= Security::e(number_format((float) $movie['tmdb_rating'], 1)) ?>/10
+                    </span>
+                <?php endif; ?>
+                <?php if ($familyRating['average'] !== null): ?>
+                    <?php /* Survol a la souris, appui au doigt : sur telephone il n'y a pas de survol. */ ?>
+                    <span class="relative" x-data="{ ouvert: false }"
+                          @mouseenter="ouvert = true" @mouseleave="ouvert = false">
+                        <button type="button" @click="ouvert = !ouvert"
+                                class="rounded-full bg-amber-400/25 px-2 py-0.5 text-amber-100"
+                                :aria-expanded="ouvert ? 'true' : 'false'">
+                            ★ <?= Security::e(number_format((float) $familyRating['average'], 1)) ?>/5 en famille
+                            <span class="text-amber-200/70">(<?= (int) $familyRating['count'] ?>)</span>
+                        </button>
+                        <span x-show="ouvert" x-cloak
+                              class="absolute left-0 top-full z-30 mt-1 w-max min-w-[11rem] rounded-xl bg-slate-800 p-2 text-left shadow-lg ring-1 ring-white/15">
+                            <?php foreach ($notesFamille as $note): ?>
+                                <span class="flex items-center gap-2 px-1 py-0.5 text-xs text-slate-200">
+                                    <?= Avatars::render($note['avatar'], $note['color'], 18) ?>
+                                    <span class="flex-1"><?= Security::e($note['name']) ?></span>
+                                    <?php if ($plusieursVisionnages): ?>
+                                        <span class="text-slate-500"><?= Security::e(FormatUtils::shortDate($note['date'])) ?></span>
+                                    <?php endif; ?>
+                                    <strong class="text-amber-100"><?= (int) $note['score'] ?>/5</strong>
+                                </span>
+                            <?php endforeach; ?>
+                        </span>
                     </span>
                 <?php endif; ?>
                 <?php if ($movie['status'] === 'archived'): ?>

@@ -222,6 +222,37 @@ final class SeanceRepository
         }
     }
 
+    /**
+     * La note familiale d'une oeuvre : la moyenne, et le detail de qui a note quoi.
+     *
+     * Les notes sont portees par les seances, pas par les films : une oeuvre revue
+     * en a donc plusieurs series. On les rassemble ici, avec la date de la seance,
+     * pour que la fiche puisse distinguer deux visionnages.
+     *
+     * @return array{average: ?float, count: int, rows: list<array{name: string, avatar: string, color: string, score: int, date: string}>}
+     */
+    public function familyRating(int $movieId): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT p.name, p.avatar, p.color, r.score, s.date
+               FROM ratings r
+               JOIN seances s ON s.id = r.seance_id
+               JOIN profiles p ON p.id = r.profile_id
+              WHERE s.movie_id = ?
+              ORDER BY s.date DESC, p.id'
+        );
+        $stmt->execute([$movieId]);
+        $rows = $stmt->fetchAll();
+
+        $scores = array_map(static fn (array $r): int => (int) $r['score'], $rows);
+
+        return [
+            'average' => $scores === [] ? null : round(array_sum($scores) / count($scores), 2),
+            'count' => count($scores),
+            'rows' => $rows,
+        ];
+    }
+
     /** La moyenne des notes d'une seance, ou null si personne n'a note. */
     public function averageFor(int $seanceId): ?float
     {

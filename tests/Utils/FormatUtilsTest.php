@@ -63,4 +63,27 @@ class FormatUtilsTest extends TestCase
     {
         $this->assertSame('jeudi 29 février', FormatUtils::frenchDate('2024-02-29'));
     }
+
+    public function testShortDateAbbreviatesTheMonth(): void
+    {
+        $this->assertSame('4 juil.', FormatUtils::shortDate('2026-07-04'));
+        $this->assertSame('25 déc.', FormatUtils::shortDate('2026-12-25'));
+        $this->assertSame('9 août', FormatUtils::shortDate('2026-08-09'));
+    }
+
+    public function testShortDateLeavesShortMonthsAlone(): void
+    {
+        // Tronquer « mai » ou « juin » ne gagnerait rien et donnerait « mai. ».
+        $this->assertSame('2 mai', FormatUtils::shortDate('2026-05-02'));
+        $this->assertSame('1 juin', FormatUtils::shortDate('2026-06-01'));
+        $this->assertSame('3 mars', FormatUtils::shortDate('2026-03-03'));
+    }
+
+    public function testShortDateReturnsTheInputWhenItIsNotADate(): void
+    {
+        // Meme garde que frenchDate : createFromFormat est laxiste et accepterait
+        // un 30 fevrier en le decalant au 2 mars.
+        $this->assertSame('2026-02-30', FormatUtils::shortDate('2026-02-30'));
+        $this->assertSame('n importe quoi', FormatUtils::shortDate('n importe quoi'));
+    }
 }

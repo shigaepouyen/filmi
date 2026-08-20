@@ -156,6 +156,80 @@ class RatingFromHistoryTest extends DbTestCase
         $this->assertSame(['Zoé'], $noms);
     }
 
+    public function testFamilyRatingGathersEveryScoreOfAWork(): void
+    {
+        $film = $this->movies->add([
+            'title' => 'Brazil', 'pool' => 'adult', 'bet_type' => 'safe', 'added_by' => $this->jc,
+        ]);
+        $this->seances->recordBackfill($film, '2026-07-04');
+        $seance = (int) $this->seances->watchSeanceForMovie($film)['id'];
+
+        $this->seances->rate($seance, $this->jc, 4);
+        $this->seances->rate($seance, $this->zoe, 5);
+
+        $note = $this->seances->familyRating($film);
+
+        $this->assertSame(4.5, $note['average']);
+        $this->assertSame(2, $note['count']);
+        $this->assertSame(['JC', 'Zoé'], array_column($note['rows'], 'name'));
+        $this->assertSame([4, 5], array_map('intval', array_column($note['rows'], 'score')));
+        $this->assertSame('2026-07-04', $note['rows'][0]['date']);
+    }
+
+    public function testFamilyRatingIsEmptyWhenNobodyRated(): void
+    {
+        $film = $this->movies->add([
+            'title' => 'Alien', 'pool' => 'adult', 'bet_type' => 'safe', 'added_by' => $this->jc,
+        ]);
+        $this->seances->recordBackfill($film, '2026-07-11');
+
+        $note = $this->seances->familyRating($film);
+
+        $this->assertNull($note['average']);
+        $this->assertSame(0, $note['count']);
+        $this->assertSame([], $note['rows']);
+    }
+
+    public function testFamilyRatingCoversBothViewingsOfARewatchedFilm(): void
+    {
+        // Une oeuvre revue porte deux series de notes : la fiche doit les montrer
+        // toutes les deux, avec leur date, sinon la seconde soiree disparait.
+        $film = $this->movies->add([
+            'title' => 'Solaris', 'pool' => 'adult', 'bet_type' => 'safe', 'added_by' => $this->jc,
+        ]);
+        $this->seances->recordBackfill($film, '2026-06-06');
+        $premiere = (int) $this->seances->watchSeanceForMovie($film)['id'];
+        $this->seances->rate($premiere, $this->jc, 3);
+
+        $this->movies->markForRewatch($film);
+        $this->seances->recordBackfill($film, '2026-07-18');
+        $this->seances->rate((int) $this->seances->watchSeanceForMovie($film)['id'], $this->jc, 5);
+
+        $note = $this->seances->familyRating($film);
+
+        $this->assertSame(4.0, $note['average']);
+        $this->assertSame(2, $note['count']);
+        // Le plus recent d'abord.
+        $this->assertSame(['2026-07-18', '2026-06-06'], array_column($note['rows'], 'date'));
+    }
+
+    public function testFamilyRatingIgnoresOtherWorks(): void
+    {
+        $brazil = $this->movies->add([
+            'title' => 'Brazil', 'pool' => 'adult', 'bet_type' => 'safe', 'added_by' => $this->jc,
+        ]);
+        $alien = $this->movies->add([
+            'title' => 'Alien', 'pool' => 'adult', 'bet_type' => 'safe', 'added_by' => $this->jc,
+        ]);
+        $this->seances->recordBackfill($brazil, '2026-07-04');
+        $this->seances->recordBackfill($alien, '2026-07-11');
+        $this->seances->rate((int) $this->seances->watchSeanceForMovie($brazil)['id'], $this->jc, 2);
+        $this->seances->rate((int) $this->seances->watchSeanceForMovie($alien)['id'], $this->jc, 5);
+
+        $this->assertSame(2.0, $this->seances->familyRating($brazil)['average']);
+        $this->assertSame(5.0, $this->seances->familyRating($alien)['average']);
+    }
+
     public function testRatingsOutsideTheAllowedRangeAreRefused(): void
     {
         $seance = $this->seanceVue();

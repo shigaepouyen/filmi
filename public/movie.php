@@ -198,6 +198,7 @@ $app->render('movie', [
     'watchedOn' => $movie['status'] === 'watched' ? $app->seances->watchedDateForMovie($id) : null,
     'watchSeance' => $movie['status'] === 'watched' ? $app->seances->watchSeanceForMovie($id) : null,
     'viewings' => $app->seances->viewingsForMovie($id),
+    'familyRating' => $app->seances->familyRating($id),
     'startTime' => $app->settings->startTime(),
     'subscribedBrands' => $app->settings->subscribedBrands(),
     'canManage' => Access::canManagePool((string) $profile['side'], (string) $movie['pool']),

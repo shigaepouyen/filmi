@@ -16,6 +16,13 @@ final class FormatUtils
         11 => 'novembre', 12 => 'décembre',
     ];
 
+    /** Abreviations d'usage, tronquer « décembre » donnerait « déce. ». */
+    private const MONTHS_SHORT = [
+        1 => 'janv.', 2 => 'févr.', 3 => 'mars', 4 => 'avr.', 5 => 'mai', 6 => 'juin',
+        7 => 'juil.', 8 => 'août', 9 => 'sept.', 10 => 'oct.',
+        11 => 'nov.', 12 => 'déc.',
+    ];
+
     public static function humanRuntime(?int $minutes): string
     {
         if ($minutes === null || $minutes <= 0) {
@@ -62,5 +69,19 @@ final class FormatUtils
             (int) $date->format('j'),
             self::MONTHS[(int) $date->format('n')]
         );
+    }
+
+    /**
+     * Date courte, sans le jour de la semaine : « 4 juil. ». Sert la ou la place
+     * manque, dans une pastille ou une liste serree.
+     */
+    public static function shortDate(string $isoDate): string
+    {
+        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $isoDate);
+        if ($date === false || $date->format('Y-m-d') !== $isoDate) {
+            return $isoDate;
+        }
+
+        return (int) $date->format('j') . ' ' . self::MONTHS_SHORT[(int) $date->format('n')];
     }
 }
