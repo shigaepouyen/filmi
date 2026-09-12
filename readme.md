@@ -1,3 +1,5 @@
+![Status: Stable](https://img.shields.io/badge/status-Stable-brightgreen)
+
 # Filmi
 
 Filmi est le mémo de films et le tirage du samedi soir d'une famille de quatre : JC et Élodie, Zoé et Soline.
