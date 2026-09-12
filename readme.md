@@ -2,7 +2,7 @@
 
 # Filmi
 
-Filmi est le mémo de films et le tirage du samedi soir d'une famille de quatre : JC et Élodie, Zoé et Soline.
+Filmi est le mémo de films et le tirage du samedi soir d'une famille de quatre : deux parents et leurs deux filles.
 
 ## Le problème que ça résout
 
