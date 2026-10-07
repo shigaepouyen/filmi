@@ -6,3 +6,7 @@
 .DS_Store
 /.superpowers/
 /tmp/
+
+# --- Tailwind (outillage de build, le CSS compile est versionne) ---
+/tailwind/node_modules/
+/tailwind/package-lock.json

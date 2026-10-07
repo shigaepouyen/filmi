@@ -62,6 +62,7 @@ rsync -az --delete \
       --exclude 'tmp/' \
       --exclude '.phpunit.cache/' \
       --exclude 'docs/' \
+      --exclude 'tailwind/' \
       --exclude '/index.html' \
       --exclude '/.infomaniak-maintenance.html' \
       --exclude '/.user.ini' \

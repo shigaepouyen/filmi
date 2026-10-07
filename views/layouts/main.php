@@ -26,8 +26,8 @@ $tmdbMissing = trim((string) Config::get('tmdb_api_key')) === '';
     <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
     <meta name="theme-color" content="#0f172a">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="/assets/css/tailwind.css">
+    <script defer src="/assets/vendor/alpine-3.14.1.min.js"></script>
     <style>
         .filmi-lightstick { animation: filmi-glow 1.8s ease-in-out infinite; transform-origin: center; }
         @keyframes filmi-glow { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }

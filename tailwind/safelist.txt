@@ -1,0 +1,8 @@
+Classes construites dynamiquement avec la couleur du profil (regenerer avec scripts/build_css.sh si la palette change) :
+bg-amber-400
+bg-emerald-400
+bg-indigo-400
+bg-rose-400
+bg-sky-400
+bg-slate-400
+bg-violet-400
