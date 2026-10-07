@@ -13,6 +13,9 @@ DirectoryIndex index.php
     Header set X-Content-Type-Options "nosniff"
     Header set Referrer-Policy "same-origin"
     Header set X-Frame-Options "SAMEORIGIN"
+    Header set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+    # Application familiale : jamais indexee par les moteurs de recherche
+    Header set X-Robots-Tag "noindex, nofollow, noarchive"
 </IfModule>
 
 <FilesMatch "\.(sqlite|sqlite-wal|sqlite-shm)$">

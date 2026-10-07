@@ -1,0 +1,3 @@
+# Filmi est une application familiale privée : aucun robot ne doit l'explorer ni l'indexer.
+User-agent: *
+Disallow: /
