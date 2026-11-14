@@ -37,7 +37,8 @@ if (mb_strlen($overview) > 200) {
 }
 ?>
 <article class="rounded-2xl bg-white/5 p-3 ring-1 ring-white/10"
-         x-data="{ busy: false, gone: false, error: '', playing: false }" x-show="!gone">
+         x-data="{ busy: false, gone: false, error: '', playing: false }" x-show="!gone"
+         @trailer-started.window="if ($event.detail !== <?= (int) $suggestion['id'] ?>) playing = false">
     <div class="flex gap-3">
         <?php if (!empty($suggestion['poster_url'])): ?>
             <img src="<?= Security::e($suggestion['poster_url']) ?>" alt="" loading="lazy"
@@ -113,7 +114,7 @@ if (mb_strlen($overview) > 200) {
     <div class="mt-3 flex flex-wrap gap-2 text-sm">
         <?php if ($trailerId !== null): ?>
             <button type="button" class="rounded-xl bg-white/15 px-3 py-1.5 font-medium"
-                    @click="playing = !playing" :aria-expanded="playing">
+                    @click="playing = !playing; if (playing) $dispatch('trailer-started', <?= (int) $suggestion['id'] ?>)" :aria-expanded="playing">
                 <span x-show="!playing">▶ Bande-annonce</span>
                 <span x-show="playing" x-cloak>■ Fermer la bande-annonce</span>
             </button>

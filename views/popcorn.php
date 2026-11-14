@@ -122,6 +122,9 @@ async function popcornCall(url, data) {
     return payload;
 }
 async function popcorn(card, action, id, pool) {
+    // Couper la video tout de suite : masquer la carte ne retire pas l'iframe,
+    // et le son continuerait en arriere-plan. playing = false la retire du DOM.
+    card.playing = false;
     card.busy = true; card.error = '';
     try {
         await popcornCall('/api/suggestion.php', pool ? { id, action, pool } : { id, action });
