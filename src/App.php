@@ -44,7 +44,9 @@ final class App
         $this->tmdb = new TmdbService(
             (string) Config::get('tmdb_api_key'),
             (string) Config::get('tmdb_language'),
-            (string) Config::get('tmdb_region')
+            (string) Config::get('tmdb_region'),
+            null,
+            [\App\Services\YoutubeEmbedCheck::class, 'isEmbeddable']
         );
         $this->suggestions = new SuggestionRepository($db);
         $this->popcorn = new AiSuggestionService(

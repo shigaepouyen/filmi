@@ -16,7 +16,9 @@ final class TmdbService
         private string $apiKey,
         private string $language = 'fr-FR',
         private string $region = 'FR',
-        ?callable $transport = null
+        ?callable $transport = null,
+        /** @var callable(string): bool|null dit si une video YouTube est lisible integree ; null = on ne verifie pas */
+        private $embeddable = null
     ) {
         $this->transport = $transport ?? [$this, 'curlGet'];
     }
@@ -139,7 +141,7 @@ final class TmdbService
                 JSON_UNESCAPED_UNICODE
             ),
             'providers_at' => date('Y-m-d H:i:s'),
-            'trailer_url' => self::trailerUrl($series['videos']['results'] ?? []),
+            'trailer_url' => $this->trailerUrl($series['videos']['results'] ?? []),
             'season_count' => count($seasonNumbers),
             'episode_count' => count($episodes),
             'episodes' => json_encode($episodes, JSON_UNESCAPED_UNICODE),
@@ -190,7 +192,7 @@ final class TmdbService
                 JSON_UNESCAPED_UNICODE
             ),
             'providers_at' => date('Y-m-d H:i:s'),
-            'trailer_url' => self::trailerUrl($series['videos']['results'] ?? []),
+            'trailer_url' => $this->trailerUrl($series['videos']['results'] ?? []),
             'season_count' => isset($series['number_of_seasons']) ? (int) $series['number_of_seasons'] : null,
             'episode_count' => isset($series['number_of_episodes']) ? (int) $series['number_of_episodes'] : null,
         ];
@@ -228,7 +230,7 @@ final class TmdbService
                 JSON_UNESCAPED_UNICODE
             ),
             'providers_at' => date('Y-m-d H:i:s'),
-            'trailer_url' => self::trailerUrl($movie['videos']['results'] ?? []),
+            'trailer_url' => $this->trailerUrl($movie['videos']['results'] ?? []),
         ] + $this->collection($movie['belongs_to_collection'] ?? null, (int) ($movie['id'] ?? $tmdbId));
     }
 
@@ -396,42 +398,34 @@ final class TmdbService
     }
 
     /**
-     * Sélection de la bande-annonce, par ordre de préférence : Trailer YouTube
-     * officiel en français, puis officiel toutes langues, puis n'importe quel
-     * Trailer YouTube. Renvoie l'URL complète, ou null si aucun ne convient.
+     * Bande-annonce YouTube : la meilleure candidate que YouTube accepte d'integrer.
+     * Ordre de preference : officielle en francais, francais, officielle, le reste.
+     * Chaque candidate est testee (voir YoutubeEmbedCheck) : une video privee ou
+     * non integrable ne s'affiche que comme une demande de connexion, on passe
+     * donc a la suivante. Renvoie null si aucune ne convient.
      *
      * @param array<int, array<string, mixed>> $videos
      */
-    private static function trailerUrl(array $videos): ?string
+    private function trailerUrl(array $videos): ?string
     {
-        $trailers = array_values(array_filter(
+        $candidates = array_values(array_filter(
             $videos,
-            static fn (array $v): bool => ($v['site'] ?? null) === 'YouTube' && ($v['type'] ?? null) === 'Trailer'
+            static fn (array $v): bool => ($v['site'] ?? null) === 'YouTube' && ($v['type'] ?? null) === 'Trailer' && !empty($v['key'])
         ));
 
-        if ($trailers === []) {
-            return null;
-        }
+        $rank = static function (array $v): int {
+            $official = ($v['official'] ?? false) === true;
+            $french = ($v['iso_639_1'] ?? null) === 'fr';
 
-        $pick = self::firstMatching(
-            $trailers,
-            static fn (array $v): bool => ($v['official'] ?? false) === true && ($v['iso_639_1'] ?? null) === 'fr'
-        ) ?? self::firstMatching(
-            $trailers,
-            static fn (array $v): bool => ($v['official'] ?? false) === true
-        ) ?? $trailers[0];
+            return $official && $french ? 0 : ($french ? 1 : ($official ? 2 : 3));
+        };
+        // usort est stable depuis PHP 8.0 : a rang egal, l'ordre de TMDb est conserve.
+        usort($candidates, static fn (array $a, array $b): int => $rank($a) <=> $rank($b));
 
-        $key = $pick['key'] ?? null;
-
-        return $key ? 'https://www.youtube.com/watch?v=' . $key : null;
-    }
-
-    /** @param array<int, array<string, mixed>> $items */
-    private static function firstMatching(array $items, callable $predicate): ?array
-    {
-        foreach ($items as $item) {
-            if ($predicate($item)) {
-                return $item;
+        foreach (array_slice($candidates, 0, 5) as $video) {
+            $key = (string) $video['key'];
+            if ($this->embeddable === null || ($this->embeddable)($key)) {
+                return 'https://www.youtube.com/watch?v=' . $key;
             }
         }
 

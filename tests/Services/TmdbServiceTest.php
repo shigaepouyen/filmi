@@ -295,4 +295,42 @@ class TmdbServiceTest extends TestCase
 
         $this->assertNull($this->service($routes)->seriesSummary(124834)['trailer_url']);
     }
+
+    /** @param callable(string): bool|null $embeddable */
+    private function tvWithVideos(array $videos, ?callable $embeddable): TmdbService
+    {
+        $tv = json_decode($this->fixture('tmdb_tv_details.json'), true);
+        $tv['videos'] = ['results' => $videos];
+        $transport = static fn (string $url): string => json_encode($tv);
+
+        return new TmdbService('k', 'fr-FR', 'FR', $transport, $embeddable);
+    }
+
+    public function testTrailerSkipsVideosYouTubeRefusesToEmbedAndKeepsFrenchFirst(): void
+    {
+        $videos = [
+            ['site' => 'YouTube', 'type' => 'Trailer', 'key' => 'privateFR1', 'official' => true, 'iso_639_1' => 'fr'],
+            ['site' => 'YouTube', 'type' => 'Trailer', 'key' => 'okEnglish1', 'official' => true, 'iso_639_1' => 'en'],
+            ['site' => 'YouTube', 'type' => 'Trailer', 'key' => 'okFrench11', 'official' => false, 'iso_639_1' => 'fr'],
+        ];
+
+        $tried = [];
+        $service = $this->tvWithVideos($videos, function (string $key) use (&$tried): bool {
+            $tried[] = $key;
+            return $key !== 'privateFR1';
+        });
+
+        // La privee est ecartee ; le francais non officiel passe avant l'officiel anglais.
+        $this->assertSame('https://www.youtube.com/watch?v=okFrench11', $service->seriesSummary(124834)['trailer_url']);
+        $this->assertSame(['privateFR1', 'okFrench11'], $tried);
+    }
+
+    public function testNoPlayableTrailerMeansNoTrailerAtAll(): void
+    {
+        $videos = [['site' => 'YouTube', 'type' => 'Trailer', 'key' => 'privateOne', 'official' => true, 'iso_639_1' => 'fr']];
+
+        $this->assertNull($this->tvWithVideos($videos, fn (): bool => false)->seriesSummary(124834)['trailer_url']);
+        // Sans verificateur (tests, scripts), la premiere candidate est gardee telle quelle.
+        $this->assertSame('https://www.youtube.com/watch?v=privateOne', $this->tvWithVideos($videos, null)->seriesSummary(124834)['trailer_url']);
+    }
 }
