@@ -97,6 +97,9 @@ final class TmdbService
 
         $series = $this->get('/tv/' . $tmdbId, [
             'append_to_response' => 'watch/providers,videos',
+            // Par defaut TMDb ne rend que les videos en francais : beaucoup d'oeuvres n'ont
+            // leur bande-annonce qu'en anglais (trailerUrl() prefere toujours le francais).
+            'include_video_language' => 'fr,en',
         ]);
 
         $episodes = [];
@@ -161,6 +164,9 @@ final class TmdbService
 
         $series = $this->get('/tv/' . $tmdbId, [
             'append_to_response' => 'watch/providers,videos',
+            // Par defaut TMDb ne rend que les videos en francais : beaucoup d'oeuvres n'ont
+            // leur bande-annonce qu'en anglais (trailerUrl() prefere toujours le francais).
+            'include_video_language' => 'fr,en',
         ]);
 
         $runtimes = array_filter(array_map('intval', $series['episode_run_time'] ?? []));
@@ -199,6 +205,7 @@ final class TmdbService
 
         $movie = $this->get('/movie/' . $tmdbId, [
             'append_to_response' => 'credits,watch/providers,release_dates,videos',
+            'include_video_language' => 'fr,en',
         ]);
 
         return [
