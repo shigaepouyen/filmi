@@ -87,10 +87,12 @@ $card = static fn (array $s, string $mode): string => ViewRenderer::component('s
 <?php endif; ?>
 
 <?php if ($kept !== []): ?>
-    <h2 class="mb-2 text-sm font-medium text-slate-300">Gardées au chaud (<?= count($kept) ?>)</h2>
-    <div class="mb-6 space-y-3">
-        <?php foreach ($kept as $s): ?><?= $card($s, 'kept') ?><?php endforeach; ?>
-    </div>
+    <details class="mb-6">
+        <summary class="cursor-pointer text-sm font-medium text-slate-300">Gardées au chaud (<?= count($kept) ?>)</summary>
+        <div class="mt-2 space-y-3">
+            <?php foreach ($kept as $s): ?><?= $card($s, 'kept') ?><?php endforeach; ?>
+        </div>
+    </details>
 <?php endif; ?>
 
 <?php if ($rejected !== []): ?>
