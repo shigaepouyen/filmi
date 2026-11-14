@@ -4,6 +4,7 @@ declare(strict_types=1);
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 use App\App;
+use App\Repositories\BackfillException;
 use App\Utils\Access;
 
 $app = App::boot();
@@ -29,6 +30,7 @@ switch ($action) {
         $app->suggestions->setStatus($id, 'new');
         break;
     case 'transfer':
+    case 'seen':
         $pool = (string) ($_POST['pool'] ?? '');
         // Refus explicite plutot que repli : une liste inconnue ou interdite ne
         // doit jamais finir ecrite ailleurs que la ou la requete le demandait.
@@ -39,6 +41,14 @@ switch ($action) {
             $movieId = $app->popcorn->transfer($id, $pool, $profile);
         } catch (InvalidArgumentException $e) {
             $app->json(['error' => $e->getMessage()], 422);
+        }
+        if ($action === 'seen') {
+            // « Deja vu » : l'oeuvre entre dans la liste puis passe aussitot en historique, sans date.
+            try {
+                $app->seances->recordBackfillUnknownDate($movieId);
+            } catch (BackfillException $e) {
+                $app->json(['error' => $e->getMessage() . ' Le titre a bien été ajouté à la liste.'], 422);
+            }
         }
         $app->json(['ok' => true, 'movie_id' => $movieId, 'pool' => $pool]);
     default:

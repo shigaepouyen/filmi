@@ -158,4 +158,32 @@ class WatchDateTest extends DbTestCase
 
         $this->assertSame(0, (int) $this->db->query('SELECT COUNT(*) FROM seances')->fetchColumn());
     }
+
+    public function testUnknownDateBackfillsGoToTheVeryBottomAndGetDistinctDates(): void
+    {
+        $a = $this->film('Brazil');
+        $b = $this->film('Alien');
+        $recent = $this->film('Heat');
+        $this->seances->recordBackfill($recent, '2026-07-04');
+
+        $first = $this->seances->recordBackfillUnknownDate($a);
+        $second = $this->seances->recordBackfillUnknownDate($b);
+
+        $this->assertSame('1900-01-01', $first['date']);
+        $this->assertSame('1900-01-02', $second['date']);
+        $this->assertSame(1, (int) $first['backfilled']);
+        $dates = array_column($this->seances->history(), 'date');
+        $this->assertSame(['2026-07-04', '1900-01-02', '1900-01-01'], $dates);
+        $this->assertSame('watched', $this->movies->find($a)['status']);
+    }
+
+    public function testAnUnknownDateWatchCanLaterReceiveARealDate(): void
+    {
+        $id = $this->film();
+        $seance = $this->seances->recordBackfillUnknownDate($id);
+
+        $this->seances->moveSeance((int) $seance['id'], '2025-12-24');
+
+        $this->assertSame('2025-12-24', $this->seances->watchedDateForMovie($id));
+    }
 }

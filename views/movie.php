@@ -92,7 +92,7 @@ $notesFamille = $familyRating['rows'];
                                         <?php /* Deux visionnages ou plus : on montre d'ou vient la moyenne. */ ?>
                                         <span class="ml-7 block text-[11px] text-slate-500">
                                             <?= Security::e(implode(' · ', array_map(
-                                                static fn (array $v): string => $v['score'] . '/5 le ' . FormatUtils::shortDate($v['date']),
+                                                static fn (array $v): string => $v['score'] . '/5 ' . FormatUtils::onDate($v['date'], true),
                                                 $note['scores']
                                             ))) ?>
                                         </span>
@@ -269,7 +269,7 @@ $notesFamille = $familyRating['rows'];
     <?php if ($watchedOn !== null): ?>
         <section class="mt-3 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
             <p class="text-sm text-slate-200">
-                Vu le <strong><?= Security::e(FormatUtils::frenchDate($watchedOn)) ?></strong>
+                Vu <strong><?= Security::e(FormatUtils::onDate($watchedOn)) ?></strong>
             </p>
 
             <?php if (count($viewings) > 1): ?>

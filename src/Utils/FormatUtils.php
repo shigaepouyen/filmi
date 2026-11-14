@@ -56,8 +56,34 @@ final class FormatUtils
         return sprintf('%02d:%02d', intdiv($total, 60), $total % 60);
     }
 
+    /**
+     * Les « deja vu » sans date sont ranges avant cette borne (voir
+     * SeanceRepository::recordBackfillUnknownDate) : une seance ne peut pas avoir de
+     * date vide, alors on lui en reserve une tres ancienne que l'on n'affiche jamais.
+     */
+    public const UNKNOWN_DATE_BEFORE = '1950-01-01';
+
+    public static function isUnknownDate(string $isoDate): bool
+    {
+        return preg_match('/^\d{4}-\d{2}-\d{2}$/', $isoDate) === 1 && $isoDate < self::UNKNOWN_DATE_BEFORE;
+    }
+
+    /** « le samedi 15 août » ou « à une date inconnue » ; $short donne « le 15 août ». */
+    public static function onDate(string $isoDate, bool $short = false): string
+    {
+        if (self::isUnknownDate($isoDate)) {
+            return 'à une date inconnue';
+        }
+
+        return 'le ' . ($short ? self::shortDate($isoDate) : self::frenchDate($isoDate));
+    }
+
     public static function frenchDate(string $isoDate): string
     {
+        if (self::isUnknownDate($isoDate)) {
+            return 'Date inconnue';
+        }
+
         $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $isoDate);
         if ($date === false || $date->format('Y-m-d') !== $isoDate) {
             return $isoDate;
@@ -88,6 +114,10 @@ final class FormatUtils
      */
     public static function shortDate(string $isoDate): string
     {
+        if (self::isUnknownDate($isoDate)) {
+            return 'date inconnue';
+        }
+
         $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $isoDate);
         if ($date === false || $date->format('Y-m-d') !== $isoDate) {
             return $isoDate;

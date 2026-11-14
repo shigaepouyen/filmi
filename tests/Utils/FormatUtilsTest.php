@@ -99,4 +99,16 @@ class FormatUtilsTest extends TestCase
         $this->assertSame('4,3', FormatUtils::score(4.33));
         $this->assertSame('4,7', FormatUtils::score(4.67));
     }
+
+    public function testUnknownDatesAreNeverShownAsDates(): void
+    {
+        $this->assertTrue(FormatUtils::isUnknownDate('1900-01-05'));
+        $this->assertFalse(FormatUtils::isUnknownDate('2026-08-15'));
+        $this->assertFalse(FormatUtils::isUnknownDate('pas une date'));
+        $this->assertSame('Date inconnue', FormatUtils::frenchDate('1900-01-05'));
+        $this->assertSame('date inconnue', FormatUtils::shortDate('1900-01-05'));
+        $this->assertSame('à une date inconnue', FormatUtils::onDate('1900-01-05'));
+        $this->assertSame('le samedi 15 août', FormatUtils::onDate('2026-08-15'));
+        $this->assertSame('le 15 août', FormatUtils::onDate('2026-08-15', true));
+    }
 }

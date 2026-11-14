@@ -17,6 +17,10 @@ $endTime = $isSeries ? null : FormatUtils::endTime($startTime, $suggestion['runt
 
 $audience = ['kid' => 'plutôt pour les filles', 'adult' => 'plutôt pour les parents'][$suggestion['audience']] ?? null;
 $bet = ['safe' => 'valeur sûre', 'discovery' => 'découverte'][$suggestion['bet_type'] ?? ''] ?? null;
+// « Deja vu » : la liste ne sert qu'a dire qui l'avait choisi. Les filles n'ont que la leur.
+$seenPool = ($suggestion['audience'] === 'kid' && in_array('kid', $manageablePools, true))
+    ? 'kid'
+    : ($manageablePools[0] ?? 'kid');
 $poolLabels = ['adult' => 'Liste des parents', 'kid' => 'Liste des filles'];
 
 $overview = trim((string) ($suggestion['overview'] ?? ''));
@@ -101,7 +105,10 @@ if (mb_strlen($overview) > 200) {
                 <button type="button" class="rounded-xl bg-white/10 px-3 py-1.5 disabled:opacity-50" :disabled="busy"
                         @click="popcorn($data, 'keep', <?= (int) $suggestion['id'] ?>)">Garder au chaud</button>
             <?php endif; ?>
-            <button type="button" class="ml-auto rounded-xl px-3 py-1.5 text-slate-400 hover:bg-white/10 disabled:opacity-50" :disabled="busy"
+            <button type="button" class="ml-auto rounded-xl bg-white/10 px-3 py-1.5 disabled:opacity-50" :disabled="busy"
+                    title="Déjà regardé : va tout en bas de l'historique, sans date"
+                    @click="popcorn($data, 'seen', <?= (int) $suggestion['id'] ?>, '<?= $seenPool ?>')">Déjà vu</button>
+            <button type="button" class="rounded-xl px-3 py-1.5 text-slate-400 hover:bg-white/10 disabled:opacity-50" :disabled="busy"
                     @click="popcorn($data, 'reject', <?= (int) $suggestion['id'] ?>)">Pas pour nous</button>
         <?php endif; ?>
     </div>

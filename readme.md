@@ -97,6 +97,7 @@ Une page à part, **cloisonnée des listes manuelles** : Madame Pop-Corn propose
 - **Vérifiée chez TMDb** : le modèle ne fournit que des titres. Affiche, synopsis, plateformes, avis parental et heure de fin viennent de TMDb, et une idée que TMDb ne retrouve pas à un an près est écartée. C'est le garde-fou contre les titres inventés.
 - **Chaque idée dit pourquoi** (« Coco, noté 5 par tout le monde »), le public visé et si c'est une valeur sûre ou une découverte.
 - **Garder au chaud, passer en liste, écarter** : une idée gardée reste sur la page ; « → Liste des parents » ou « → Liste des filles » la crée dans la liste choisie, avec la même règle d'accès que partout (les filles ne peuvent alimenter que la leur). Une idée écartée n'est jamais reproposée.
+- **Déjà vu** : l'idée entre directement dans l'historique, sans date. Une séance exige une date unique, donc elle reçoit une date fictive réservée (1er janvier 1900, puis un jour de plus pour chaque suivante), affichée « Date inconnue » et rangée tout en bas. Comme tout rattrapage, elle ne compte pas dans l'alternance du samedi. Si la date revient, on la corrige depuis la fiche du film.
 - **Vie privée** : aucun prénom ne part, seulement « Parent 1 », « Fille 2 ». Les mémos et les raisons de veto ne partent que si un parent coche la case dans les réglages, et la clé n'est jamais envoyée au navigateur.
 - **Quota** : six demandes par jour, comptées avant l'appel, le bouton ne se déclenche que sur clic.
 
