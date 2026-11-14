@@ -321,4 +321,82 @@ class AiSuggestionServiceTest extends DbTestCase
         $this->assertStringContainsString('modele-leger:generateContent', $urls[0]);
         $this->assertStringContainsString('modele-strict:generateContent', $urls[1]);
     }
+
+    public function testProgressIsWrittenStepByStepAndEndsDone(): void
+    {
+        $this->movies->add(['title' => 'Film à voir', 'pool' => 'adult', 'bet_type' => 'safe', 'added_by' => 1]);
+
+        $this->service([$this->idea('Le Voyage de Chihiro', 2001)])->generate('JC');
+
+        $p = $this->settings->aiProgress();
+        $this->assertSame('done', $p['state']);
+        $this->assertSame('JC', $p['by']);
+        $this->assertSame(1, $p['added']);
+        $this->assertSame('0 film vu, 1 à voir', $p['taste']);
+        $this->assertSame(1, $p['total']);
+        $this->assertSame(1, $p['checked']);
+        $this->assertGreaterThanOrEqual($p['started'], $p['updated']);
+    }
+
+    public function testASecondRequestIsRefusedWhileOneIsRunningAndDoesNotSpendTheQuota(): void
+    {
+        $this->settings->setAiProgress(['state' => 'running', 'by' => 'Élodie', 'started' => time(), 'updated' => time()]);
+        $service = $this->service([$this->idea('Le Voyage de Chihiro', 2001)]);
+
+        try {
+            $service->generate('JC');
+            $this->fail('exception attendue');
+        } catch (LlmException $e) {
+            $this->assertStringContainsString('déjà au travail', $e->getMessage());
+            $this->assertStringContainsString('Élodie', $e->getMessage());
+        }
+
+        $this->assertSame([], $this->geminiBodies, 'le modele n\'est pas appele');
+        $this->assertSame(0, $this->settings->aiCallsToday(), 'pas de demande comptee');
+        $this->assertSame('running', $this->settings->aiProgress()['state'], 'la demande en cours n\'est pas ecrasee');
+    }
+
+    public function testADeadRunningRequestDoesNotBlockForever(): void
+    {
+        $old = time() - AiSuggestionService::STALE_AFTER - 5;
+        $this->settings->setAiProgress(['state' => 'running', 'by' => 'Élodie', 'started' => $old, 'updated' => $old]);
+
+        $result = $this->service([$this->idea('Le Voyage de Chihiro', 2001)])->generate('JC');
+
+        $this->assertSame(1, $result['added']);
+        $this->assertSame('done', $this->settings->aiProgress()['state']);
+    }
+
+    public function testAFailureLeavesAnErrorStateNotARunningOne(): void
+    {
+        $gemini = new GeminiService('k', 'm', fn () => throw new LlmException('Gemini a répondu 503.'));
+        $service = new AiSuggestionService(
+            $gemini, new TmdbService('t', 'fr-FR', 'FR', fn () => '{}'),
+            new TasteRepository($this->db, new ProfileRepository($this->db)),
+            $this->suggestions, $this->movies, $this->settings
+        );
+
+        try {
+            $service->generate('JC');
+            $this->fail('exception attendue');
+        } catch (LlmException) {
+        }
+
+        $p = $this->settings->aiProgress();
+        $this->assertSame('error', $p['state']);
+        $this->assertSame('Gemini a répondu 503.', $p['message']);
+        // Et une nouvelle demande est possible tout de suite.
+        $this->assertNotSame('running', $p['state']);
+    }
+
+    public function testTheSecondPassIsReportedInTheProgress(): void
+    {
+        $this->movies->add(['tmdb_id' => 129, 'title' => 'Le Voyage de Chihiro', 'pool' => 'kid', 'added_by' => 1]);
+
+        $this->service([], 'k', [[$this->idea('Le Voyage de Chihiro', 2001)], [$this->idea('Heartstopper', 2022, 'series')]])->generate('JC');
+
+        $p = $this->settings->aiProgress();
+        $this->assertSame(2, $p['pass']);
+        $this->assertSame('done', $p['state']);
+    }
 }

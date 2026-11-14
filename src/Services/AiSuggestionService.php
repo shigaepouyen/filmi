@@ -24,6 +24,11 @@ final class AiSuggestionService
     /** En dessous, on redemande une fois au modele. */
     public const MIN_USEFUL = 3;
     public const MAX_PASSES = 2;
+    /** Au-dela, une demande « en cours » est consideree comme morte (coupure, erreur fatale) et ne bloque plus. */
+    public const STALE_AFTER = 150;
+
+    /** @var array<string, mixed> */
+    private array $run = [];
 
     public function __construct(
         private GeminiService $gemini,
@@ -70,7 +75,44 @@ final class AiSuggestionService
             );
         }
 
+        // Une seule demande a la fois pour toute la famille : un second clic (ou un second
+        // telephone) ne doit ni doubler le travail ni vider le quota du jour.
+        $current = $this->settings->aiProgress();
+        if ($current !== null && ($current['state'] ?? '') === 'running'
+            && time() - (int) ($current['updated'] ?? 0) < self::STALE_AFTER) {
+            throw new LlmException(sprintf(
+                'Madame Pop-Corn est déjà au travail%s. La page se met à jour toute seule.',
+                !empty($current['by']) ? ' (demande de ' . $current['by'] . ')' : ''
+            ));
+        }
+
+        $this->run = [];
+        $this->tick([
+            'state' => 'running', 'by' => $by, 'source' => $source, 'started' => time(),
+            'step' => 'taste', 'pass' => 1, 'detail' => null, 'taste' => null, 'checked' => 0, 'total' => 0,
+            'message' => null,
+        ]);
+
+        try {
+            return $this->work($by, $source);
+        } catch (\Throwable $e) {
+            // Quoi qu'il arrive, la demande ne reste jamais « en cours » pour toujours.
+            $this->tick(['state' => 'error', 'message' => $e instanceof LlmException ? $e->getMessage() : 'Erreur inattendue.']);
+            throw $e;
+        }
+    }
+
+    /**
+     * @return array{added: int, dropped: int, passes: int}
+     * @throws LlmException
+     */
+    private function work(?string $by, string $source): array
+    {
         $taste = $this->taste->taste($this->settings->aiIncludeMemos(), $source);
+        $seenCount = count($taste['seen']);
+        $toSeeCount = array_sum(array_map('count', $taste['lists']));
+        $this->tick(['taste' => $seenCount . ' film' . ($seenCount > 1 ? 's' : '') . ' vu' . ($seenCount > 1 ? 's' : '')
+            . ', ' . $toSeeCount . ' à voir']);
 
         // L'appel est compte avant d'etre fait : un echec cote Google consomme
         // quand meme du quota, et un bouton qu'on martele ne doit pas le vider.
@@ -85,6 +127,7 @@ final class AiSuggestionService
         $startedAt = microtime(true);
         for ($pass = 0; $pass < self::MAX_PASSES; $pass++) {
             $passes++;
+            $this->tick(['step' => 'ask', 'pass' => $passes, 'detail' => null, 'checked' => 0, 'total' => 0]);
             try {
                 $payload = $this->gemini->generateJson(
                     AiPrompt::SYSTEM,
@@ -103,7 +146,10 @@ final class AiSuggestionService
                 break; // le premier passage a deja donne quelque chose : on le garde
             }
 
-            foreach (($payload['suggestions'] ?? []) as $idea) {
+            $ideas = $payload['suggestions'] ?? [];
+            $checked = 0;
+            $this->tick(['step' => 'verify', 'checked' => 0, 'total' => count($ideas)]);
+            foreach ($ideas as $idea) {
                 if (!is_array($idea) || $added >= self::KEPT_PER_CALL) {
                     continue;
                 }
@@ -114,6 +160,7 @@ final class AiSuggestionService
                 }
                 $tried[] = $key;
 
+                $this->tick(['detail' => $title, 'checked' => ++$checked]);
                 $reason = $this->store($idea, $source);
                 if ($reason === null) {
                     $added++;
@@ -136,8 +183,16 @@ final class AiSuggestionService
         $record['passes'] = $passes;
         $record['dropped'] = $dropped;
         $this->settings->setLastAiAttempt($record);
+        $this->tick(['state' => 'done', 'step' => 'done', 'detail' => null, 'added' => $added, 'dropped' => count($dropped)]);
 
         return ['added' => $added, 'dropped' => count($dropped), 'passes' => $passes];
+    }
+
+    /** Ecrit l'avancement pour la page (voir SettingRepository::aiProgress()). */
+    private function tick(array $changes): void
+    {
+        $this->run = array_merge($this->run, $changes, ['updated' => time()]);
+        $this->settings->setAiProgress($this->run);
     }
 
     /**

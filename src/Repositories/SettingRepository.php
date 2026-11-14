@@ -106,6 +106,27 @@ final class SettingRepository
         $this->set('ai_last_attempt', json_encode($attempt, JSON_UNESCAPED_UNICODE));
     }
 
+    /**
+     * Avancement de la demande en cours a Madame Pop-Corn, lisible par tous les telephones :
+     * la page l'interroge pour afficher les etapes, et un second clic est refuse tant qu'elle
+     * travaille. Ecrit a chaque etape par AiSuggestionService.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function aiProgress(): ?array
+    {
+        $raw = $this->get('ai_progress');
+        $data = $raw === null ? null : json_decode($raw, true);
+
+        return is_array($data) ? $data : null;
+    }
+
+    /** @param array<string, mixed> $progress */
+    public function setAiProgress(array $progress): void
+    {
+        $this->set('ai_progress', json_encode($progress, JSON_UNESCAPED_UNICODE));
+    }
+
     /** Nombre d'appels au modele deja faits aujourd'hui. */
     public function aiCallsToday(): int
     {

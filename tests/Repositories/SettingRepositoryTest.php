@@ -85,4 +85,13 @@ class SettingRepositoryTest extends DbTestCase
 
         $this->assertSame([], $this->repo->subscribedBrands());
     }
+
+    public function testAiProgressRoundTripsAndStartsEmpty(): void
+    {
+        $this->assertNull($this->repo->aiProgress());
+
+        $this->repo->setAiProgress(['state' => 'running', 'by' => 'Zoé', 'detail' => "L'été de Kikujiro"]);
+
+        $this->assertSame(['state' => 'running', 'by' => 'Zoé', 'detail' => "L'été de Kikujiro"], $this->repo->aiProgress());
+    }
 }
