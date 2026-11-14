@@ -55,7 +55,11 @@ use App\Utils\Security;
      x-init="if (movies.length === 0) { draw() }">
 
     <h1 class="mb-1 text-2xl font-semibold">Trois films, à vous de choisir</h1>
-    <p class="mb-5 text-sm text-slate-400">Une valeur sûre, deux découvertes. Tirage aléatoire.</p>
+    <p class="mb-5 text-sm text-slate-400">
+        <?= !empty($isKidWeek)
+            ? 'Trois films tirés au hasard dans la liste des filles.'
+            : 'Une valeur sûre, deux découvertes. Tirage aléatoire.' ?>
+    </p>
 
     <template x-if="error">
         <div class="rounded-2xl bg-rose-500/20 p-5 text-rose-100">
@@ -100,8 +104,10 @@ use App\Utils\Security;
                         </template>
                     </p>
                     <p class="text-[11px]">
+                        <?php if (empty($isKidWeek)): ?>
                         <span class="rounded-full bg-violet-500/25 px-2 py-0.5"
                               x-text="movie.bet_type === 'safe' ? 'valeur sûre' : 'découverte'"></span>
+                        <?php endif; ?>
                         <template x-if="movie.certification">
                             <span class="ml-1 rounded-full bg-white/10 px-2 py-0.5" x-text="movie.certification"></span>
                         </template>
@@ -169,8 +175,10 @@ use App\Utils\Security;
                 </p>
 
                 <p class="mt-1 flex flex-wrap items-center gap-1.5 text-[11px]">
+                    <?php if (empty($isKidWeek)): ?>
                     <span class="rounded-full bg-violet-500/25 px-2 py-0.5"
                           x-text="fiche.bet_type === 'safe' ? 'valeur sûre' : 'découverte'"></span>
+                    <?php endif; ?>
                     <template x-if="fiche.certification">
                         <span class="rounded-full bg-white/10 px-2 py-0.5" x-text="fiche.certification"></span>
                     </template>

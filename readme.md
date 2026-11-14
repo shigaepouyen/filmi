@@ -14,7 +14,7 @@ Filmi est donc d'abord un carnet d'idées partagé, et seulement ensuite une mac
 
 ## Le rituel, tel qu'il est
 
-- **Semaine des filles** : elles choisissent le film. Les parents disposent d'un droit de veto, rarement utilisé.
+- **Semaine des filles** : trois films sont tirés au hasard dans leur liste et elles choisissent. Les parents disposent d'un droit de veto, rarement utilisé.
 - **Semaine des parents** : trois films proposés, en visant une valeur sûre et deux découvertes. Les filles tranchent.
 - Un film vu ne revient pas dans les propositions, sauf s'il est explicitement remis en liste pour être revu.
 - Une série se regarde sur plusieurs samedis, deux ou trois épisodes par soirée.
@@ -34,11 +34,11 @@ Un upvote par personne et par film, en bascule, dans les deux listes. Le compteu
 
 ### Le tirage
 
-Sur la liste des parents uniquement. Chaque film y est tagué valeur sûre ou découverte, et le tirage sort **une valeur sûre puis deux découvertes**, au hasard dans chaque catégorie.
+Semaine des parents : tirage sur leur liste. Chaque film y est tagué valeur sûre ou découverte, et le tirage sort **une valeur sûre puis deux découvertes**, au hasard dans chaque catégorie.
 
 Deux garde-fous :
 
-- **Cooldown** : un film proposé mais non retenu est écarté des deux tirages suivants. Les semaines des filles ne produisent pas de shortlist et ne consomment donc pas de créneau : deux tirages de cooldown, c'est environ un mois de calendrier réel.
+- **Cooldown** : un film proposé mais non retenu est écarté des deux tirages suivants. Les semaines des filles (trois films au hasard dans leur liste, sans quota ni cooldown) n'enregistrent pas de shortlist et ne consomment donc pas de créneau : deux tirages de cooldown, c'est environ un mois de calendrier réel.
 - **Re-tirage illimité** : le bouton « pas dans le mood » régénère la sélection autant de fois que voulu. Les shortlists intermédiaires ne sont **jamais** enregistrées, sinon trois re-tirages un samedi soir grilleraient la moitié de la liste.
 
 **Les suites attendent leur tour.** Un film qui appartient à une saga connue de TMDb n'est pas proposé tant qu'un épisode antérieur de la même saga est encore en liste sans avoir été vu : « Violent Night 2 » ne sort pas avant « Violent Night ». Un rang antérieur absent des listes ne bloque rien, on suppose alors qu'il a été vu ailleurs. La fiche du film porte un interrupteur « ignorer l'ordre » pour les sagas où l'ordre est indifférent, et un film remis en liste pour être revu échappe à la règle.
@@ -49,7 +49,7 @@ Sur l'écran des trois films tirés, chaque affiche ouvre une fenêtre de détai
 
 ### La séance
 
-Les semaines des filles, elles choisissent directement dans leur liste. Un parent peut poser un **veto tracé** : auteur, film, raison, et un compteur par personne visible dans l'historique. Le but est l'auto-régulation, le jour où quelqu'un abuse tout le monde le voit. Le film veto retourne dans la liste, il n'est pas consommé.
+Les semaines des filles, le même écran de tirage sort trois films au hasard de leur liste (sans quota de pari), et la liste complète reste accessible pour choisir un titre précis ou une série. Un parent peut poser un **veto tracé** : auteur, film, raison, et un compteur par personne visible dans l'historique. Le but est l'auto-régulation, le jour où quelqu'un abuse tout le monde le voit. Le film veto retourne dans la liste, il n'est pas consommé.
 
 Après le film, chacun met une note sur 5, depuis la page de la séance ou directement dans l'historique. Ces notes alimentent l'historique et le palmarès, sans aucun effet sur les tirages suivants.
 

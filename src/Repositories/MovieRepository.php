@@ -164,9 +164,11 @@ final class MovieRepository
      * Le tirage reste réservé aux films : tirer une série engagerait la
      * famille sur des mois de télévision sans l'avoir décidé.
      */
-    public function drawCandidates(): array
+    public function drawCandidates(string $pool = 'adult'): array
     {
-        $candidats = $this->db->query(
+        $pool = in_array($pool, self::POOLS, true) ? $pool : 'adult';
+
+        $candidats = $this->db->prepare(
             'SELECT m.id, m.bet_type, m.title, m.year, m.runtime, m.poster_url,
                     m.overview, m.certification, m.providers, m.memo, m.trailer_url,
                     m.director, m.genres, m.tmdb_rating,
@@ -174,8 +176,10 @@ final class MovieRepository
                     p.name AS proposer_name
                FROM movies m
                JOIN profiles p ON p.id = m.added_by
-              WHERE m.pool = \'adult\' AND m.status = \'pool\' AND m.kind = \'film\''
-        )->fetchAll();
+              WHERE m.pool = ? AND m.status = \'pool\' AND m.kind = \'film\''
+        );
+        $candidats->execute([$pool]);
+        $candidats = $candidats->fetchAll();
 
         // Une suite dont le precedent attend encore dans une liste ne doit jamais
         // sortir au tirage. Le catalogue de reference couvre les DEUX listes : un

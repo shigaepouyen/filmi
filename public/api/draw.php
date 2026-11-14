@@ -22,12 +22,18 @@ if ($seance === null) {
 $sessionKey = 'filmi_shown_' . (int) $seance['id'];
 $shown = array_map('intval', $_SESSION[$sessionKey] ?? []);
 
+// Semaine des filles : trois films au hasard dans leur liste. Semaine des
+// parents : une valeur sure et deux decouvertes, hors cooldown.
+$isKidWeek = $seance['chooser_side'] === 'kid';
+
 try {
-    $result = DrawService::pick(
-        $app->movies->drawCandidates(),
-        $app->seances->cooldownMovieIds(2),
-        $shown
-    );
+    $result = $isKidWeek
+        ? DrawService::pickAny($app->movies->drawCandidates('kid'), $shown)
+        : DrawService::pick(
+            $app->movies->drawCandidates(),
+            $app->seances->cooldownMovieIds(2),
+            $shown
+        );
 } catch (DrawException $e) {
     $app->json([
         'error' => $e->getMessage(),

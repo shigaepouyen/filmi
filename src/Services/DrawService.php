@@ -11,6 +11,37 @@ final class DrawService
     private const QUOTA = ['safe' => self::SAFE_COUNT, 'discovery' => self::DISCOVERY_COUNT];
 
     /**
+     * Tirage de la semaine des filles : trois films au hasard dans leur liste,
+     * sans quota de pari (la liste enfant n'en porte pas). Pas de cooldown non
+     * plus : ces semaines n'ecrivent aucune shortlist. Si la liste compte moins
+     * de trois films, on propose ce qui existe plutot que de bloquer la soiree.
+     *
+     * @param list<array{id:int}> $candidates
+     * @param list<int> $shownIds exclusion souple, levee si la liste ne suffit plus
+     * @return array{movies: list<array>, reset: bool}
+     * @throws DrawException si la liste est vide
+     */
+    public static function pickAny(array $candidates, array $shownIds = [], int $count = 3): array
+    {
+        $needed = min($count, count($candidates));
+        if ($needed === 0) {
+            throw new DrawException(['any' => $count], ['any' => 0], 'kid');
+        }
+
+        $unseen = array_values(array_filter(
+            $candidates,
+            static fn (array $movie): bool => !in_array($movie['id'], $shownIds, true)
+        ));
+
+        $reset = count($unseen) < $needed;
+        $source = $reset ? $candidates : $unseen;
+
+        shuffle($source);
+
+        return ['movies' => array_slice($source, 0, $needed), 'reset' => $reset];
+    }
+
+    /**
      * @param list<array{id:int,bet_type:?string}> $candidates
      * @param list<int> $cooldownIds  exclusion ferme
      * @param list<int> $shownIds     exclusion souple, levée si le pool ne suffit plus

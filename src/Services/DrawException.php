@@ -7,7 +7,7 @@ use RuntimeException;
 
 final class DrawException extends RuntimeException
 {
-    private const LABELS = ['safe' => 'valeur sûre', 'discovery' => 'découverte'];
+    private const LABELS = ['safe' => 'valeur sûre', 'discovery' => 'découverte', 'any' => 'film'];
 
     /**
      * @param array<string, int> $missing   catégorie vers nombre de films manquants
@@ -15,13 +15,14 @@ final class DrawException extends RuntimeException
      */
     public function __construct(
         public readonly array $missing,
-        public readonly array $available
+        public readonly array $available,
+        string $pool = 'adult'
     ) {
-        parent::__construct(self::buildMessage($missing));
+        parent::__construct(self::buildMessage($missing, $pool));
     }
 
     /** @param array<string, int> $missing */
-    private static function buildMessage(array $missing): string
+    private static function buildMessage(array $missing, string $pool): string
     {
         $parts = [];
         foreach ($missing as $category => $count) {
@@ -30,6 +31,6 @@ final class DrawException extends RuntimeException
         }
 
         return 'Tirage impossible, il manque ' . implode(' et ', $parts)
-            . ' dans le pool des parents.';
+            . ($pool === 'kid' ? ' dans la liste des filles.' : ' dans le pool des parents.');
     }
 }

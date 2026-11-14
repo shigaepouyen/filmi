@@ -71,13 +71,14 @@ $isDone = $seance['status'] === 'done';
 
         <?php $altButtonClass = $seriesInProgress !== null ? 'rounded-xl bg-white/10 px-4 py-2 text-sm' : 'rounded-xl bg-violet-500 px-4 py-2.5 font-medium'; ?>
         <div class="mt-4 flex flex-wrap gap-2">
+            <a href="/draw.php" class="<?= $altButtonClass ?>">
+                <?= $seriesInProgress !== null ? 'Choisir autre chose' : 'Tirer trois films' ?>
+            </a>
             <?php if ($isKidWeek): ?>
-                <a href="/pool.php?pool=kid" class="<?= $altButtonClass ?>">
-                    <?= $seriesInProgress !== null ? 'Choisir autre chose' : 'Choisir dans la liste des filles' ?>
-                </a>
-            <?php else: ?>
-                <a href="/draw.php" class="<?= $altButtonClass ?>">
-                    <?= $seriesInProgress !== null ? 'Choisir autre chose' : 'Tirer trois films' ?>
+                <?php /* Le tirage ne sort que des films : la liste complete reste
+                          l'acces aux series et au choix precis. */ ?>
+                <a href="/pool.php?pool=kid" class="rounded-xl bg-white/10 px-4 py-2 text-sm">
+                    Voir toute la liste des filles
                 </a>
             <?php endif; ?>
         </div>
