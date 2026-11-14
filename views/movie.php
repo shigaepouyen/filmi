@@ -371,9 +371,12 @@ $notesFamille = $familyRating['rows'];
     <?php endif; ?>
 
     <?php if ($canManage): ?>
-        <section class="mt-8 rounded-2xl bg-white/5 p-4">
-            <h2 class="text-sm font-medium text-slate-300">Modifier la fiche</h2>
-            <p class="mt-1 text-xs text-slate-400">
+        <?php /* Replie par defaut et discret : on corrige une fiche rarement. Ouvert seulement
+                  si l'enregistrement vient d'echouer, pour que l'erreur reste en contexte. */ ?>
+        <details class="mt-8" <?= $error !== null && ($_POST['action'] ?? '') === 'edit_details' ? 'open' : '' ?>>
+        <summary class="cursor-pointer text-xs text-slate-400 underline">Modifier la fiche</summary>
+        <section class="mt-3 rounded-2xl bg-white/5 p-4">
+            <p class="text-xs text-slate-400">
                 Corrige le titre, l'année, la durée ou le mémo. Si le titre ne tombait pas sur la bonne fiche,
                 cherche-le sur TMDb et rattache le film au bon résultat : affiche, synopsis et plateformes suivent.
             </p>
@@ -463,6 +466,7 @@ $notesFamille = $familyRating['rows'];
                 <button class="rounded-xl bg-violet-500 px-4 py-2 text-sm font-medium">Enregistrer la fiche</button>
             </form>
         </section>
+        </details>
     <?php endif; ?>
 
     <?php if ($canManage): ?>
