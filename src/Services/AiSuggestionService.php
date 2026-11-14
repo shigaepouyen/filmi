@@ -18,7 +18,7 @@ use App\Utils\Access;
  */
 final class AiSuggestionService
 {
-    public const DAILY_LIMIT = 6;
+    public const DAILY_LIMIT = 10;
     public const ASKED = 8;
     public const KEPT_PER_CALL = 6;
     /** En dessous, on redemande une fois au modele. */
