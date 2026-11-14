@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS votes (
 
 CREATE TABLE IF NOT EXISTS seances (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    date            DATE NOT NULL UNIQUE,
+    date            DATE NOT NULL,
     chooser_side    TEXT NOT NULL CHECK (chooser_side IN ('adult','kid')),
     derogation      INTEGER NOT NULL DEFAULT 0,
     derogation_note TEXT,
@@ -66,6 +66,10 @@ CREATE TABLE IF NOT EXISTS seances (
     backfilled      INTEGER NOT NULL DEFAULT 0,  -- 1 = rattrapage d'historique, exclu de l'alternance
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+-- Une seule vraie seance par jour (le samedi soir, creee par deux telephones a la fois
+-- sans doublon), mais autant de rattrapages que l'on veut : le cine l'apres-midi puis
+-- la soiree pizza le meme jour. Index partiel : seuls les vrais creneaux sont uniques.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_seances_real_date ON seances(date) WHERE backfilled = 0;
 
 CREATE TABLE IF NOT EXISTS seance_picks (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,

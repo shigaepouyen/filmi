@@ -67,7 +67,7 @@ La série sort des listes une fois le dernier épisode vu. Un veto sur une soir�
 
 **Revoir** : depuis la fiche, un film déjà vu retourne dans sa liste pour un second passage. Il redevient tirable, garde toutes ses visions passées, et n'est pas soumis à la règle des suites puisque la saga a déjà été suivie.
 
-**Rattraper l'historique** : un film vu avant l'installation de l'application s'ajoute avec un « déjà vu le » à une date passée, sur la liste des parents ou des filles selon qui l'avait choisi. Ces séances de rattrapage nourrissent l'historique et le palmarès, mais **ne comptent pas dans l'alternance** : elles ne décalent pas le tour du samedi suivant.
+**Rattraper l'historique** : un film vu avant l'installation de l'application s'ajoute avec un « déjà vu le » à une date passée, sur la liste des parents ou des filles selon qui l'avait choisi. Ces séances de rattrapage nourrissent l'historique et le palmarès, mais **ne comptent pas dans l'alternance** : elles ne décalent pas le tour du samedi suivant. **On peut en ajouter plusieurs le même jour**, y compris un jour qui a déjà sa séance du samedi soir : le ciné l'après-midi, puis la soirée pizza. Seule la vraie séance du soir reste unique par jour ; un rattrapage ne devient jamais « la séance du jour ». Le soir-même, l'historique range les films du même jour du plus récemment ajouté au plus ancien.
 
 Le « vu le » d'un film se corrige : changer sa date, ou le retirer, ce qui remet l'œuvre dans sa liste.
 

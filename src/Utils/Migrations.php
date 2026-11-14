@@ -18,8 +18,11 @@ final class Migrations
     private const SCHEMA_VERSION_KEY = 'schema_version';
 
     /**
-     * @return array<int, array{description: string, up: callable(PDO): void}>
-     *         indexé par numéro de version cible, dans l'ordre croissant
+     * @return array<int, array{description: string, up: callable(PDO): void, foreign_keys_off?: bool}>
+     *         indexé par numéro de version cible, dans l'ordre croissant.
+     *         foreign_keys_off : la migration reconstruit une table parente ; run() coupe alors
+     *         les clés étrangères avant la transaction (impossible de le faire dedans), sinon le
+     *         DROP TABLE supprimerait en cascade les notes et choix rattachés.
      */
     private static function definitions(): array
     {
@@ -311,6 +314,79 @@ final class Migrations
                     $db->exec('CREATE INDEX IF NOT EXISTS idx_suggestions_status ON suggestions(status)');
                 },
             ],
+            12 => [
+                'description' => 'Autorise plusieurs séances le même jour (une seule vraie séance par jour, rattrapages illimités)',
+                'foreign_keys_off' => true,
+                'up' => static function (PDO $db): void {
+                    // Garde-fou : avec les cles etrangeres actives, DROP TABLE seances ferait un
+                    // DELETE implicite et la cascade emporterait notes, vetos et shortlists.
+                    if ((int) $db->query('PRAGMA foreign_keys')->fetchColumn() !== 0) {
+                        throw new \RuntimeException('Migration 12 refusée : les clés étrangères sont actives, la cascade effacerait des notes.');
+                    }
+
+                    // Anomalies de references deja presentes (donnees anciennes) : on ne reproche a la
+                    // reconstruction que celles qu'elle creerait.
+                    $brokenBefore = count($db->query('PRAGMA foreign_key_check')->fetchAll(PDO::FETCH_ASSOC));
+
+                    // Reconstruire seulement si la contrainte UNIQUE(date) d'origine est encore la.
+                    $uniqueOnDate = false;
+                    foreach ($db->query('PRAGMA index_list(seances)')->fetchAll(PDO::FETCH_ASSOC) as $index) {
+                        if ((int) $index['unique'] !== 1 || ($index['origin'] ?? '') !== 'u') {
+                            continue;
+                        }
+                        $columns = array_column(
+                            $db->query('PRAGMA index_info(' . $db->quote((string) $index['name']) . ')')->fetchAll(PDO::FETCH_ASSOC),
+                            'name'
+                        );
+                        if ($columns === ['date']) {
+                            $uniqueOnDate = true;
+                        }
+                    }
+
+                    if ($uniqueOnDate) {
+                        $oldColumns = array_column($db->query('PRAGMA table_info(seances)')->fetchAll(PDO::FETCH_ASSOC), 'name');
+                        $sequence = $db->query("SELECT seq FROM sqlite_sequence WHERE name = 'seances'")->fetchColumn();
+
+                        $db->exec('DROP TABLE IF EXISTS seances_new');
+                        $db->exec(
+                            "CREATE TABLE seances_new (
+                                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                                date            DATE NOT NULL,
+                                chooser_side    TEXT NOT NULL CHECK (chooser_side IN ('adult','kid')),
+                                derogation      INTEGER NOT NULL DEFAULT 0,
+                                derogation_note TEXT,
+                                status          TEXT NOT NULL DEFAULT 'planned'
+                                                CHECK (status IN ('planned','done','skipped')),
+                                movie_id        INTEGER REFERENCES movies(id) ON DELETE SET NULL,
+                                episodes_from   INTEGER,
+                                episodes_to     INTEGER,
+                                episodes_label  TEXT,
+                                backfilled      INTEGER NOT NULL DEFAULT 0,
+                                created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+                            )"
+                        );
+
+                        $newColumns = array_column($db->query('PRAGMA table_info(seances_new)')->fetchAll(PDO::FETCH_ASSOC), 'name');
+                        $shared = implode(', ', array_values(array_intersect($newColumns, $oldColumns)));
+                        $db->exec("INSERT INTO seances_new ({$shared}) SELECT {$shared} FROM seances");
+
+                        $db->exec('DROP TABLE seances');
+                        $db->exec('ALTER TABLE seances_new RENAME TO seances');
+
+                        if ($sequence !== false && $sequence !== null) {
+                            $db->prepare("UPDATE sqlite_sequence SET seq = MAX(seq, ?) WHERE name = 'seances'")->execute([(int) $sequence]);
+                        }
+                    }
+
+                    $db->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_seances_real_date ON seances(date) WHERE backfilled = 0');
+
+                    // Rien ne doit rester oriente vers une ligne disparue.
+                    $brokenAfter = count($db->query('PRAGMA foreign_key_check')->fetchAll(PDO::FETCH_ASSOC));
+                    if ($brokenAfter > $brokenBefore) {
+                        throw new \RuntimeException('Migration 12 annulée : la reconstruction a cassé ' . ($brokenAfter - $brokenBefore) . ' référence(s).');
+                    }
+                },
+            ],
         ];
     }
 
@@ -339,6 +415,13 @@ final class Migrations
                 continue;
             }
 
+            // Une migration qui reconstruit une table parente coupe les cles etrangeres :
+            // le PRAGMA n'a aucun effet dans une transaction, donc c'est fait avant.
+            $foreignKeysOff = ($migration['foreign_keys_off'] ?? false) === true;
+            if ($foreignKeysOff) {
+                $db->exec('PRAGMA foreign_keys = OFF');
+            }
+
             $db->beginTransaction();
             try {
                 ($migration['up'])($db);
@@ -353,6 +436,10 @@ final class Migrations
             } catch (\Throwable $e) {
                 $db->rollBack();
                 throw $e;
+            } finally {
+                if ($foreignKeysOff) {
+                    $db->exec('PRAGMA foreign_keys = ON');
+                }
             }
 
             $applied[] = $version;

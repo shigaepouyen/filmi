@@ -106,9 +106,9 @@ class MigrationsTest extends TestCase
 
         $applied = Migrations::run($db);
 
-        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10, 11], $applied);
+        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], $applied);
         $this->assertContains('trailer_url', $this->columns($db, 'movies'));
-        $this->assertSame(11, Migrations::currentVersion($db));
+        $this->assertSame(12, Migrations::currentVersion($db));
 
         // Preuve d'absence de perte de données : les deux films survivent intacts.
         $rows = $db->query('SELECT title, pool, status, providers, trailer_url FROM movies ORDER BY id')->fetchAll();
@@ -138,13 +138,13 @@ class MigrationsTest extends TestCase
         )->execute();
 
         $first = Migrations::run($db);
-        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10, 11], $first);
+        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], $first);
 
         // Une deuxième exécution ne doit ni lever (ALTER TABLE sur colonne existante
         // lèverait), ni changer quoi que ce soit.
         $second = Migrations::run($db);
         $this->assertSame([], $second, 'La deuxième exécution ne doit rejouer aucune migration');
-        $this->assertSame(11, Migrations::currentVersion($db));
+        $this->assertSame(12, Migrations::currentVersion($db));
 
         $trailerColumns = array_filter(
             $this->columns($db, 'movies'),
@@ -169,8 +169,8 @@ class MigrationsTest extends TestCase
 
         $applied = Migrations::run($db);
 
-        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10, 11], $applied);
-        $this->assertSame(11, Migrations::currentVersion($db));
+        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], $applied);
+        $this->assertSame(12, Migrations::currentVersion($db));
     }
 
     public function testMigrationThreeMarksExistingFilmsForProviderRefresh(): void
@@ -250,7 +250,7 @@ class MigrationsTest extends TestCase
 
         $applied = Migrations::run($db);
 
-        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10, 11], $applied);
+        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], $applied);
         $this->assertContains('backfilled', $this->columns($db, 'seances'));
 
         // Preuve d'absence de perte : la vraie séance de production reste à 0,
@@ -266,11 +266,11 @@ class MigrationsTest extends TestCase
         $db = $this->oldStateDatabase();
 
         $first = Migrations::run($db);
-        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10, 11], $first);
+        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], $first);
 
         $second = Migrations::run($db);
         $this->assertSame([], $second, 'La deuxième exécution ne doit rejouer aucune migration');
-        $this->assertSame(11, Migrations::currentVersion($db));
+        $this->assertSame(12, Migrations::currentVersion($db));
 
         $backfilledColumns = array_filter(
             $this->columns($db, 'seances'),
@@ -297,7 +297,7 @@ class MigrationsTest extends TestCase
         );
 
         $first = Migrations::run($db);
-        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10, 11], $first);
+        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], $first);
 
         $seance = $db->query('SELECT * FROM seances')->fetch();
         $this->assertSame('2026-07-04', $seance['date']);
@@ -317,7 +317,7 @@ class MigrationsTest extends TestCase
         // Rejouer la migration ne change plus rien.
         $second = Migrations::run($db);
         $this->assertSame([], $second);
-        $this->assertSame(11, Migrations::currentVersion($db));
+        $this->assertSame(12, Migrations::currentVersion($db));
     }
 
     public function testMigrationSixRemapsTheFourRealProductionProfiles(): void
@@ -417,7 +417,7 @@ class MigrationsTest extends TestCase
         );
 
         $first = Migrations::run($db);
-        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10, 11], $first);
+        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], $first);
         $this->assertSame('scarabee', $db->query("SELECT avatar FROM profiles WHERE slug = 'jc'")->fetchColumn());
 
         $second = Migrations::run($db);
@@ -439,5 +439,129 @@ class MigrationsTest extends TestCase
 
         $this->expectException(\PDOException::class);
         $db->exec("INSERT INTO suggestions (tmdb_id, title) VALUES (1, 'Doublon')");
+    }
+
+    /** Base en version 11 avec l'ancienne contrainte UNIQUE(date) et des lignes liees aux seances. */
+    private function dbBeforeMigrationTwelve(): PDO
+    {
+        $db = new PDO('sqlite::memory:');
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+        $db->exec('PRAGMA foreign_keys = ON');
+        $db->exec(
+            "CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT);
+             CREATE TABLE profiles (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL);
+             CREATE TABLE movies (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL);
+             CREATE TABLE seances (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date DATE NOT NULL UNIQUE,
+                chooser_side TEXT NOT NULL CHECK (chooser_side IN ('adult','kid')),
+                derogation INTEGER NOT NULL DEFAULT 0,
+                derogation_note TEXT,
+                status TEXT NOT NULL DEFAULT 'planned' CHECK (status IN ('planned','done','skipped')),
+                movie_id INTEGER REFERENCES movies(id) ON DELETE SET NULL,
+                episodes_from INTEGER, episodes_to INTEGER, episodes_label TEXT,
+                backfilled INTEGER NOT NULL DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+             );
+             CREATE TABLE seance_picks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                seance_id INTEGER NOT NULL REFERENCES seances(id) ON DELETE CASCADE,
+                movie_id INTEGER NOT NULL REFERENCES movies(id) ON DELETE CASCADE,
+                role TEXT NOT NULL
+             );
+             CREATE TABLE ratings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                seance_id INTEGER NOT NULL REFERENCES seances(id) ON DELETE CASCADE,
+                profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+                score INTEGER NOT NULL,
+                UNIQUE (seance_id, profile_id)
+             );
+             CREATE TABLE rating_skips (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                seance_id INTEGER NOT NULL REFERENCES seances(id) ON DELETE CASCADE,
+                profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+                UNIQUE (seance_id, profile_id)
+             );
+             INSERT INTO profiles (name) VALUES ('JC'), ('Élodie');
+             INSERT INTO movies (title) VALUES ('Brazil'), ('Alien');
+             INSERT INTO seances (date, chooser_side, status, movie_id, backfilled, derogation, derogation_note)
+                  VALUES ('2026-07-04', 'adult', 'done', 1, 0, 1, 'inversé'), ('2026-07-11', 'kid', 'done', 2, 1, 0, NULL);
+             INSERT INTO seance_picks (seance_id, movie_id, role) VALUES (1, 1, 'chosen'), (1, 2, 'vetoed');
+             INSERT INTO ratings (seance_id, profile_id, score) VALUES (1, 1, 4), (1, 2, 5), (2, 1, 3);
+             INSERT INTO rating_skips (seance_id, profile_id) VALUES (2, 2);
+             INSERT INTO settings (key, value) VALUES ('schema_version', '11');"
+        );
+
+        return $db;
+    }
+
+    public function testMigrationTwelveKeepsEverythingAttachedToTheSeances(): void
+    {
+        $db = $this->dbBeforeMigrationTwelve();
+        $count = static fn (string $table): int => (int) $db->query("SELECT COUNT(*) FROM {$table}")->fetchColumn();
+        $before = ['seances' => $count('seances'), 'picks' => $count('seance_picks'), 'ratings' => $count('ratings'), 'skips' => $count('rating_skips')];
+
+        $this->assertSame([12], Migrations::run($db));
+
+        $this->assertSame($before, ['seances' => $count('seances'), 'picks' => $count('seance_picks'), 'ratings' => $count('ratings'), 'skips' => $count('rating_skips')]);
+        $this->assertSame('inversé', $db->query('SELECT derogation_note FROM seances WHERE id = 1')->fetchColumn());
+        $this->assertSame(1, (int) $db->query('SELECT backfilled FROM seances WHERE id = 2')->fetchColumn());
+        $this->assertSame(5, (int) $db->query('SELECT score FROM ratings WHERE seance_id = 1 AND profile_id = 2')->fetchColumn());
+        $this->assertSame([], $db->query('PRAGMA foreign_key_check')->fetchAll(), 'aucune reference cassee');
+        $this->assertSame(1, (int) $db->query('PRAGMA foreign_keys')->fetchColumn(), 'les cles etrangeres sont reactivees');
+    }
+
+    public function testMigrationTwelveAllowsSameDayBackfillsButKeepsOneRealSeancePerDay(): void
+    {
+        $db = $this->dbBeforeMigrationTwelve();
+        Migrations::run($db);
+
+        // Rattrapages illimites le meme jour, y compris un jour qui a deja une vraie seance.
+        $db->exec("INSERT INTO seances (date, chooser_side, status, backfilled) VALUES ('2026-07-04', 'adult', 'done', 1)");
+        $db->exec("INSERT INTO seances (date, chooser_side, status, backfilled) VALUES ('2026-07-04', 'adult', 'done', 1)");
+        $this->assertSame(3, (int) $db->query("SELECT COUNT(*) FROM seances WHERE date = '2026-07-04'")->fetchColumn());
+
+        // Deux vraies seances le meme jour restent impossibles.
+        $this->expectException(\PDOException::class);
+        $db->exec("INSERT INTO seances (date, chooser_side, status, backfilled) VALUES ('2026-07-04', 'kid', 'planned', 0)");
+    }
+
+    public function testMigrationTwelveStillCascadesAndEnforcesForeignKeysAfterTheRebuild(): void
+    {
+        $db = $this->dbBeforeMigrationTwelve();
+        Migrations::run($db);
+
+        // La cascade fonctionne sur la nouvelle table : supprimer la seance 1 emporte ses notes et choix.
+        $db->exec('DELETE FROM seances WHERE id = 1');
+        $this->assertSame(0, (int) $db->query('SELECT COUNT(*) FROM ratings WHERE seance_id = 1')->fetchColumn());
+        $this->assertSame(0, (int) $db->query('SELECT COUNT(*) FROM seance_picks WHERE seance_id = 1')->fetchColumn());
+        $this->assertSame(1, (int) $db->query('SELECT COUNT(*) FROM ratings WHERE seance_id = 2')->fetchColumn(), 'la seance 2 garde sa note');
+
+        // Et une reference vers une seance inexistante est toujours refusee.
+        $this->expectException(\PDOException::class);
+        $db->exec('INSERT INTO ratings (seance_id, profile_id, score) VALUES (999, 1, 3)');
+    }
+
+    public function testMigrationTwelveKeepsNewSeanceIdsAboveTheOldOnes(): void
+    {
+        $db = $this->dbBeforeMigrationTwelve();
+        $db->exec("INSERT INTO seances (date, chooser_side) VALUES ('2026-08-01', 'adult')");
+        $db->exec('DELETE FROM seances WHERE id = 3');   // sqlite_sequence reste a 3
+
+        Migrations::run($db);
+        $db->exec("INSERT INTO seances (date, chooser_side) VALUES ('2026-08-08', 'adult')");
+
+        $this->assertSame(4, (int) $db->query('SELECT MAX(id) FROM seances')->fetchColumn(), 'un id supprime n est jamais reattribue');
+    }
+
+    public function testMigrationTwelveIsIdempotentOnAnAlreadyRebuiltTable(): void
+    {
+        $db = $this->dbBeforeMigrationTwelve();
+        Migrations::run($db);
+        $db->exec("UPDATE settings SET value = '11' WHERE key = 'schema_version'");
+
+        $this->assertSame([12], Migrations::run($db));
+        $this->assertSame(2, (int) $db->query('SELECT COUNT(*) FROM seances')->fetchColumn());
     }
 }

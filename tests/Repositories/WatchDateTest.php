@@ -40,7 +40,7 @@ class WatchDateTest extends DbTestCase
         $this->assertSame('2026-06-20', $this->seances->watchedDateForMovie($id));
     }
 
-    public function testMovingOntoATakenDateIsRefused(): void
+    public function testAWatchCanJoinADayThatAlreadyHasAnotherOne(): void
     {
         $premier = $this->film('Brazil');
         $second = $this->film('Alien');
@@ -48,8 +48,19 @@ class WatchDateTest extends DbTestCase
         $this->seances->recordBackfill($second, '2026-06-20');
         $seance = $this->seances->watchSeanceForMovie($second);
 
-        $this->expectException(BackfillException::class);
         $this->seances->moveSeance((int) $seance['id'], '2026-07-04');
+
+        $this->assertSame('2026-07-04', $this->seances->watchedDateForMovie($second));
+        $this->assertSame('2026-07-04', $this->seances->watchedDateForMovie($premier));
+    }
+
+    public function testARealSeanceCannotBeMovedOntoTheDayOfAnotherRealSeance(): void
+    {
+        $this->seances->ensure('2026-07-04', 'adult');
+        $other = $this->seances->ensure('2026-06-27', 'kid');
+
+        $this->expectException(BackfillException::class);
+        $this->seances->moveSeance((int) $other['id'], '2026-07-04');
     }
 
     public function testMovingToItsOwnDateIsNotSeenAsACollision(): void

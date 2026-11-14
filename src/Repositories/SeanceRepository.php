@@ -15,9 +15,14 @@ final class SeanceRepository
     {
     }
 
+    /**
+     * La vraie seance de cette date (celle du samedi soir). Les rattrapages (« deja vu
+     * le ») ne comptent pas : on peut en avoir plusieurs le meme jour, le cine l'apres-midi
+     * puis la soiree pizza, sans qu'aucun ne tienne lieu de seance du jour.
+     */
     public function findByDate(string $date): ?array
     {
-        $stmt = $this->db->prepare('SELECT * FROM seances WHERE date = ?');
+        $stmt = $this->db->prepare('SELECT * FROM seances WHERE date = ? AND backfilled = 0');
         $stmt->execute([$date]);
 
         return $stmt->fetch() ?: null;
@@ -507,7 +512,7 @@ final class SeanceRepository
                FROM seances s
                LEFT JOIN movies m ON m.id = s.movie_id
                LEFT JOIN profiles p ON p.id = m.added_by
-              ORDER BY s.date DESC
+              ORDER BY s.date DESC, s.id DESC
               LIMIT ?'
         );
         $stmt->execute([$limit]);
@@ -542,9 +547,9 @@ final class SeanceRepository
     /**
      * Deplace la date d'une seance.
      *
-     * seances.date est UNIQUE, contrainte posee pour empecher deux telephones de
-     * creer deux seances le meme samedi : viser une date deja prise est refuse
-     * explicitement plutot que de laisser remonter une erreur SQL brute.
+     * Une vraie seance est unique par jour (deux telephones ne creent pas deux samedis) :
+     * viser un jour deja pris par une autre vraie seance est refuse explicitement plutot
+     * que de laisser remonter une erreur SQL brute. Un rattrapage peut rejoindre un jour occupe.
      */
     public function moveSeance(int $seanceId, string $date): void
     {
@@ -557,9 +562,13 @@ final class SeanceRepository
             throw new BackfillException("Une seance vue ne peut pas etre datee dans le futur.");
         }
 
-        $occupee = $this->findByDate($date);
-        if ($occupee !== null && (int) $occupee['id'] !== $seanceId) {
-            throw new BackfillException("Une seance existe deja le {$date}.");
+        // Seule une vraie seance est unique par jour ; un rattrapage peut rejoindre un jour deja occupe.
+        $deplacee = $this->find($seanceId);
+        if ($deplacee !== null && (int) $deplacee['backfilled'] === 0) {
+            $occupee = $this->findByDate($date);
+            if ($occupee !== null && (int) $occupee['id'] !== $seanceId) {
+                throw new BackfillException("Une seance existe deja le {$date}.");
+            }
         }
 
         $this->db->prepare('UPDATE seances SET date = ? WHERE id = ?')->execute([$date, $seanceId]);
@@ -706,14 +715,8 @@ final class SeanceRepository
             ));
         }
 
-        $existing = $this->findByDate($date);
-        if ($existing !== null) {
-            throw new BackfillException(sprintf(
-                'Il y a déjà une séance le %s : %s.',
-                $date,
-                $this->describeSeance($existing)
-            ));
-        }
+        // Aucune verification de « date deja prise » : le cine l'apres-midi et la soiree pizza le
+        // meme jour sont deux seances. Seule la vraie seance du jour reste unique (index partiel).
 
         $isSeries = ($movie['kind'] ?? 'film') === 'series';
         $pool = (string) $movie['pool'];
@@ -743,10 +746,9 @@ final class SeanceRepository
                     )->execute([$date, $pool, $movieId]);
                 }
             } catch (\PDOException $e) {
-                // Course perdue contre un autre appareil entre la vérification et
-                // l'écriture : la contrainte UNIQUE sur date a fait son travail.
-                throw new BackfillException(sprintf('Il y a déjà une séance le %s.', $date), 0, $e);
+                throw new BackfillException("Le rattrapage n'a pas pu être enregistré.", 0, $e);
             }
+            $newId = (int) $this->db->lastInsertId();
 
             if ($isSeries) {
                 $this->movies->advanceSeries($movieId, max(0, (int) ($movie['episode_count'] ?? 0)));
@@ -760,18 +762,6 @@ final class SeanceRepository
             throw $e;
         }
 
-        return $this->findByDate($date);
-    }
-
-    private function describeSeance(array $seance): string
-    {
-        if ($seance['movie_id'] !== null) {
-            $movie = $this->movies->find((int) $seance['movie_id']);
-            if ($movie !== null) {
-                return $movie['title'];
-            }
-        }
-
-        return $seance['status'] === 'skipped' ? 'pas de ciné ce soir-là' : 'une séance déjà prévue';
+        return $this->find($newId);
     }
 }

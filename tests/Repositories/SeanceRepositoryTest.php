@@ -828,20 +828,42 @@ class SeanceRepositoryTest extends DbTestCase
         $this->repo->recordBackfill($movieId, '');
     }
 
-    public function testRecordBackfillRefusesADateAlreadyTaken(): void
+    public function testSeveralFilmsCanBeAddedTheSameDayEvenWhenARealSeanceExists(): void
     {
-        $movieId = $this->movie('Brazil');
-        $otherMovieId = $this->movie('Autre film');
+        // Le cine l'apres-midi, puis la soiree pizza : trois films le meme jour.
+        $cinema = $this->movie('Au cinéma');
+        $second = $this->movie('Deuxième film');
+        $real = $this->repo->ensure('2026-08-01', 'adult');
+
+        $first = $this->repo->recordBackfill($cinema, '2026-08-01');
+        $other = $this->repo->recordBackfill($second, '2026-08-01');
+
+        $this->assertNotSame((int) $first['id'], (int) $other['id']);
+        $this->assertSame('2026-08-01', $first['date']);
+        $this->assertSame('2026-08-01', $other['date']);
+        $this->assertSame('watched', $this->movies->find($cinema)['status']);
+        $this->assertSame('watched', $this->movies->find($second)['status']);
+        // La vraie seance du jour reste la seule que findByDate()/ensure() voient.
+        $this->assertSame((int) $real['id'], (int) $this->repo->findByDate('2026-08-01')['id']);
+        $this->assertSame((int) $real['id'], (int) $this->repo->ensure('2026-08-01', 'kid')['id']);
+        $this->assertSame(3, (int) $this->db->query("SELECT COUNT(*) FROM seances WHERE date = '2026-08-01'")->fetchColumn());
+    }
+
+    public function testTwoRealSeancesOnTheSameDayStayImpossible(): void
+    {
         $this->repo->ensure('2026-08-01', 'adult');
 
-        try {
-            $this->repo->recordBackfill($otherMovieId, '2026-08-01');
-            $this->fail('Une exception était attendue');
-        } catch (\App\Repositories\BackfillException $e) {
-            $this->assertNotSame('', $e->getMessage());
-        }
+        $this->expectException(\PDOException::class);
+        $this->db->exec("INSERT INTO seances (date, chooser_side, status) VALUES ('2026-08-01', 'kid', 'planned')");
+    }
 
-        $this->assertSame('pool', $this->movies->find($otherMovieId)['status'], 'Rien ne doit être écrit');
+    public function testBackfillsOnADayWithoutRealSeanceDoNotBecomeTheSeanceOfTheDay(): void
+    {
+        $this->repo->recordBackfill($this->movie('Rattrapage'), '2026-08-01');
+
+        $this->assertNull($this->repo->findByDate('2026-08-01'));
+        $real = $this->repo->ensure('2026-08-01', 'adult');
+        $this->assertSame(0, (int) $real['backfilled']);
     }
 
     public function testRecordBackfillRefusesAnAlreadyWatchedMovie(): void
