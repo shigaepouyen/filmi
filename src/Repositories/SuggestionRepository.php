@@ -68,6 +68,32 @@ final class SuggestionRepository
     }
 
     /** @return list<array<string, mixed>> les plus recentes d'abord */
+    /**
+     * Filtre de la page Pop-Corn. « Toute la famille » montre tout ; « Les parents » montre
+     * ce qui est pour les parents et ce qui convient a tous ; « Les filles » de meme.
+     * Une idee reservee aux parents n'a rien a faire dans la vue des filles, et inversement.
+     */
+    public static function matchesFilter(?string $audience, string $filter): bool
+    {
+        return match ($filter) {
+            'adult' => in_array($audience, ['adult', 'all'], true),
+            'kid' => in_array($audience, ['kid', 'all'], true),
+            default => true,
+        };
+    }
+
+    /**
+     * @param list<array<string, mixed>> $rows
+     * @return list<array<string, mixed>>
+     */
+    public static function filtered(array $rows, string $filter): array
+    {
+        return array_values(array_filter(
+            $rows,
+            static fn (array $row): bool => self::matchesFilter($row['audience'] ?? 'all', $filter)
+        ));
+    }
+
     public function byStatus(string $status): array
     {
         $stmt = $this->db->prepare('SELECT * FROM suggestions WHERE status = ? ORDER BY id DESC');

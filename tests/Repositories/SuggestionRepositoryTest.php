@@ -54,4 +54,16 @@ class SuggestionRepositoryTest extends DbTestCase
         $this->assertSame('transferred', $this->repo->find($id)['status']);
         $this->assertSame(['new' => 0, 'kept' => 0, 'rejected' => 0, 'transferred' => 1], $this->repo->counts());
     }
+
+    public function testTheAudienceFilterKeepsWhatSuitsThatPublicAndWhatSuitsEveryone(): void
+    {
+        $rows = [['title' => 'Pour tous', 'audience' => 'all'], ['title' => 'Parents', 'audience' => 'adult'], ['title' => 'Filles', 'audience' => 'kid']];
+
+        $titles = static fn (array $r): array => array_column($r, 'title');
+        $this->assertSame(['Pour tous', 'Parents', 'Filles'], $titles(\App\Repositories\SuggestionRepository::filtered($rows, 'all')));
+        $this->assertSame(['Pour tous', 'Parents'], $titles(\App\Repositories\SuggestionRepository::filtered($rows, 'adult')));
+        $this->assertSame(['Pour tous', 'Filles'], $titles(\App\Repositories\SuggestionRepository::filtered($rows, 'kid')));
+        // Un filtre inconnu ne cache rien.
+        $this->assertCount(3, \App\Repositories\SuggestionRepository::filtered($rows, 'n-importe-quoi'));
+    }
 }

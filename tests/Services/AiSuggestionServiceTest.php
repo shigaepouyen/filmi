@@ -249,4 +249,24 @@ class AiSuggestionServiceTest extends DbTestCase
         $this->assertStringNotContainsString($name, $this->geminiBodies[0]);
         $this->assertSame("Adoré par $name", $this->suggestions->byStatus('new')[0]['why']);
     }
+
+    public function testAskingForAnAudienceSteersThePromptAndForcesTheStoredAudience(): void
+    {
+        // Le modele repond « all » : la demande ciblee fait foi.
+        $this->service([$this->idea('Le Voyage de Chihiro', 2001)])->generate('JC', 'kid');
+
+        $this->assertStringContainsString('UNIQUEMENT les filles', $this->geminiBodies[0]);
+        $this->assertSame('kid', $this->suggestions->byStatus('new')[0]['audience']);
+        $this->assertSame('kid', $this->settings->lastAiAttempt()['audience']);
+    }
+
+    public function testWithoutATargetTheModelKeepsItsOwnAudienceAndUnknownTargetsMeanEveryone(): void
+    {
+        $idea = array_merge($this->idea('Le Voyage de Chihiro', 2001), ['audience' => 'adult']);
+        $this->service([$idea])->generate('JC', 'n-importe-quoi');
+
+        $this->assertStringContainsString('Toute la famille', $this->geminiBodies[0]);
+        $this->assertSame('adult', $this->suggestions->byStatus('new')[0]['audience']);
+        $this->assertSame('all', $this->settings->lastAiAttempt()['audience']);
+    }
 }

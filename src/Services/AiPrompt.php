@@ -25,8 +25,11 @@ Règles :
 - Les deux filles n'ont pas le même âge : privilégie ce que toute la famille peut regarder ensemble, et indique dans « audience » si une idée convient plutôt aux filles ou plutôt aux parents.
 - Mélange valeurs sûres et découvertes (un pas de côté).
 - Le champ « why » tient en une phrase courte en français et cite l'indice de goût qui motive l'idée (par exemple un titre vu et bien noté).
+- La demande indique pour qui chercher (toute la famille, les parents seuls ou les filles seules). Si elle vise un public précis, TOUTES les idées doivent lui convenir et « audience » vaut ce public.
 - Tutoiement ou vouvoiement : aucun, parle de la famille à la troisième personne.
 TXT;
+
+    public const AUDIENCES = ['all', 'adult', 'kid'];
 
     /** @return array<string, mixed> schema de reponse attendu de Gemini */
     public static function schema(): array
@@ -58,24 +61,54 @@ TXT;
      * @param array<string, mixed> $taste voir TasteRepository::taste()
      * @param list<string> $alreadySuggested titres deja proposes par le passe
      */
-    public static function user(array $taste, array $alreadySuggested, int $count): string
+    public static function user(array $taste, array $alreadySuggested, int $count, string $audience = 'all'): string
     {
+        $audience = in_array($audience, self::AUDIENCES, true) ? $audience : 'all';
+
         $out = [];
         $out[] = "Propose {$count} idées. Réponds uniquement avec le JSON demandé.";
         $out[] = '';
 
+        $out[] = '## Pour qui chercher';
+        $out[] = match ($audience) {
+            'adult' => 'UNIQUEMENT les parents (Parent 1, Parent 2) : une soirée entre adultes. Propose des œuvres qui leur plairaient à eux, sans contrainte d\'âge. Leurs notes et leur liste pèsent le plus ; ce que les filles regardent n\'est qu\'un contexte secondaire. Mets « audience » à adult.',
+            'kid' => 'UNIQUEMENT les filles (Fille 1, Fille 2) : des œuvres adaptées à leur âge, ni violentes ni effrayantes. Leurs notes et leur liste pèsent le plus ; ce que les parents aiment seuls n\'est pas un critère. Mets « audience » à kid.',
+            default => 'Toute la famille, parents et filles ensemble, pour la soirée du samedi.',
+        };
+        $out[] = '';
+
+        // Quand la demande vise un camp, les notes de l'autre camp ne disent rien de ce qu'il
+        // faut chercher : on les retire. Une oeuvre notee seulement par l'autre camp reste
+        // connue (liste « deja connues »), elle n'oriente simplement pas les idees.
+        $prefix = ['adult' => 'Parent ', 'kid' => 'Fille '][$audience] ?? null;
+        $seen = [];
+        foreach ($taste['seen'] as $item) {
+            $ratings = $item['ratings'] ?? [];
+            if ($prefix !== null && $ratings !== []) {
+                $ratings = array_filter($ratings, static fn ($who): bool => str_starts_with((string) $who, $prefix), ARRAY_FILTER_USE_KEY);
+                if ($ratings === []) {
+                    continue;
+                }
+            }
+            $item['ratings'] = $ratings;
+            $seen[] = $item;
+        }
+
         $out[] = '## 1. Ce que la famille a déjà regardé (POIDS FORT : c\'est le signal le plus fiable)';
         $out[] = 'Notes sur 5 par personne ; une personne absente de la liste des notes n\'a pas noté.';
-        if ($taste['seen'] === []) {
-            $out[] = '(rien de vu pour l\'instant)';
+        if ($seen === []) {
+            $out[] = '(rien de vu pour l\'instant' . ($prefix !== null ? ' qui concerne ce public' : '') . ')';
         }
-        foreach ($taste['seen'] as $item) {
+        foreach ($seen as $item) {
             $out[] = '- ' . self::label($item) . self::ratings($item['ratings'] ?? []);
         }
         $out[] = '';
 
         $out[] = '## 2. Les listes d\'envies (POIDS MOYEN)';
         foreach (['adult' => 'Proposées par les parents', 'kid' => 'Proposées par les filles'] as $key => $heading) {
+            if ($audience !== 'all') {
+                $heading .= $audience === $key ? ' (PRIORITAIRE pour cette demande)' : ' (contexte secondaire)';
+            }
             $out[] = $heading . ' (le nombre entre crochets est le nombre de votes) :';
             $items = $taste['lists'][$key] ?? [];
             if ($items === []) {

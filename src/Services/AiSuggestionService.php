@@ -48,11 +48,14 @@ final class AiSuggestionService
      * SettingRepository::lastAiAttempt()).
      *
      * @param string|null $by prenom du profil qui a clique, pour l'afficher
+     * @param string $audience pour qui chercher : all (toute la famille), adult (les parents), kid (les filles)
      * @return array{added: int, dropped: int, passes: int}
      * @throws LlmException
      */
-    public function generate(?string $by = null): array
+    public function generate(?string $by = null, string $audience = 'all'): array
     {
+        $audience = in_array($audience, AiPrompt::AUDIENCES, true) ? $audience : 'all';
+
         if (!$this->gemini->isConfigured()) {
             throw new LlmException("Madame Pop-Corn n'a pas de clé Gemini. Elle se renseigne dans config/config.php.");
         }
@@ -75,7 +78,7 @@ final class AiSuggestionService
         $dropped = [];
         $tried = [];
         $passes = 0;
-        $record = ['at' => date('Y-m-d H:i'), 'by' => $by, 'added' => 0, 'passes' => 0, 'dropped' => [], 'error' => null];
+        $record = ['at' => date('Y-m-d H:i'), 'by' => $by, 'audience' => $audience, 'added' => 0, 'passes' => 0, 'dropped' => [], 'error' => null];
 
         $startedAt = microtime(true);
         for ($pass = 0; $pass < self::MAX_PASSES; $pass++) {
@@ -83,7 +86,7 @@ final class AiSuggestionService
             try {
                 $payload = $this->gemini->generateJson(
                     AiPrompt::SYSTEM,
-                    AiPrompt::user($taste, array_merge($this->suggestions->knownTitles(), $tried), self::ASKED),
+                    AiPrompt::user($taste, array_merge($this->suggestions->knownTitles(), $tried), self::ASKED, $audience),
                     AiPrompt::schema()
                 );
             } catch (LlmException $e) {
@@ -107,6 +110,10 @@ final class AiSuggestionService
                 }
                 $tried[] = $key;
 
+                // Une demande ciblee fait foi : on ne laisse pas le modele deriver vers un autre public.
+                if ($audience !== 'all') {
+                    $idea['audience'] = $audience;
+                }
                 $reason = $this->store($idea);
                 if ($reason === null) {
                     $added++;

@@ -25,12 +25,29 @@ $card = static fn (array $s, string $mode): string => ViewRenderer::component('s
     </div>
 <?php endif; ?>
 
-<section x-data="{ busy: false, error: '', async demander() {
-        this.busy = true; this.error = '';
-        try { await popcornCall('/api/suggest.php', {}); location.reload(); }
-        catch (e) { this.error = e.message; this.busy = false; }
-    } }"
+<section x-data="{ busy: false, error: '',
+        async demander() {
+            this.busy = true; this.error = '';
+            try { await popcornCall('/api/suggest.php', { audience: '<?= Security::e($public) ?>' }); location.reload(); }
+            catch (e) { this.error = e.message; this.busy = false; }
+        } }"
          class="mb-6 flex flex-wrap items-center gap-3">
+    <?php /* Filtre de la page ET orientation de la prochaine demande : on demande ce qu'on regarde. */ ?>
+    <nav class="flex w-full flex-wrap gap-1.5 text-sm" aria-label="Pour qui">
+        <?php foreach (['all' => 'Toute la famille', 'adult' => 'Les parents', 'kid' => 'Les filles'] as $value => $label): ?>
+            <a href="/popcorn.php<?= $value === 'all' ? '' : '?public=' . $value ?>"
+               <?= $public === $value ? 'aria-current="page"' : '' ?>
+               class="rounded-xl px-3 py-1.5 ring-1 ring-white/10 no-underline <?= $public === $value ? 'bg-white/15 font-medium text-slate-100' : 'bg-white/5 text-slate-300' ?>">
+                <?= Security::e($label) ?> <span class="text-xs text-slate-400">(<?= (int) $publicCounts[$value] ?>)</span>
+            </a>
+        <?php endforeach; ?>
+    </nav>
+    <?php if ($public !== 'all'): ?>
+        <p class="w-full text-xs text-slate-400">
+            Les idées affichées conviennent <?= $public === 'adult' ? 'aux parents' : 'aux filles' ?>, et la prochaine demande cherchera pour
+            <?= $public === 'adult' ? 'les parents seuls' : 'les filles seules' ?>.
+        </p>
+    <?php endif; ?>
     <button type="button" @click="demander()" :disabled="busy || <?= $configured && $callsLeft > 0 ? 'false' : 'true' ?>"
             class="rounded-xl bg-violet-500 px-4 py-2 font-medium disabled:opacity-50">
         <span x-show="!busy">Demander de nouvelles idées</span>
@@ -56,7 +73,7 @@ $card = static fn (array $s, string $mode): string => ViewRenderer::component('s
     <section class="mb-6 rounded-2xl bg-white/5 p-3 text-xs text-slate-300 ring-1 ring-white/10">
         <p>
             <span class="font-medium text-slate-200">Dernière demande</span>,
-            <?= Security::e($whenText) ?><?= !empty($lastAttempt['by']) ? ' par ' . Security::e((string) $lastAttempt['by']) : '' ?>.
+            <?= Security::e($whenText) ?><?= !empty($lastAttempt['by']) ? ' par ' . Security::e((string) $lastAttempt['by']) : '' ?><?= ['adult' => ', pour les parents', 'kid' => ', pour les filles'][$lastAttempt['audience'] ?? 'all'] ?? '' ?>.
             <?php if (!empty($lastAttempt['error'])): ?>
                 <span class="text-rose-200">Échec : <?= Security::e((string) $lastAttempt['error']) ?></span>
             <?php else: ?>
