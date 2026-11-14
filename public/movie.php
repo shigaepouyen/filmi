@@ -137,6 +137,26 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         exit;
     }
 
+    if ($action === 'edit_details') {
+        // Champ vide = valeur effacee (annee, duree, memo) ; seul le titre est obligatoire.
+        $numeric = static fn (string $key): ?int => ($_POST[$key] ?? '') === '' ? null : (int) $_POST[$key];
+        $memo = (string) ($_POST['memo'] ?? '');
+
+        try {
+            $app->movies->updateDetails(
+                $id,
+                (string) ($_POST['title'] ?? ''),
+                $numeric('year'),
+                $numeric('runtime'),
+                $memo === '' ? null : $memo
+            );
+            header('Location: /movie.php?id=' . $id);
+            exit;
+        } catch (InvalidArgumentException $e) {
+            $error = $e->getMessage();
+        }
+    }
+
     if ($action === 'reclassify') {
         $pool = ($_POST['pool'] ?? '') === 'kid' ? 'kid' : 'adult';
         $betType = in_array($_POST['bet_type'] ?? '', ['safe', 'discovery'], true)

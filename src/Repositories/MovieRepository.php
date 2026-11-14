@@ -557,6 +557,42 @@ final class MovieRepository
     }
 
     /**
+     * Corrige la fiche a la main : titre, annee, duree, memo. Rien de ce que le
+     * rafraichissement TMDb reecrit (synopsis, bande-annonce, plateformes) n'est
+     * editable ici, sinon la correction disparaitrait en silence a la prochaine
+     * mise a jour. Aucun controle d'acces : c'est a la page d'agir.
+     *
+     * @throws InvalidArgumentException valeur refusee, message affichable tel quel
+     */
+    public function updateDetails(int $id, string $title, ?int $year, ?int $runtime, ?string $memo): void
+    {
+        $title = trim($title);
+        if ($title === '') {
+            throw new InvalidArgumentException('Le titre ne peut pas être vide.');
+        }
+        if (mb_strlen($title) > self::TITLE_MAX) {
+            throw new InvalidArgumentException('Le titre est trop long (' . self::TITLE_MAX . ' caractères au plus).');
+        }
+        if ($year !== null && ($year < 1880 || $year > (int) date('Y') + 5)) {
+            throw new InvalidArgumentException("L'année n'est pas plausible.");
+        }
+        if ($runtime !== null && ($runtime < 1 || $runtime > 1000)) {
+            throw new InvalidArgumentException('La durée doit être comprise entre 1 et 1000 minutes.');
+        }
+        $memo = $memo === null ? null : trim($memo);
+        if ($memo !== null && mb_strlen($memo) > self::MEMO_MAX) {
+            throw new InvalidArgumentException('Le mémo est trop long (' . self::MEMO_MAX . ' caractères au plus).');
+        }
+
+        if ($this->find($id) === null) {
+            throw new InvalidArgumentException('Film introuvable.');
+        }
+
+        $this->db->prepare('UPDATE movies SET title = ?, year = ?, runtime = ?, memo = ? WHERE id = ?')
+            ->execute([$title, $year, $runtime, $memo === '' ? null : $memo, $id]);
+    }
+
+    /**
      * Série en cours dans ce pool, s'il y en a une. Une série en cours reste en
      * statut 'pool' (cf. advanceSeries()) et se reconnaît à episodes_watched > 0.
      * Sert à tonight.php pour la proposer en premier sur les samedis de son camp.

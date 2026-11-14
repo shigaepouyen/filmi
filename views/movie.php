@@ -371,6 +371,44 @@ $notesFamille = $familyRating['rows'];
     <?php endif; ?>
 
     <?php if ($canManage): ?>
+        <section class="mt-8 rounded-2xl bg-white/5 p-4">
+            <h2 class="text-sm font-medium text-slate-300">Modifier la fiche</h2>
+            <p class="mt-1 text-xs text-slate-400">
+                Corrige le titre, l'année, la durée ou le mémo. Le synopsis, l'affiche, la bande-annonce
+                et les plateformes viennent de TMDb et se remettent à jour tout seuls.
+            </p>
+            <form method="post" class="mt-3 space-y-3">
+                <input type="hidden" name="csrf" value="<?= Security::csrfToken() ?>">
+                <input type="hidden" name="id" value="<?= (int) $movie['id'] ?>">
+                <input type="hidden" name="action" value="edit_details">
+                <label class="block text-xs text-slate-400" for="edit_title">Titre
+                    <input id="edit_title" name="title" required maxlength="<?= \App\Repositories\MovieRepository::TITLE_MAX ?>"
+                           value="<?= Security::e($movie['title']) ?>"
+                           class="mt-1 w-full rounded-xl bg-white/10 px-3 py-2 text-sm text-slate-100">
+                </label>
+                <div class="flex gap-3">
+                    <label class="block flex-1 text-xs text-slate-400" for="edit_year">Année
+                        <input id="edit_year" name="year" type="number" min="1880" max="<?= (int) date('Y') + 5 ?>"
+                               value="<?= $movie['year'] !== null ? (int) $movie['year'] : '' ?>"
+                               class="mt-1 w-full rounded-xl bg-white/10 px-3 py-2 text-sm text-slate-100">
+                    </label>
+                    <label class="block flex-1 text-xs text-slate-400" for="edit_runtime">
+                        <?= $isSeries ? 'Durée d\'un épisode (min)' : 'Durée (min)' ?>
+                        <input id="edit_runtime" name="runtime" type="number" min="1" max="1000"
+                               value="<?= $movie['runtime'] !== null ? (int) $movie['runtime'] : '' ?>"
+                               class="mt-1 w-full rounded-xl bg-white/10 px-3 py-2 text-sm text-slate-100">
+                    </label>
+                </div>
+                <label class="block text-xs text-slate-400" for="edit_memo">Mémo (pourquoi ce film)
+                    <textarea id="edit_memo" name="memo" rows="3" maxlength="<?= \App\Repositories\MovieRepository::MEMO_MAX ?>"
+                              class="mt-1 w-full rounded-xl bg-white/10 px-3 py-2 text-sm text-slate-100"><?= Security::e((string) ($movie['memo'] ?? '')) ?></textarea>
+                </label>
+                <button class="rounded-xl bg-violet-500 px-4 py-2 text-sm font-medium">Enregistrer la fiche</button>
+            </form>
+        </section>
+    <?php endif; ?>
+
+    <?php if ($canManage): ?>
         <section class="mt-8 space-y-4 rounded-2xl bg-white/5 p-4">
             <h2 class="text-sm font-medium text-slate-300">Modifier la classification</h2>
             <form method="post" class="space-y-2"

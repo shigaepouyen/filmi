@@ -694,4 +694,41 @@ class MovieRepositoryTest extends DbTestCase
         $this->assertSame(200, mb_strlen($film['title']));
         $this->assertSame(500, mb_strlen($film['memo']));
     }
+
+    public function testUpdateDetailsCorrectsTitleYearRuntimeAndMemoOnly(): void
+    {
+        $id = $this->repo->add([
+            'title' => 'Brzil', 'year' => 1985, 'runtime' => 90, 'overview' => 'Synopsis TMDb',
+            'pool' => 'adult', 'bet_type' => 'safe', 'memo' => 'ancien', 'added_by' => 1,
+        ]);
+
+        $this->repo->updateDetails($id, '  Brazil ', 1985, 132, 'Un classique');
+
+        $movie = $this->repo->find($id);
+        $this->assertSame('Brazil', $movie['title']);
+        $this->assertSame(132, (int) $movie['runtime']);
+        $this->assertSame('Un classique', $movie['memo']);
+        $this->assertSame('Synopsis TMDb', $movie['overview'], 'le synopsis TMDb reste intact');
+        $this->assertSame('adult', $movie['pool']);
+    }
+
+    public function testUpdateDetailsClearsOptionalFieldsAndRefusesBadValues(): void
+    {
+        $id = $this->repo->add(['title' => 'Brazil', 'year' => 1985, 'runtime' => 132, 'pool' => 'adult', 'bet_type' => 'safe', 'memo' => 'x', 'added_by' => 1]);
+
+        $this->repo->updateDetails($id, 'Brazil', null, null, '   ');
+        $movie = $this->repo->find($id);
+        $this->assertNull($movie['year']);
+        $this->assertNull($movie['runtime']);
+        $this->assertNull($movie['memo']);
+
+        foreach ([['', 1985, 100, null], ['Brazil', 1700, 100, null], ['Brazil', 1985, 0, null], ['Brazil', 1985, 5000, null], [str_repeat('a', 201), 1985, 100, null], ['Brazil', 1985, 100, str_repeat('m', 501)]] as [$t, $y, $r, $m]) {
+            try {
+                $this->repo->updateDetails($id, $t, $y, $r, $m);
+                $this->fail('exception attendue pour ' . json_encode([$t === '' ? '' : mb_substr($t, 0, 10), $y, $r]));
+            } catch (\InvalidArgumentException) {
+                $this->assertSame('Brazil', $this->repo->find($id)['title'], 'rien n\'est ecrit quand une valeur est refusee');
+            }
+        }
+    }
 }
