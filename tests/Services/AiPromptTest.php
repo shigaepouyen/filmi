@@ -48,4 +48,12 @@ class AiPromptTest extends TestCase
         $this->assertSame(['all', 'kid', 'adult'], $item['audience']['enum']);
         $this->assertSame(['safe', 'discovery'], $item['bet']['enum']);
     }
+
+    public function testSystemPromptForbidsRepeatingAnythingTheFamilyAlreadyKnows(): void
+    {
+        // Sans cette regle ferme, un modele leger renvoyait huit films deja en liste sur huit.
+        $this->assertStringContainsString('RÈGLE ABSOLUE', AiPrompt::SYSTEM);
+        $this->assertStringContainsString('AUCUNE de ces sections', AiPrompt::SYSTEM);
+        $this->assertStringContainsString("jamais l'une de ces œuvres elles-mêmes", AiPrompt::SYSTEM);
+    }
 }
