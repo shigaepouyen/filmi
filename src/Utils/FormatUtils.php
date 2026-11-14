@@ -97,6 +97,17 @@ final class FormatUtils
         );
     }
 
+    /** « samedi 15 août 2026 » : la ou l'on parcourt des annees, comme l'historique. */
+    public static function frenchDateWithYear(string $isoDate): string
+    {
+        $date = self::frenchDate($isoDate);
+        if (self::isUnknownDate($isoDate) || $date === $isoDate) {
+            return $date;
+        }
+
+        return $date . ' ' . substr($isoDate, 0, 4);
+    }
+
     /**
      * Une note telle qu'on l'ecrit : « 4 » et non « 4.0 », « 4,5 » et non « 4.5 ».
      * Une moyenne ronde ne merite pas de decimale, et la virgule est francaise.

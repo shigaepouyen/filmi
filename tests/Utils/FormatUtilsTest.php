@@ -111,4 +111,11 @@ class FormatUtilsTest extends TestCase
         $this->assertSame('le samedi 15 août', FormatUtils::onDate('2026-08-15'));
         $this->assertSame('le 15 août', FormatUtils::onDate('2026-08-15', true));
     }
+
+    public function testFrenchDateWithYear(): void
+    {
+        $this->assertSame('samedi 15 août 2026', FormatUtils::frenchDateWithYear('2026-08-15'));
+        $this->assertSame('Date inconnue', FormatUtils::frenchDateWithYear('1900-01-02'));
+        $this->assertSame('pas une date', FormatUtils::frenchDateWithYear('pas une date'));
+    }
 }

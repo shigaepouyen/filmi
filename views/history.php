@@ -54,7 +54,7 @@ $statusLabels = [
                 <?php endif; ?>
 
                 <div class="min-w-0 flex-1">
-                    <p class="text-xs text-slate-400"><?= Security::e(FormatUtils::frenchDate($seance['date'])) ?></p>
+                    <p class="text-xs text-slate-400"><?= Security::e(FormatUtils::frenchDateWithYear($seance['date'])) ?></p>
                     <p class="font-medium leading-tight">
                         <?= $seance['movie_title'] !== null
                             ? Security::e($seance['movie_title'])
