@@ -49,7 +49,7 @@ Sur l'écran des trois films tirés, chaque affiche ouvre une fenêtre de détai
 
 ### La séance
 
-Les semaines des filles, le même écran de tirage sort trois films au hasard de leur liste (sans quota de pari), et la liste complète reste accessible pour choisir un titre précis ou une série. Un parent peut poser un **veto tracé** : auteur, film, raison, et un compteur par personne visible dans l'historique. Le but est l'auto-régulation, le jour où quelqu'un abuse tout le monde le voit. Le film veto retourne dans la liste, il n'est pas consommé.
+Les semaines des filles, le même écran de tirage sort trois films au hasard de leur liste (sans quota de pari), et la liste complète reste accessible pour choisir un titre précis. Les séries font partie du tirage, chez les filles comme chez les parents (chez les parents, une série compte comme une découverte) : la choisir enregistre la prochaine soirée d'épisodes, elle ne passe pas en « vue » d'un coup. Un parent peut poser un **veto tracé** : auteur, film, raison, et un compteur par personne visible dans l'historique. Le but est l'auto-régulation, le jour où quelqu'un abuse tout le monde le voit. Le film veto retourne dans la liste, il n'est pas consommé.
 
 Après le film, chacun met une note sur 5, depuis la page de la séance ou directement dans l'historique. Ces notes alimentent l'historique et le palmarès, sans aucun effet sur les tirages suivants.
 

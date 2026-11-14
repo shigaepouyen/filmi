@@ -198,4 +198,29 @@ class DrawServiceTest extends TestCase
             $this->assertStringContainsString('liste des filles', $e->getMessage());
         }
     }
+
+    public function testSeriesCountAsDiscoveriesInParentDraw(): void
+    {
+        // Une seule decouverte film, mais deux series : le quota de 2 decouvertes tient.
+        $pool = [
+            ['id' => 1, 'bet_type' => 'safe', 'kind' => 'film'],
+            ['id' => 2, 'bet_type' => 'discovery', 'kind' => 'film'],
+            ['id' => 3, 'bet_type' => null, 'kind' => 'series'],
+        ];
+
+        $ids = array_column(DrawService::pick($pool)['movies'], 'id');
+
+        $this->assertEqualsCanonicalizing([1, 2, 3], $ids);
+    }
+
+    public function testKidDrawCanReturnSeries(): void
+    {
+        $pool = [
+            ['id' => 1, 'bet_type' => null, 'kind' => 'film'],
+            ['id' => 2, 'bet_type' => null, 'kind' => 'series'],
+            ['id' => 3, 'bet_type' => null, 'kind' => 'series'],
+        ];
+
+        $this->assertCount(3, DrawService::pickAny($pool)['movies']);
+    }
 }

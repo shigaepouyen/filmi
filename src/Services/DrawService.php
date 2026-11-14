@@ -91,7 +91,10 @@ final class DrawService
         $grouped = ['safe' => [], 'discovery' => []];
 
         foreach ($candidates as $movie) {
-            $category = $movie['bet_type'] ?? '';
+            // Une série ne porte jamais de pari : elle compte comme une découverte.
+            $category = ($movie['kind'] ?? 'film') === 'series'
+                ? 'discovery'
+                : ($movie['bet_type'] ?? '');
             if (!isset($grouped[$category])) {
                 continue; // tag absent ou inconnu : le film n'est pas tirable
             }

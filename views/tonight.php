@@ -75,8 +75,7 @@ $isDone = $seance['status'] === 'done';
                 <?= $seriesInProgress !== null ? 'Choisir autre chose' : 'Tirer trois films' ?>
             </a>
             <?php if ($isKidWeek): ?>
-                <?php /* Le tirage ne sort que des films : la liste complete reste
-                          l'acces aux series et au choix precis. */ ?>
+                <?php /* La liste complete reste l'acces au choix precis. */ ?>
                 <a href="/pool.php?pool=kid" class="rounded-xl bg-white/10 px-4 py-2 text-sm">
                     Voir toute la liste des filles
                 </a>

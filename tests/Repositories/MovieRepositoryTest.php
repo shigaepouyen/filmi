@@ -161,16 +161,12 @@ class MovieRepositoryTest extends DbTestCase
         $this->assertArrayHasKey('id', $candidates[0]);
     }
 
-    public function testDrawCandidatesNeverReturnsASeries(): void
+    public function testDrawCandidatesIncludeSeries(): void
     {
-        // Un tirage engagerait la famille sur des mois de television sans
-        // l'avoir decide : une serie ne doit jamais pouvoir sortir du tirage,
-        // meme si elle porte un bet_type et vit dans le pool adulte.
         $this->addAdult('Brazil', 'discovery');
         $this->repo->addSeries([
             'title' => 'Heartstopper',
             'pool' => 'adult',
-            'bet_type' => 'safe',
             'added_by' => $this->zoe,
             'episode_count' => 24,
             'season_count' => 3,
@@ -179,7 +175,8 @@ class MovieRepositoryTest extends DbTestCase
 
         $candidates = $this->repo->drawCandidates();
 
-        $this->assertSame(['Brazil'], array_column($candidates, 'title'));
+        $this->assertEqualsCanonicalizing(['Brazil', 'Heartstopper'], array_column($candidates, 'title'));
+        $this->assertContains('series', array_column($candidates, 'kind'));
     }
 
     public function testFindDuplicateMatchesOnTmdbId(): void

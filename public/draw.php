@@ -6,6 +6,7 @@ require dirname(__DIR__) . '/vendor/autoload.php';
 use App\App;
 use App\Services\ChoiceRules;
 use App\Services\ScheduleService;
+use App\Services\SeriesService;
 use App\Utils\Security;
 
 $app = App::boot();
@@ -56,7 +57,20 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     // Semaine des filles : le tirage sert a choisir, il ne laisse pas de
     // shortlist. Les propositions non retenues ne consomment donc aucun cooldown,
     // comme quand elles choisissaient directement dans leur liste.
-    $app->seances->recordChoice((int) $seance['id'], $isKidWeek ? [] : $shortlist, $chosen);
+    $movie = $app->movies->find($chosen);
+    if ($movie !== null && ($movie['kind'] ?? 'film') === 'series') {
+        // Une série tirée ne passe pas en 'watched' : on enregistre la soirée,
+        // avec la plage d'épisodes recalculée depuis l'état réel de la série.
+        $episodes = json_decode((string) $movie['episodes'], true);
+        $evening = SeriesService::nextEvening(
+            is_array($episodes) ? $episodes : [],
+            (int) $movie['episodes_watched'],
+            (int) $movie['episodes_per_evening']
+        );
+        $app->seances->recordSeriesEvening((int) $seance['id'], $chosen, $evening);
+    } else {
+        $app->seances->recordChoice((int) $seance['id'], $isKidWeek ? [] : $shortlist, $chosen);
+    }
     unset($_SESSION['filmi_shown_' . (int) $seance['id']]);
     unset($_SESSION['filmi_current_' . (int) $seance['id']]);
     header('Location: /seance.php');

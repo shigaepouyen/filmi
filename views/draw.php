@@ -108,6 +108,9 @@ use App\Utils\Security;
                         <span class="rounded-full bg-violet-500/25 px-2 py-0.5"
                               x-text="movie.bet_type === 'safe' ? 'valeur sûre' : 'découverte'"></span>
                         <?php endif; ?>
+                        <template x-if="movie.kind === 'series'">
+                            <span class="ml-1 rounded-full bg-sky-500/25 px-2 py-0.5">série</span>
+                        </template>
                         <template x-if="movie.certification">
                             <span class="ml-1 rounded-full bg-white/10 px-2 py-0.5" x-text="movie.certification"></span>
                         </template>

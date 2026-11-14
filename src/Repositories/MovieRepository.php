@@ -161,8 +161,9 @@ final class MovieRepository
     }
 
     /**
-     * Le tirage reste réservé aux films : tirer une série engagerait la
-     * famille sur des mois de télévision sans l'avoir décidé.
+     * Films et séries sont tirables. Une série n'engage la famille que le temps
+     * d'une soirée : choisir une série au tirage enregistre seulement sa
+     * prochaine plage d'épisodes (voir public/draw.php).
      */
     public function drawCandidates(string $pool = 'adult'): array
     {
@@ -171,12 +172,13 @@ final class MovieRepository
         $candidats = $this->db->prepare(
             'SELECT m.id, m.bet_type, m.title, m.year, m.runtime, m.poster_url,
                     m.overview, m.certification, m.providers, m.memo, m.trailer_url,
-                    m.director, m.genres, m.tmdb_rating,
+                    m.director, m.genres, m.tmdb_rating, m.kind,
+                    m.episode_count, m.episodes_watched, m.episodes_per_evening,
                     m.collection_id, m.collection_rank, m.ignore_order, m.status,
                     p.name AS proposer_name
                FROM movies m
                JOIN profiles p ON p.id = m.added_by
-              WHERE m.pool = ? AND m.status = \'pool\' AND m.kind = \'film\''
+              WHERE m.pool = ? AND m.status = \'pool\''
         );
         $candidats->execute([$pool]);
         $candidats = $candidats->fetchAll();
