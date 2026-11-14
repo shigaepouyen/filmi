@@ -172,8 +172,35 @@ final class AiSuggestionService
             'kind' => $kind,
             'audience' => $idea['audience'] ?? 'all',
             'bet_type' => $idea['bet'] ?? null,
-            'why' => $idea['why'] ?? null,
+            'why' => isset($idea['why']) ? $this->withRealNames((string) $idea['why']) : null,
         ]) !== null ? null : 'non enregistrée';
+    }
+
+    /**
+     * Le modele ne voit que « Parent 1 », « Fille 2 » (aucun prenom ne part chez
+     * Google). On remet les prenoms ici, localement, dans ce qu'il a ecrit :
+     * « adore par le parent 1 » devient « adore par JC ».
+     */
+    public function withRealNames(string $text): string
+    {
+        $names = $this->taste->namesByLabel();
+
+        return (string) preg_replace_callback(
+            '/\b(?:(du|de la|de|le|la)\s+)?(parent|fille)\s+(\d)\b/iu',
+            static function (array $m) use ($names): string {
+                $name = $names[mb_strtolower($m[2] . ' ' . $m[3])] ?? null;
+                if ($name === null) {
+                    return $m[0];
+                }
+                $of = in_array(mb_strtolower($m[1]), ['du', 'de la', 'de'], true);
+                if (!$of) {
+                    return $name;
+                }
+
+                return preg_match('/^[AEIOUYÀÂÉÈÊËÎÏÔÙÛH]/u', $name) === 1 ? "d'" . $name : 'de ' . $name;
+            },
+            $text
+        );
     }
 
     /**

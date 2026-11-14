@@ -48,6 +48,25 @@ final class TasteRepository
         ];
     }
 
+    /**
+     * Pour remettre les prenoms dans ce que le modele a ecrit : il ne connait que
+     * « Parent 1 » ou « Fille 2 », jamais un prenom (voir labels()).
+     *
+     * @return array<string, string> etiquette en minuscules ("parent 1") => prenom
+     */
+    public function namesByLabel(): array
+    {
+        $names = [];
+        foreach ($this->profiles->all() as $profile) {
+            $label = $this->labels()[(int) $profile['id']] ?? null;
+            if ($label !== null) {
+                $names[mb_strtolower($label)] = (string) $profile['name'];
+            }
+        }
+
+        return $names;
+    }
+
     /** @return array<int, string> identifiant de profil => etiquette neutre */
     private function labels(): array
     {

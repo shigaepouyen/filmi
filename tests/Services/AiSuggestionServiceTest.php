@@ -223,4 +223,30 @@ class AiSuggestionServiceTest extends DbTestCase
         $this->assertSame('Zoé', $last['by']);
         $this->assertSame('Gemini a répondu 503.', $last['error']);
     }
+
+    public function testNeutralLabelsWrittenByTheModelBecomeRealNames(): void
+    {
+        $service = $this->service([]);
+        $names = (new TasteRepository($this->db, new ProfileRepository($this->db)))->namesByLabel();
+        $parent1 = $names['parent 1'];
+        $parent2 = $names['parent 2'];
+
+        $this->assertSame("Adoré par $parent1.", $service->withRealNames('Adoré par le parent 1.'));
+        $this->assertSame("Adoré par $parent1.", $service->withRealNames('Adoré par Parent 1.'));
+        $withOf = $service->withRealNames('Dans la lignée des goûts du parent 2.');
+        $this->assertStringContainsString($parent2, $withOf);
+        $this->assertStringNotContainsString('parent 2', $withOf);
+        $this->assertMatchesRegularExpression("/goûts (de |d')" . preg_quote($parent2, '/') . '\./u', $withOf);
+        // Un numero inconnu reste tel quel : jamais de nom invente.
+        $this->assertSame('Aimé par le parent 9.', $service->withRealNames('Aimé par le parent 9.'));
+    }
+
+    public function testTheModelNeverReceivesRealNamesButTheStoredReasonDoes(): void
+    {
+        $name = (new TasteRepository($this->db, new ProfileRepository($this->db)))->namesByLabel()['parent 1'];
+        $this->service([array_merge($this->idea('Le Voyage de Chihiro', 2001), ['why' => 'Adoré par le parent 1'])])->generate();
+
+        $this->assertStringNotContainsString($name, $this->geminiBodies[0]);
+        $this->assertSame("Adoré par $name", $this->suggestions->byStatus('new')[0]['why']);
+    }
 }
