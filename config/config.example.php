@@ -10,6 +10,8 @@ return [
     // Se renseigne avec scripts/set_gemini_key.sh. Sans clé, la page reste vide.
     'gemini_api_key' => '',
     'gemini_model' => 'gemini-flash-lite-latest',
+    // Second passage, quand le premier n'a presque rien donne : un modele plus strict sur les exclusions.
+    'gemini_retry_model' => 'gemini-3.5-flash',
     'default_start_time' => '19:15',
     'low_pool_threshold' => 5,
 ];

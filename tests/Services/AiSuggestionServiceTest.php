@@ -250,23 +250,75 @@ class AiSuggestionServiceTest extends DbTestCase
         $this->assertSame("Adoré par $name", $this->suggestions->byStatus('new')[0]['why']);
     }
 
-    public function testAskingForAnAudienceSteersThePromptAndForcesTheStoredAudience(): void
+    public function testAskingForTheParentsListFeedsTheModelOnlyWithThatListsFilmsSeenAndUnseen(): void
     {
-        // Le modele repond « all » : la demande ciblee fait foi.
-        $this->service([$this->idea('Le Voyage de Chihiro', 2001)])->generate('JC', 'kid');
+        $jc = 1;
+        $parentsSeen = $this->movies->add(['title' => 'Film vu des parents', 'pool' => 'adult', 'bet_type' => 'safe', 'added_by' => $jc]);
+        $this->movies->add(['title' => 'Film à voir des parents', 'pool' => 'adult', 'bet_type' => 'safe', 'added_by' => $jc]);
+        $girlsSeen = $this->movies->add(['title' => 'Film vu des filles', 'pool' => 'kid', 'added_by' => $jc]);
+        $this->movies->add(['title' => 'Film à voir des filles', 'pool' => 'kid', 'added_by' => $jc]);
+        foreach ([$parentsSeen, $girlsSeen] as $i => $id) {
+            $this->db->exec("INSERT INTO seances (date, chooser_side, status, movie_id) VALUES ('2026-07-0" . ($i + 1) . "', 'adult', 'done', {$id})");
+            $this->movies->markWatched($id);
+        }
 
-        $this->assertStringContainsString('UNIQUEMENT les filles', $this->geminiBodies[0]);
-        $this->assertSame('kid', $this->suggestions->byStatus('new')[0]['audience']);
-        $this->assertSame('kid', $this->settings->lastAiAttempt()['audience']);
+        $this->service([$this->idea('Le Voyage de Chihiro', 2001)])->generate('JC', 'adult');
+        $body = $this->geminiBodies[0];
+        // Ce qui nourrit les goûts (sections 1 et 2) ; la liste « déjà connues » vient apres.
+        [$taste, $known] = explode('Déjà connues', $body, 2);
+
+        $this->assertStringContainsString('Film vu des parents', $taste);
+        $this->assertStringContainsString('Film à voir des parents', $taste);
+        $this->assertStringNotContainsString('Film vu des filles', $taste);
+        $this->assertStringNotContainsString('Film à voir des filles', $taste);
+        // Mais tout reste « deja connu » : on ne propose rien de ce que la famille a deja.
+        $this->assertStringContainsString('Film vu des filles', $known);
+        $this->assertStringContainsString('Film à voir des filles', $known);
+        // Aucune orientation, le modele garde son propre champ audience.
+        $this->assertStringNotContainsString('UNIQUEMENT', $body);
+        $stored = $this->suggestions->byStatus('new')[0];
+        $this->assertSame('adult', $stored['source']);
+        $this->assertSame('all', $stored['audience']);
+        $this->assertSame('adult', $this->settings->lastAiAttempt()['source']);
     }
 
-    public function testWithoutATargetTheModelKeepsItsOwnAudienceAndUnknownTargetsMeanEveryone(): void
+    public function testEveryoneUsesBothListsAndUnknownSourcesMeanEveryone(): void
     {
-        $idea = array_merge($this->idea('Le Voyage de Chihiro', 2001), ['audience' => 'adult']);
-        $this->service([$idea])->generate('JC', 'n-importe-quoi');
+        $this->movies->add(['title' => 'Liste des parents', 'pool' => 'adult', 'bet_type' => 'safe', 'added_by' => 1]);
+        $this->movies->add(['title' => 'Liste des filles', 'pool' => 'kid', 'added_by' => 1]);
 
-        $this->assertStringContainsString('Toute la famille', $this->geminiBodies[0]);
-        $this->assertSame('adult', $this->suggestions->byStatus('new')[0]['audience']);
-        $this->assertSame('all', $this->settings->lastAiAttempt()['audience']);
+        $this->service([])->generate('JC', 'n-importe-quoi');
+
+        $this->assertStringContainsString('Proposées par les parents', $this->geminiBodies[0]);
+        $this->assertStringContainsString('Proposées par les filles', $this->geminiBodies[0]);
+        $this->assertSame('all', $this->settings->lastAiAttempt()['source']);
+    }
+
+    public function testTheSecondPassUsesTheStricterRetryModelAndTheFirstDoesNot(): void
+    {
+        $this->movies->add(['tmdb_id' => 129, 'title' => 'Le Voyage de Chihiro', 'pool' => 'kid', 'added_by' => 1]);
+        $urls = [];
+        $batches = [[$this->idea('Le Voyage de Chihiro', 2001)], [$this->idea('Heartstopper', 2022, 'series')]];
+        $gemini = new GeminiService('k', 'modele-leger', function (string $url) use (&$urls, $batches): string {
+            $ideas = $batches[count($urls)] ?? [];
+            $urls[] = $url;
+            return json_encode(['candidates' => [['content' => ['parts' => [['text' => json_encode(['suggestions' => $ideas])]]]]]]);
+        }, 'repli');
+        $tmdb = new TmdbService('t', 'fr-FR', 'FR', function (string $url): string {
+            foreach (['/search/movie' => 'tmdb_search.json', '/search/tv' => 'tmdb_tv_search.json', '/movie/129' => 'tmdb_details.json', '/tv/124834' => 'tmdb_tv_details.json'] as $fragment => $file) {
+                if (str_contains($url, $fragment)) {
+                    return $this->fixture($file);
+                }
+            }
+            throw new \App\Services\TmdbException('introuvable : ' . $url);
+        });
+        $service = new AiSuggestionService($gemini, $tmdb, new TasteRepository($this->db, new ProfileRepository($this->db)),
+            $this->suggestions, $this->movies, $this->settings, 'modele-strict');
+
+        $result = $service->generate('JC');
+
+        $this->assertSame(2, $result['passes']);
+        $this->assertStringContainsString('modele-leger:generateContent', $urls[0]);
+        $this->assertStringContainsString('modele-strict:generateContent', $urls[1]);
     }
 }

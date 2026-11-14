@@ -17,7 +17,7 @@ final class SuggestionRepository
         'tmdb_id', 'kind', 'title', 'original_title', 'year', 'runtime', 'poster_url',
         'overview', 'genres', 'director', 'tmdb_rating', 'certification', 'providers',
         'providers_at', 'trailer_url', 'season_count', 'episode_count', 'audience',
-        'bet_type', 'why',
+        'source', 'bet_type', 'why',
     ];
 
     public function __construct(private PDO $db)
@@ -42,6 +42,9 @@ final class SuggestionRepository
 
         $row['kind'] = ($row['kind'] ?? 'film') === 'series' ? 'series' : 'film';
         $row['audience'] = in_array($row['audience'], ['all', 'kid', 'adult'], true) ? $row['audience'] : 'all';
+        // NOT NULL : une valeur absente doit retomber sur « all », pas sur NULL (l'INSERT OR IGNORE
+        // avalerait alors l'erreur et l'idee serait perdue sans un mot).
+        $row['source'] = in_array($row['source'], self::SOURCES, true) ? $row['source'] : 'all';
         $row['bet_type'] = in_array($row['bet_type'], ['safe', 'discovery'], true) ? $row['bet_type'] : null;
         $row['title'] = mb_substr(trim((string) ($row['title'] ?? '')), 0, MovieRepository::TITLE_MAX);
         $row['why'] = $row['why'] === null ? null : mb_substr(trim((string) $row['why']), 0, 300);
@@ -68,18 +71,15 @@ final class SuggestionRepository
     }
 
     /** @return list<array<string, mixed>> les plus recentes d'abord */
+    public const SOURCES = ['all', 'adult', 'kid'];
+
     /**
-     * Filtre de la page Pop-Corn. « Toute la famille » montre tout ; « Les parents » montre
-     * ce qui est pour les parents et ce qui convient a tous ; « Les filles » de meme.
-     * Une idee reservee aux parents n'a rien a faire dans la vue des filles, et inversement.
+     * Filtre de la page Pop-Corn : « Tout le monde » montre toutes les idees ; « Parents » (ou
+     * « Filles ») celles qui sont nees de la liste des parents (ou des filles).
      */
-    public static function matchesFilter(?string $audience, string $filter): bool
+    public static function matchesFilter(?string $source, string $filter): bool
     {
-        return match ($filter) {
-            'adult' => in_array($audience, ['adult', 'all'], true),
-            'kid' => in_array($audience, ['kid', 'all'], true),
-            default => true,
-        };
+        return in_array($filter, ['adult', 'kid'], true) ? $source === $filter : true;
     }
 
     /**
@@ -90,7 +90,7 @@ final class SuggestionRepository
     {
         return array_values(array_filter(
             $rows,
-            static fn (array $row): bool => self::matchesFilter($row['audience'] ?? 'all', $filter)
+            static fn (array $row): bool => self::matchesFilter($row['source'] ?? 'all', $filter)
         ));
     }
 

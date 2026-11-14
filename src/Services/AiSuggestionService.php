@@ -19,7 +19,7 @@ use App\Utils\Access;
 final class AiSuggestionService
 {
     public const DAILY_LIMIT = 10;
-    public const ASKED = 8;
+    public const ASKED = 16;
     public const KEPT_PER_CALL = 6;
     /** En dessous, on redemande une fois au modele. */
     public const MIN_USEFUL = 3;
@@ -31,7 +31,9 @@ final class AiSuggestionService
         private TasteRepository $taste,
         private SuggestionRepository $suggestions,
         private MovieRepository $movies,
-        private SettingRepository $settings
+        private SettingRepository $settings,
+        /** Modele plus strict pour le second passage : le modele leger ignore la liste « deja connues ». */
+        private ?string $retryModel = null
     ) {
     }
 
@@ -48,13 +50,13 @@ final class AiSuggestionService
      * SettingRepository::lastAiAttempt()).
      *
      * @param string|null $by prenom du profil qui a clique, pour l'afficher
-     * @param string $audience pour qui chercher : all (toute la famille), adult (les parents), kid (les filles)
+     * @param string $source liste qui nourrit la demande : all (les deux), adult (parents), kid (filles)
      * @return array{added: int, dropped: int, passes: int}
      * @throws LlmException
      */
-    public function generate(?string $by = null, string $audience = 'all'): array
+    public function generate(?string $by = null, string $source = 'all'): array
     {
-        $audience = in_array($audience, AiPrompt::AUDIENCES, true) ? $audience : 'all';
+        $source = in_array($source, SuggestionRepository::SOURCES, true) ? $source : 'all';
 
         if (!$this->gemini->isConfigured()) {
             throw new LlmException("Madame Pop-Corn n'a pas de clé Gemini. Elle se renseigne dans config/config.php.");
@@ -68,7 +70,7 @@ final class AiSuggestionService
             );
         }
 
-        $taste = $this->taste->taste($this->settings->aiIncludeMemos());
+        $taste = $this->taste->taste($this->settings->aiIncludeMemos(), $source);
 
         // L'appel est compte avant d'etre fait : un echec cote Google consomme
         // quand meme du quota, et un bouton qu'on martele ne doit pas le vider.
@@ -78,7 +80,7 @@ final class AiSuggestionService
         $dropped = [];
         $tried = [];
         $passes = 0;
-        $record = ['at' => date('Y-m-d H:i'), 'by' => $by, 'audience' => $audience, 'added' => 0, 'passes' => 0, 'dropped' => [], 'error' => null];
+        $record = ['at' => date('Y-m-d H:i'), 'by' => $by, 'source' => $source, 'added' => 0, 'passes' => 0, 'dropped' => [], 'error' => null];
 
         $startedAt = microtime(true);
         for ($pass = 0; $pass < self::MAX_PASSES; $pass++) {
@@ -86,8 +88,10 @@ final class AiSuggestionService
             try {
                 $payload = $this->gemini->generateJson(
                     AiPrompt::SYSTEM,
-                    AiPrompt::user($taste, array_merge($this->suggestions->knownTitles(), $tried), self::ASKED, $audience),
-                    AiPrompt::schema()
+                    AiPrompt::user($taste, array_merge($this->suggestions->knownTitles(), $tried), self::ASKED),
+                    AiPrompt::schema(),
+                    0.9,
+                    $pass > 0 ? $this->retryModel : null
                 );
             } catch (LlmException $e) {
                 if ($pass === 0) {
@@ -110,11 +114,7 @@ final class AiSuggestionService
                 }
                 $tried[] = $key;
 
-                // Une demande ciblee fait foi : on ne laisse pas le modele deriver vers un autre public.
-                if ($audience !== 'all') {
-                    $idea['audience'] = $audience;
-                }
-                $reason = $this->store($idea);
+                $reason = $this->store($idea, $source);
                 if ($reason === null) {
                     $added++;
                 } else {
@@ -126,8 +126,8 @@ final class AiSuggestionService
                 }
             }
 
-            // Pas de second passage si le premier a deja pris beaucoup de temps.
-            if ($added >= self::MIN_USEFUL || $dropped === [] || microtime(true) - $startedAt > 30) {
+            // Pas de second passage si le premier a deja pris beaucoup de temps (le second, plus lent, peut durer 30 s).
+            if ($added >= self::MIN_USEFUL || $dropped === [] || microtime(true) - $startedAt > 20) {
                 break;
             }
         }
@@ -144,7 +144,7 @@ final class AiSuggestionService
      * @param array<string, mixed> $idea
      * @return string|null null si l'idee est enregistree, sinon la raison de son rejet
      */
-    private function store(array $idea): ?string
+    private function store(array $idea, string $source): ?string
     {
         $title = trim((string) ($idea['title'] ?? ''));
         $year = isset($idea['year']) && is_numeric($idea['year']) ? (int) $idea['year'] : null;
@@ -178,6 +178,7 @@ final class AiSuggestionService
         return $this->suggestions->add($details + [
             'kind' => $kind,
             'audience' => $idea['audience'] ?? 'all',
+            'source' => $source,
             'bet_type' => $idea['bet'] ?? null,
             'why' => isset($idea['why']) ? $this->withRealNames((string) $idea['why']) : null,
         ]) !== null ? null : 'non enregistrée';

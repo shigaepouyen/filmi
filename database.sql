@@ -126,6 +126,7 @@ CREATE TABLE IF NOT EXISTS suggestions (
     season_count   INTEGER,
     episode_count  INTEGER,
     audience       TEXT NOT NULL DEFAULT 'all' CHECK (audience IN ('all','kid','adult')),
+    source         TEXT NOT NULL DEFAULT 'all',   -- liste qui a nourri la demande : all, adult (parents), kid (filles)
     bet_type       TEXT CHECK (bet_type IN ('safe','discovery')),
     why            TEXT,              -- l'indice de preference donne par l'IA
     status         TEXT NOT NULL DEFAULT 'new'

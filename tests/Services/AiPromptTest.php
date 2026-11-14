@@ -57,58 +57,26 @@ class AiPromptTest extends TestCase
         $this->assertStringContainsString("jamais l'une de ces œuvres elles-mêmes", AiPrompt::SYSTEM);
     }
 
-    private function mixedTaste(): array
+    public function testThePromptIsTheSameWhateverListFeedsIt(): void
+    {
+        $text = AiPrompt::user($this->taste(false), [], 8);
+
+        // Aucune orientation adultes / enfants : le filtre de la page ne change que les donnees.
+        $this->assertStringNotContainsString('UNIQUEMENT', $text);
+        $this->assertStringNotContainsString('Pour qui chercher', $text);
+        $this->assertStringNotContainsString('PRIORITAIRE', $text);
+        $this->assertStringNotContainsString('UNIQUEMENT', AiPrompt::SYSTEM);
+    }
+
+    public function testOnlyTheListsThatWereGivenAreWritten(): void
     {
         $taste = $this->taste(false);
-        $taste['seen'] = [
-            ['title' => 'Coco', 'year' => 2017, 'kind' => 'film', 'ratings' => ['Parent 1' => 5, 'Fille 2' => 4]],
-            ['title' => 'Alien', 'year' => 1979, 'kind' => 'film', 'ratings' => ['Parent 1' => 5]],
-            ['title' => 'Encanto', 'year' => 2021, 'kind' => 'film', 'ratings' => ['Fille 1' => 5]],
-            ['title' => 'Sans note', 'year' => 2000, 'kind' => 'film', 'ratings' => []],
-        ];
+        unset($taste['lists']['kid']);
 
-        return $taste;
-    }
+        $text = AiPrompt::user($taste, [], 8);
 
-    public function testEveryoneIsTheDefaultAndKeepsAllTheRatings(): void
-    {
-        $text = AiPrompt::user($this->mixedTaste(), [], 8);
-
-        $this->assertStringContainsString('Toute la famille', $text);
-        $this->assertStringContainsString('Coco (2017) : Parent 1 5/5, Fille 2 4/5', $text);
-        $this->assertStringContainsString('Alien (1979)', $text);
-        $this->assertStringContainsString('Encanto (2021)', $text);
-        $this->assertStringNotContainsString('PRIORITAIRE', $text);
-        // Un public inconnu retombe sur toute la famille.
-        $this->assertStringContainsString('Toute la famille', AiPrompt::user($this->mixedTaste(), [], 8, 'martiens'));
-    }
-
-    public function testAskingForTheParentsKeepsOnlyTheirRatingsAndPrioritisesTheirList(): void
-    {
-        $text = AiPrompt::user($this->mixedTaste(), [], 8, 'adult');
-
-        $this->assertStringContainsString('UNIQUEMENT les parents', $text);
-        $this->assertStringContainsString('Coco (2017) : Parent 1 5/5', $text);
-        $this->assertStringNotContainsString('Fille 2 4/5', $text, 'la note des filles est retiree');
-        $this->assertStringContainsString('Alien (1979) : Parent 1 5/5', $text);
-        $this->assertStringNotContainsString('Encanto (2021) :', $text, 'une oeuvre notee seulement par les filles n oriente pas');
-        $this->assertStringContainsString('Sans note (2000) : pas de note', $text);
-        $this->assertStringContainsString('Proposées par les parents (PRIORITAIRE pour cette demande)', $text);
-        $this->assertStringContainsString('Proposées par les filles (contexte secondaire)', $text);
-    }
-
-    public function testAskingForTheGirlsKeepsOnlyTheirRatingsAndPrioritisesTheirList(): void
-    {
-        $text = AiPrompt::user($this->mixedTaste(), ['Ratatouille'], 8, 'kid');
-
-        $this->assertStringContainsString('UNIQUEMENT les filles', $text);
-        $this->assertStringContainsString('ni violentes ni effrayantes', $text);
-        $this->assertStringContainsString('Coco (2017) : Fille 2 4/5', $text);
-        $this->assertStringNotContainsString('Parent 1 5/5', $text);
-        $this->assertStringContainsString('Encanto (2021) : Fille 1 5/5', $text);
-        $this->assertStringNotContainsString('Alien (1979) :', $text);
-        $this->assertStringContainsString('Proposées par les filles (PRIORITAIRE pour cette demande)', $text);
-        // Ce qui est deja connu le reste, quel que soit le public.
-        $this->assertStringContainsString('Ratatouille', $text);
+        $this->assertStringContainsString('Proposées par les parents', $text);
+        $this->assertStringNotContainsString('Proposées par les filles', $text);
+        $this->assertStringNotContainsString('liste vide', $text, 'une liste non transmise n\'est pas une liste vide');
     }
 }

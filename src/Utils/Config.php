@@ -11,6 +11,7 @@ final class Config
         'tmdb_region' => 'FR',
         'gemini_api_key' => '',
         'gemini_model' => 'gemini-flash-lite-latest',
+        'gemini_retry_model' => 'gemini-3.5-flash',
         'default_start_time' => '19:15',
         'low_pool_threshold' => 5,
     ];

@@ -55,15 +55,24 @@ class SuggestionRepositoryTest extends DbTestCase
         $this->assertSame(['new' => 0, 'kept' => 0, 'rejected' => 0, 'transferred' => 1], $this->repo->counts());
     }
 
-    public function testTheAudienceFilterKeepsWhatSuitsThatPublicAndWhatSuitsEveryone(): void
+    public function testTheFilterKeepsTheIdeasBornFromThatList(): void
     {
-        $rows = [['title' => 'Pour tous', 'audience' => 'all'], ['title' => 'Parents', 'audience' => 'adult'], ['title' => 'Filles', 'audience' => 'kid']];
+        $rows = [['title' => 'Tous', 'source' => 'all'], ['title' => 'Parents', 'source' => 'adult'], ['title' => 'Filles', 'source' => 'kid'], ['title' => 'Ancienne']];
 
         $titles = static fn (array $r): array => array_column($r, 'title');
-        $this->assertSame(['Pour tous', 'Parents', 'Filles'], $titles(\App\Repositories\SuggestionRepository::filtered($rows, 'all')));
-        $this->assertSame(['Pour tous', 'Parents'], $titles(\App\Repositories\SuggestionRepository::filtered($rows, 'adult')));
-        $this->assertSame(['Pour tous', 'Filles'], $titles(\App\Repositories\SuggestionRepository::filtered($rows, 'kid')));
-        // Un filtre inconnu ne cache rien.
-        $this->assertCount(3, \App\Repositories\SuggestionRepository::filtered($rows, 'n-importe-quoi'));
+        $this->assertSame(['Tous', 'Parents', 'Filles', 'Ancienne'], $titles(\App\Repositories\SuggestionRepository::filtered($rows, 'all')));
+        $this->assertSame(['Parents'], $titles(\App\Repositories\SuggestionRepository::filtered($rows, 'adult')));
+        $this->assertSame(['Filles'], $titles(\App\Repositories\SuggestionRepository::filtered($rows, 'kid')));
+        $this->assertCount(4, \App\Repositories\SuggestionRepository::filtered($rows, 'n-importe-quoi'));
+    }
+
+    public function testTheSourceIsStoredWithTheIdeaAndDefaultsToEveryone(): void
+    {
+        $base = ['kind' => 'film', 'year' => 2000];
+        $a = $this->repo->add($base + ['tmdb_id' => 1, 'title' => 'A', 'source' => 'kid']);
+        $b = $this->repo->add($base + ['tmdb_id' => 2, 'title' => 'B']);
+
+        $this->assertSame('kid', $this->repo->find($a)['source']);
+        $this->assertSame('all', $this->repo->find($b)['source']);
     }
 }

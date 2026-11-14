@@ -5,16 +5,15 @@ require dirname(__DIR__) . '/vendor/autoload.php';
 
 use App\App;
 use App\Repositories\SuggestionRepository;
-use App\Services\AiPrompt;
 use App\Utils\Access;
 
 $app = App::boot();
 $profile = $app->requireProfile();
 
-// Le filtre (toute la famille, les parents, les filles) sert a deux choses : ne montrer que les
-// idees qui conviennent a ce public, et orienter la prochaine demande vers lui.
+// Le filtre (tout le monde, parents, filles) dit de quelle liste de films viennent les idees : il ne
+// montre que celles nees de cette liste, et la prochaine demande s'appuie sur elle (rien d'autre ne change).
 $public = (string) ($_GET['public'] ?? 'all');
-$public = in_array($public, AiPrompt::AUDIENCES, true) ? $public : 'all';
+$public = in_array($public, SuggestionRepository::SOURCES, true) ? $public : 'all';
 $new = $app->suggestions->byStatus('new');
 
 $app->render('popcorn', [

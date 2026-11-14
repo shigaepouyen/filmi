@@ -106,9 +106,9 @@ class MigrationsTest extends TestCase
 
         $applied = Migrations::run($db);
 
-        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], $applied);
+        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13], $applied);
         $this->assertContains('trailer_url', $this->columns($db, 'movies'));
-        $this->assertSame(12, Migrations::currentVersion($db));
+        $this->assertSame(13, Migrations::currentVersion($db));
 
         // Preuve d'absence de perte de données : les deux films survivent intacts.
         $rows = $db->query('SELECT title, pool, status, providers, trailer_url FROM movies ORDER BY id')->fetchAll();
@@ -138,13 +138,13 @@ class MigrationsTest extends TestCase
         )->execute();
 
         $first = Migrations::run($db);
-        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], $first);
+        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13], $first);
 
         // Une deuxième exécution ne doit ni lever (ALTER TABLE sur colonne existante
         // lèverait), ni changer quoi que ce soit.
         $second = Migrations::run($db);
         $this->assertSame([], $second, 'La deuxième exécution ne doit rejouer aucune migration');
-        $this->assertSame(12, Migrations::currentVersion($db));
+        $this->assertSame(13, Migrations::currentVersion($db));
 
         $trailerColumns = array_filter(
             $this->columns($db, 'movies'),
@@ -169,8 +169,8 @@ class MigrationsTest extends TestCase
 
         $applied = Migrations::run($db);
 
-        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], $applied);
-        $this->assertSame(12, Migrations::currentVersion($db));
+        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13], $applied);
+        $this->assertSame(13, Migrations::currentVersion($db));
     }
 
     public function testMigrationThreeMarksExistingFilmsForProviderRefresh(): void
@@ -250,7 +250,7 @@ class MigrationsTest extends TestCase
 
         $applied = Migrations::run($db);
 
-        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], $applied);
+        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13], $applied);
         $this->assertContains('backfilled', $this->columns($db, 'seances'));
 
         // Preuve d'absence de perte : la vraie séance de production reste à 0,
@@ -266,11 +266,11 @@ class MigrationsTest extends TestCase
         $db = $this->oldStateDatabase();
 
         $first = Migrations::run($db);
-        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], $first);
+        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13], $first);
 
         $second = Migrations::run($db);
         $this->assertSame([], $second, 'La deuxième exécution ne doit rejouer aucune migration');
-        $this->assertSame(12, Migrations::currentVersion($db));
+        $this->assertSame(13, Migrations::currentVersion($db));
 
         $backfilledColumns = array_filter(
             $this->columns($db, 'seances'),
@@ -297,7 +297,7 @@ class MigrationsTest extends TestCase
         );
 
         $first = Migrations::run($db);
-        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], $first);
+        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13], $first);
 
         $seance = $db->query('SELECT * FROM seances')->fetch();
         $this->assertSame('2026-07-04', $seance['date']);
@@ -317,7 +317,7 @@ class MigrationsTest extends TestCase
         // Rejouer la migration ne change plus rien.
         $second = Migrations::run($db);
         $this->assertSame([], $second);
-        $this->assertSame(12, Migrations::currentVersion($db));
+        $this->assertSame(13, Migrations::currentVersion($db));
     }
 
     public function testMigrationSixRemapsTheFourRealProductionProfiles(): void
@@ -417,7 +417,7 @@ class MigrationsTest extends TestCase
         );
 
         $first = Migrations::run($db);
-        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], $first);
+        $this->assertSame([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13], $first);
         $this->assertSame('scarabee', $db->query("SELECT avatar FROM profiles WHERE slug = 'jc'")->fetchColumn());
 
         $second = Migrations::run($db);
@@ -502,7 +502,7 @@ class MigrationsTest extends TestCase
         $count = static fn (string $table): int => (int) $db->query("SELECT COUNT(*) FROM {$table}")->fetchColumn();
         $before = ['seances' => $count('seances'), 'picks' => $count('seance_picks'), 'ratings' => $count('ratings'), 'skips' => $count('rating_skips')];
 
-        $this->assertSame([12], Migrations::run($db));
+        $this->assertSame([12, 13], Migrations::run($db));
 
         $this->assertSame($before, ['seances' => $count('seances'), 'picks' => $count('seance_picks'), 'ratings' => $count('ratings'), 'skips' => $count('rating_skips')]);
         $this->assertSame('inversé', $db->query('SELECT derogation_note FROM seances WHERE id = 1')->fetchColumn());
@@ -561,7 +561,22 @@ class MigrationsTest extends TestCase
         Migrations::run($db);
         $db->exec("UPDATE settings SET value = '11' WHERE key = 'schema_version'");
 
-        $this->assertSame([12], Migrations::run($db));
+        $this->assertSame([12, 13], Migrations::run($db));
         $this->assertSame(2, (int) $db->query('SELECT COUNT(*) FROM seances')->fetchColumn());
+    }
+
+    public function testMigrationThirteenAddsSuggestionSourceDefaultingToEveryone(): void
+    {
+        $db = $this->dbBeforeMigrationTwelve();
+        $db->exec("CREATE TABLE suggestions (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL)");
+        $db->exec("INSERT INTO suggestions (title) VALUES ('Ancienne idée')");
+
+        Migrations::run($db);
+
+        $this->assertSame('all', $db->query('SELECT source FROM suggestions WHERE id = 1')->fetchColumn());
+        // Rejouee, elle ne change rien.
+        $db->exec("UPDATE settings SET value = '12' WHERE key = 'schema_version'");
+        $this->assertSame([13], Migrations::run($db));
+        $this->assertSame(1, (int) $db->query('SELECT COUNT(*) FROM suggestions')->fetchColumn());
     }
 }

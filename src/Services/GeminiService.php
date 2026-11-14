@@ -38,9 +38,10 @@ final class GeminiService
      * Demande une reponse JSON contrainte par un schema et la renvoie decodee.
      *
      * @param array<string, mixed> $schema schema de reponse (sous-ensemble OpenAPI)
+     * @param string|null $model modele a utiliser pour cet appel au lieu du modele habituel
      * @return array<string, mixed>
      */
-    public function generateJson(string $system, string $user, array $schema, float $temperature = 0.9): array
+    public function generateJson(string $system, string $user, array $schema, float $temperature = 0.9, ?string $model = null): array
     {
         if (!$this->isConfigured()) {
             throw new LlmException("Aucune clé Gemini configurée.");
@@ -58,7 +59,7 @@ final class GeminiService
 
         // Les modeles « flash » complets saturent regulierement chez Google (503 ou
         // silence). Une surcharge est passagere : on retente une fois avec le modele de repli.
-        $models = array_values(array_unique(array_filter([$this->model, $this->fallbackModel])));
+        $models = array_values(array_unique(array_filter([$model ?? $this->model, $this->fallbackModel])));
         $raw = '';
         foreach ($models as $i => $model) {
             try {

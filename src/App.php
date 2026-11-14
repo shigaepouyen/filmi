@@ -55,7 +55,8 @@ final class App
             new TasteRepository($db, $this->profiles),
             $this->suggestions,
             $this->movies,
-            $this->settings
+            $this->settings,
+            (string) Config::get('gemini_retry_model') ?: null
         );
     }
 

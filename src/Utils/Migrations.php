@@ -387,6 +387,16 @@ final class Migrations
                     }
                 },
             ],
+            13 => [
+                'description' => 'Ajoute suggestions.source : la liste (tous, parents, filles) qui a nourri la demande',
+                'up' => static function (PDO $db): void {
+                    $columns = array_column($db->query('PRAGMA table_info(suggestions)')->fetchAll(PDO::FETCH_ASSOC), 'name');
+                    if ($columns !== [] && !in_array('source', $columns, true)) {
+                        // Les idees deja proposees viennent d'une demande a toute la famille.
+                        $db->exec("ALTER TABLE suggestions ADD COLUMN source TEXT NOT NULL DEFAULT 'all'");
+                    }
+                },
+            ],
         ];
     }
 

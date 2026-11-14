@@ -15,7 +15,7 @@ $app->requirePost();
 set_time_limit(150);
 
 try {
-    $result = $app->popcorn->generate((string) $profile['name'], (string) ($_POST['audience'] ?? 'all'));
+    $result = $app->popcorn->generate((string) $profile['name'], (string) ($_POST['source'] ?? 'all'));
 } catch (LlmException $e) {
     $app->json(['error' => $e->getMessage()], 502);
 }

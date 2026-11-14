@@ -32,16 +32,22 @@ final class TasteRepository
      *   memos: bool
      * }
      */
-    public function taste(bool $includeMemos): array
+    public function taste(bool $includeMemos, string $source = 'all'): array
     {
         $labels = $this->labels();
+        // La source dit de quelle liste viennent les films qui nourrissent les idees : celle des
+        // parents, celle des filles, ou les deux. Rien d'autre ne change (meme prompt, memes
+        // notes de tout le monde) ; « deja connues » et les vetos portent toujours sur tout.
+        $pools = in_array($source, ['adult', 'kid'], true) ? [$source] : ['adult', 'kid'];
+
+        $lists = [];
+        foreach ($pools as $pool) {
+            $lists[$pool] = $this->pool($pool, $includeMemos);
+        }
 
         return [
-            'seen' => $this->seen($labels),
-            'lists' => [
-                'adult' => $this->pool('adult', $includeMemos),
-                'kid' => $this->pool('kid', $includeMemos),
-            ],
+            'seen' => $this->seen($labels, $pools),
+            'lists' => $lists,
             'vetoes' => $this->vetoes($labels, $includeMemos),
             'known' => $this->known(),
             'memos' => $includeMemos,
@@ -82,21 +88,26 @@ final class TasteRepository
     }
 
     /**
-     * Les oeuvres vues, la plus recente d'abord, avec la note de chacun.
+     * Les oeuvres vues, la plus recente d'abord, avec la note de chacun. Seules celles qui
+     * viennent des listes demandees : un film vu garde la liste dont il est issu.
      *
      * @param array<int, string> $labels
+     * @param list<string> $pools
      * @return list<array<string, mixed>>
      */
-    private function seen(array $labels): array
+    private function seen(array $labels, array $pools): array
     {
-        $rows = $this->db->query(
+        $placeholders = implode(', ', array_fill(0, count($pools), '?'));
+        $stmt = $this->db->prepare(
             "SELECT m.id, m.title, m.year, m.kind, MAX(s.date) AS last_date
                FROM seances s JOIN movies m ON m.id = s.movie_id
-              WHERE s.status = 'done'
+              WHERE s.status = 'done' AND m.pool IN ({$placeholders})
               GROUP BY m.id
               ORDER BY last_date DESC
               LIMIT " . self::SEEN_LIMIT
-        )->fetchAll();
+        );
+        $stmt->execute($pools);
+        $rows = $stmt->fetchAll();
 
         if ($rows === []) {
             return [];
