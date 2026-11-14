@@ -274,4 +274,25 @@ class TmdbServiceTest extends TestCase
             }
         }
     }
+
+    public function testSeriesSummaryAndDetailsCarryTheYouTubeTrailer(): void
+    {
+        $tv = json_decode($this->fixture('tmdb_tv_details.json'), true);
+        $tv['videos'] = ['results' => [
+            ['site' => 'Vimeo', 'type' => 'Trailer', 'key' => 'nope'],
+            ['site' => 'YouTube', 'type' => 'Teaser', 'key' => 'teaser'],
+            ['site' => 'YouTube', 'type' => 'Trailer', 'key' => 'abc123XYZ', 'official' => true, 'iso_639_1' => 'fr'],
+        ]];
+        $routes = ['/season/' => $this->fixture('tmdb_tv_season1.json'), '/tv/124834' => json_encode($tv)];
+
+        $this->assertSame('https://www.youtube.com/watch?v=abc123XYZ', $this->service($routes)->seriesSummary(124834)['trailer_url']);
+        $this->assertSame('https://www.youtube.com/watch?v=abc123XYZ', $this->service($routes)->seriesDetails(124834)['trailer_url']);
+    }
+
+    public function testSeriesWithoutAnyVideoHasNoTrailer(): void
+    {
+        $routes = ['/tv/124834' => $this->fixture('tmdb_tv_details.json')];
+
+        $this->assertNull($this->service($routes)->seriesSummary(124834)['trailer_url']);
+    }
 }

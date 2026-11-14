@@ -63,6 +63,22 @@ final class FormatUtils
      */
     public const UNKNOWN_DATE_BEFORE = '1950-01-01';
 
+    /** Debut du memo ecrit quand une idee de Madame Pop-Corn entre dans une liste. */
+    public const POPCORN_MEMO = 'Idée de Madame Pop-Corn';
+
+    /**
+     * La raison donnee par Madame Pop-Corn si ce memo vient d'elle, sinon null.
+     * « Idée de Madame Pop-Corn : Parce que... » => « Parce que... ».
+     */
+    public static function popcornReason(?string $memo): ?string
+    {
+        if ($memo === null || !str_starts_with($memo, self::POPCORN_MEMO)) {
+            return null;
+        }
+
+        return trim(ltrim(substr($memo, strlen(self::POPCORN_MEMO)), " :\t"));
+    }
+
     public static function isUnknownDate(string $isoDate): bool
     {
         return preg_match('/^\d{4}-\d{2}-\d{2}$/', $isoDate) === 1 && $isoDate < self::UNKNOWN_DATE_BEFORE;

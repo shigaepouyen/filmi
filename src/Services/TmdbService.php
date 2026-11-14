@@ -96,7 +96,7 @@ final class TmdbService
         }
 
         $series = $this->get('/tv/' . $tmdbId, [
-            'append_to_response' => 'watch/providers',
+            'append_to_response' => 'watch/providers,videos',
         ]);
 
         $episodes = [];
@@ -136,6 +136,7 @@ final class TmdbService
                 JSON_UNESCAPED_UNICODE
             ),
             'providers_at' => date('Y-m-d H:i:s'),
+            'trailer_url' => self::trailerUrl($series['videos']['results'] ?? []),
             'season_count' => count($seasonNumbers),
             'episode_count' => count($episodes),
             'episodes' => json_encode($episodes, JSON_UNESCAPED_UNICODE),
@@ -159,7 +160,7 @@ final class TmdbService
         }
 
         $series = $this->get('/tv/' . $tmdbId, [
-            'append_to_response' => 'watch/providers',
+            'append_to_response' => 'watch/providers,videos',
         ]);
 
         $runtimes = array_filter(array_map('intval', $series['episode_run_time'] ?? []));
@@ -183,6 +184,7 @@ final class TmdbService
                 JSON_UNESCAPED_UNICODE
             ),
             'providers_at' => date('Y-m-d H:i:s'),
+            'trailer_url' => self::trailerUrl($series['videos']['results'] ?? []),
             'season_count' => isset($series['number_of_seasons']) ? (int) $series['number_of_seasons'] : null,
             'episode_count' => isset($series['number_of_episodes']) ? (int) $series['number_of_episodes'] : null,
         ];

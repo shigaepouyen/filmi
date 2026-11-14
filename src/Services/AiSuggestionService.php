@@ -250,7 +250,7 @@ final class AiSuggestionService
             throw new \InvalidArgumentException('Ce titre est déjà dans une liste ou a déjà été vu.');
         }
 
-        $memo = 'Idée de Madame Pop-Corn' . (trim((string) $suggestion['why']) !== '' ? ' : ' . trim((string) $suggestion['why']) : '');
+        $memo = \App\Utils\FormatUtils::POPCORN_MEMO . (trim((string) $suggestion['why']) !== '' ? ' : ' . trim((string) $suggestion['why']) : '');
         $common = [
             'pool' => $pool,
             'memo' => $memo,

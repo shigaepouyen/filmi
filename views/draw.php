@@ -94,6 +94,9 @@ use App\Utils\Security;
 
                 <div class="flex flex-1 flex-col gap-1.5 p-3">
                     <h2 class="font-medium leading-tight">
+                        <template x-if="movie.memo && movie.memo.startsWith('<?= \App\Utils\FormatUtils::POPCORN_MEMO ?>')">
+                            <span title="Idée de Madame Pop-Corn" aria-label="Idée de Madame Pop-Corn">🍿</span>
+                        </template>
                         <button type="button" @click="ouvrir(movie)" class="text-left hover:underline"
                                 x-text="movie.title"></button>
                     </h2>
@@ -115,6 +118,16 @@ use App\Utils\Security;
                             <span class="ml-1 rounded-full bg-white/10 px-2 py-0.5" x-text="movie.certification"></span>
                         </template>
                     </p>
+                    <?php /* Memo juste sous le titre : un film venu de Madame Pop-Corn se repere au 🍿. */ ?>
+                    <template x-if="movie.memo && movie.memo.startsWith('<?= \App\Utils\FormatUtils::POPCORN_MEMO ?>')">
+                        <p class="rounded-lg bg-amber-400/10 px-2 py-1 text-xs text-amber-100">
+                            <span class="font-medium">🍿 Idée de Madame Pop-Corn</span>
+                            <span x-text="movie.memo.replace(/^<?= \App\Utils\FormatUtils::POPCORN_MEMO ?>\s*:?\s*/, '') ? ' : ' + movie.memo.replace(/^<?= \App\Utils\FormatUtils::POPCORN_MEMO ?>\s*:?\s*/, '') : ''"></span>
+                        </p>
+                    </template>
+                    <template x-if="movie.memo && !movie.memo.startsWith('<?= \App\Utils\FormatUtils::POPCORN_MEMO ?>')">
+                        <p class="text-xs italic text-slate-300">« <span x-text="movie.memo"></span> »</p>
+                    </template>
                     <p class="text-[11px] text-emerald-200"
                        x-text="(movie.provider_brands && movie.provider_brands.length ? movie.provider_brands.join(', ') : 'aucune plateforme connue')"></p>
                     <template x-if="movie.needs_warning">
@@ -124,9 +137,6 @@ use App\Utils\Security;
                     </template>
                     <template x-if="movie.overview">
                         <p class="line-clamp-3 text-xs text-slate-300" x-text="movie.overview"></p>
-                    </template>
-                    <template x-if="movie.memo">
-                        <p class="text-xs italic text-slate-300">« <span x-text="movie.memo"></span> »</p>
                     </template>
                     <p class="text-[11px] text-slate-500">proposé par <span x-text="movie.proposer_name"></span></p>
 
@@ -217,7 +227,10 @@ use App\Utils\Security;
                     <p class="mt-3 text-sm text-slate-200" x-text="fiche.overview"></p>
                 </template>
 
-                <template x-if="fiche.memo">
+                <template x-if="fiche.memo && fiche.memo.startsWith('<?= \App\Utils\FormatUtils::POPCORN_MEMO ?>')">
+                    <p class="mt-2 rounded-lg bg-amber-400/10 px-2 py-1 text-sm text-amber-100">🍿 <span x-text="fiche.memo"></span></p>
+                </template>
+                <template x-if="fiche.memo && !fiche.memo.startsWith('<?= \App\Utils\FormatUtils::POPCORN_MEMO ?>')">
                     <p class="mt-2 text-sm italic text-slate-300">« <span x-text="fiche.memo"></span> »</p>
                 </template>
 

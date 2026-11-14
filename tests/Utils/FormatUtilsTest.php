@@ -118,4 +118,12 @@ class FormatUtilsTest extends TestCase
         $this->assertSame('Date inconnue', FormatUtils::frenchDateWithYear('1900-01-02'));
         $this->assertSame('pas une date', FormatUtils::frenchDateWithYear('pas une date'));
     }
+
+    public function testPopcornReasonIsExtractedOnlyFromPopcornMemos(): void
+    {
+        $this->assertSame('Parce que JC a aimé.', FormatUtils::popcornReason('Idée de Madame Pop-Corn : Parce que JC a aimé.'));
+        $this->assertSame('', FormatUtils::popcornReason('Idée de Madame Pop-Corn'));
+        $this->assertNull(FormatUtils::popcornReason('Un mémo écrit à la main'));
+        $this->assertNull(FormatUtils::popcornReason(null));
+    }
 }

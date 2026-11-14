@@ -23,13 +23,21 @@ $seenPool = ($suggestion['audience'] === 'kid' && in_array('kid', $manageablePoo
     : ($manageablePools[0] ?? 'kid');
 $poolLabels = ['adult' => 'Liste des parents', 'kid' => 'Liste des filles'];
 
+// Id YouTube de la bande-annonce, pour le lecteur integre (rien n'est charge avant le clic).
+$trailerId = null;
+if (!empty($suggestion['trailer_url'])) {
+    parse_str((string) parse_url((string) $suggestion['trailer_url'], PHP_URL_QUERY), $trailerQuery);
+    $candidate = (string) ($trailerQuery['v'] ?? '');
+    $trailerId = preg_match('/^[A-Za-z0-9_-]{6,20}$/', $candidate) === 1 ? $candidate : null;
+}
+
 $overview = trim((string) ($suggestion['overview'] ?? ''));
 if (mb_strlen($overview) > 200) {
     $overview = mb_substr($overview, 0, 200) . '…';
 }
 ?>
 <article class="rounded-2xl bg-white/5 p-3 ring-1 ring-white/10"
-         x-data="{ busy: false, gone: false, error: '' }" x-show="!gone">
+         x-data="{ busy: false, gone: false, error: '', playing: false }" x-show="!gone">
     <div class="flex gap-3">
         <?php if (!empty($suggestion['poster_url'])): ?>
             <img src="<?= Security::e($suggestion['poster_url']) ?>" alt="" loading="lazy"
@@ -80,17 +88,36 @@ if (mb_strlen($overview) > 200) {
                         <span class="rounded-full bg-emerald-500/20 px-2 py-0.5 text-emerald-100"><?= Security::e($brand['brand']) ?></span>
                     <?php endforeach; ?>
                 <?php endif; ?>
-                <?php if (!empty($suggestion['trailer_url'])): ?>
-                    <a href="<?= Security::e($suggestion['trailer_url']) ?>" target="_blank" rel="noopener noreferrer"
-                       class="rounded-full bg-white/10 px-2 py-0.5 text-slate-200 underline-offset-2 hover:underline">bande-annonce</a>
-                <?php endif; ?>
             </div>
         </div>
     </div>
 
+    <?php if ($trailerId !== null): ?>
+        <div x-show="playing" x-cloak class="mt-3">
+            <template x-if="playing">
+                <div class="aspect-video w-full overflow-hidden rounded-xl bg-black">
+                    <iframe src="https://www.youtube-nocookie.com/embed/<?= Security::e($trailerId) ?>?rel=0"
+                            title="Bande-annonce de <?= Security::e($suggestion['title']) ?>"
+                            class="h-full w-full" loading="lazy" allowfullscreen
+                            allow="encrypted-media; picture-in-picture; fullscreen"
+                            referrerpolicy="strict-origin-when-cross-origin"></iframe>
+                </div>
+            </template>
+            <a href="<?= Security::e($suggestion['trailer_url']) ?>" target="_blank" rel="noopener noreferrer"
+               class="mt-1 inline-block text-xs text-slate-400 underline">Le lecteur ne démarre pas ? Ouvrir sur YouTube</a>
+        </div>
+    <?php endif; ?>
+
     <p x-show="error" x-cloak class="mt-2 rounded-lg bg-rose-500/20 px-2 py-1 text-xs text-rose-100" x-text="error"></p>
 
     <div class="mt-3 flex flex-wrap gap-2 text-sm">
+        <?php if ($trailerId !== null): ?>
+            <button type="button" class="rounded-xl bg-white/15 px-3 py-1.5 font-medium"
+                    @click="playing = !playing" :aria-expanded="playing">
+                <span x-show="!playing">▶ Bande-annonce</span>
+                <span x-show="playing" x-cloak>■ Fermer la bande-annonce</span>
+            </button>
+        <?php endif; ?>
         <?php if ($mode === 'rejected'): ?>
             <button type="button" class="rounded-xl bg-white/10 px-3 py-1.5 disabled:opacity-50" :disabled="busy"
                     @click="popcorn($data, 'restore', <?= (int) $suggestion['id'] ?>)">Rouvrir cette idée</button>

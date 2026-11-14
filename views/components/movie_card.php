@@ -99,7 +99,14 @@ $truncatedOverview = $overview !== '' && mb_strlen($overview, 'UTF-8') > 160
         </div>
 
         <?php if (!empty($movie['memo'])): ?>
-            <p class="mt-1.5 text-xs italic text-slate-300">« <?= Security::e($movie['memo']) ?> »</p>
+            <?php $popcorn = FormatUtils::popcornReason((string) $movie['memo']); ?>
+            <?php if ($popcorn !== null): ?>
+                <p class="mt-1.5 rounded-lg bg-amber-400/10 px-2 py-1 text-xs text-amber-100">
+                    <span class="font-medium">🍿 Idée de Madame Pop-Corn</span><?= $popcorn !== '' ? ' : ' . Security::e($popcorn) : '' ?>
+                </p>
+            <?php else: ?>
+                <p class="mt-1.5 text-xs italic text-slate-300">« <?= Security::e($movie['memo']) ?> »</p>
+            <?php endif; ?>
         <?php endif; ?>
 
         <div class="relative z-20 mt-2 flex items-center gap-2">
