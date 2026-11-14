@@ -6,6 +6,10 @@ return [
     'tmdb_api_key' => '',
     'tmdb_language' => 'fr-FR',
     'tmdb_region' => 'FR',
+    // Madame Pop-Corn (suggestions IA). Clé gratuite : aistudio.google.com/apikey.
+    // Se renseigne avec scripts/set_gemini_key.sh. Sans clé, la page reste vide.
+    'gemini_api_key' => '',
+    'gemini_model' => 'gemini-flash-lite-latest',
     'default_start_time' => '19:15',
     'low_pool_threshold' => 5,
 ];

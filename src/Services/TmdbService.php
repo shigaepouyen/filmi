@@ -144,6 +144,50 @@ final class TmdbService
         ];
     }
 
+    /**
+     * Fiche allegee d'une serie : un seul appel, sans la suite d'episodes.
+     * seriesDetails() fait un appel de plus par saison, ce qui n'a pas de sens pour
+     * une simple idee de Madame Pop-Corn que la famille n'a peut-etre pas encore
+     * retenue. La suite complete est rechargee au moment de la garder.
+     *
+     * @return array<string, mixed>
+     */
+    public function seriesSummary(int $tmdbId): array
+    {
+        if (!$this->isConfigured()) {
+            throw new TmdbException('Aucune clé TMDb configurée.');
+        }
+
+        $series = $this->get('/tv/' . $tmdbId, [
+            'append_to_response' => 'watch/providers',
+        ]);
+
+        $runtimes = array_filter(array_map('intval', $series['episode_run_time'] ?? []));
+
+        return [
+            'kind' => 'series',
+            'tmdb_id' => (int) ($series['id'] ?? $tmdbId),
+            'title' => (string) ($series['name'] ?? ''),
+            'original_title' => $series['original_name'] ?? null,
+            'year' => self::yearFrom($series['first_air_date'] ?? null),
+            'runtime' => $runtimes === [] ? null : (int) round(array_sum($runtimes) / count($runtimes)),
+            'poster_url' => self::poster($series['poster_path'] ?? null),
+            'overview' => $series['overview'] ?? null,
+            'tmdb_rating' => isset($series['vote_average']) ? (float) $series['vote_average'] : null,
+            'genres' => json_encode(
+                array_column($series['genres'] ?? [], 'name'),
+                JSON_UNESCAPED_UNICODE
+            ),
+            'providers' => json_encode(
+                $this->providers($series['watch/providers']['results'] ?? []),
+                JSON_UNESCAPED_UNICODE
+            ),
+            'providers_at' => date('Y-m-d H:i:s'),
+            'season_count' => isset($series['number_of_seasons']) ? (int) $series['number_of_seasons'] : null,
+            'episode_count' => isset($series['number_of_episodes']) ? (int) $series['number_of_episodes'] : null,
+        ];
+    }
+
     /** @return array<string, mixed> prêt pour MovieRepository::add() */
     public function details(int $tmdbId): array
     {

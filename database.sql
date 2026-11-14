@@ -98,6 +98,40 @@ CREATE TABLE IF NOT EXISTS rating_skips (
     UNIQUE (seance_id, profile_id)
 );
 
+-- Madame Pop-Corn : suggestions de l'IA, cloisonnees des listes manuelles.
+-- Table a part et non un troisieme pool de movies : SQLite ne sait pas modifier
+-- le CHECK (pool IN ('adult','kid')), et rien ici ne doit pouvoir etre tire au
+-- sort ni compte comme une liste tant que la famille n'a pas decide de garder.
+CREATE TABLE IF NOT EXISTS suggestions (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    tmdb_id        INTEGER NOT NULL,
+    kind           TEXT NOT NULL DEFAULT 'film' CHECK (kind IN ('film','series')),
+    title          TEXT NOT NULL,
+    original_title TEXT,
+    year           INTEGER,
+    runtime        INTEGER,
+    poster_url     TEXT,
+    overview       TEXT,
+    genres         TEXT,              -- JSON
+    director       TEXT,
+    tmdb_rating    REAL,
+    certification  TEXT,
+    providers      TEXT,              -- JSON, meme forme que movies.providers
+    providers_at   DATETIME,
+    trailer_url    TEXT,
+    season_count   INTEGER,
+    episode_count  INTEGER,
+    audience       TEXT NOT NULL DEFAULT 'all' CHECK (audience IN ('all','kid','adult')),
+    bet_type       TEXT CHECK (bet_type IN ('safe','discovery')),
+    why            TEXT,              -- l'indice de preference donne par l'IA
+    status         TEXT NOT NULL DEFAULT 'new'
+                   CHECK (status IN ('new','kept','rejected','transferred')),
+    movie_id       INTEGER REFERENCES movies(id) ON DELETE SET NULL,
+    created_at     DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (tmdb_id, kind)
+);
+CREATE INDEX IF NOT EXISTS idx_suggestions_status ON suggestions(status);
+
 CREATE TABLE IF NOT EXISTS settings (
     key   TEXT PRIMARY KEY,
     value TEXT

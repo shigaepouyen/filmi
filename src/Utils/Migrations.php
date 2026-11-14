@@ -271,6 +271,46 @@ final class Migrations
                     }
                 },
             ],
+            11 => [
+                'description' => 'Ajoute suggestions : la liste de Madame Pop-Corn',
+                'up' => static function (PDO $db): void {
+                    // Table additive, vide tant que personne ne demande d'idees :
+                    // rien ne change pour les listes existantes. Le texte du schema
+                    // est celui de database.sql, repris ici pour qu'une base de
+                    // production ancienne l'obtienne sans passer par init_db.
+                    $db->exec(
+                        'CREATE TABLE IF NOT EXISTS suggestions (
+                            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                            tmdb_id        INTEGER NOT NULL,
+                            kind           TEXT NOT NULL DEFAULT \'film\' CHECK (kind IN (\'film\',\'series\')),
+                            title          TEXT NOT NULL,
+                            original_title TEXT,
+                            year           INTEGER,
+                            runtime        INTEGER,
+                            poster_url     TEXT,
+                            overview       TEXT,
+                            genres         TEXT,
+                            director       TEXT,
+                            tmdb_rating    REAL,
+                            certification  TEXT,
+                            providers      TEXT,
+                            providers_at   DATETIME,
+                            trailer_url    TEXT,
+                            season_count   INTEGER,
+                            episode_count  INTEGER,
+                            audience       TEXT NOT NULL DEFAULT \'all\' CHECK (audience IN (\'all\',\'kid\',\'adult\')),
+                            bet_type       TEXT CHECK (bet_type IN (\'safe\',\'discovery\')),
+                            why            TEXT,
+                            status         TEXT NOT NULL DEFAULT \'new\'
+                                           CHECK (status IN (\'new\',\'kept\',\'rejected\',\'transferred\')),
+                            movie_id       INTEGER REFERENCES movies(id) ON DELETE SET NULL,
+                            created_at     DATETIME DEFAULT CURRENT_TIMESTAMP,
+                            UNIQUE (tmdb_id, kind)
+                        )'
+                    );
+                    $db->exec('CREATE INDEX IF NOT EXISTS idx_suggestions_status ON suggestions(status)');
+                },
+            ],
         ];
     }
 

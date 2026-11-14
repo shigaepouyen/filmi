@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Repositories;
 
+use App\Utils\FormatUtils;
 use DateTimeImmutable;
 use InvalidArgumentException;
 use PDO;
@@ -601,6 +602,25 @@ final class SeanceRepository
             $this->db->rollBack();
             throw $e;
         }
+    }
+
+    /**
+     * « Deja vu » sans savoir quand. Une seance exige une date unique, donc on lui en
+     * reserve une fictive, tres ancienne, que FormatUtils affiche « Date inconnue » :
+     * 1900-01-01 pour la premiere, puis un jour de plus pour chacune. L'historique
+     * trie par date decroissante, elles tombent donc tout en bas.
+     */
+    public function recordBackfillUnknownDate(int $movieId): array
+    {
+        $last = $this->db->query(
+            "SELECT MAX(date) FROM seances WHERE date < '" . FormatUtils::UNKNOWN_DATE_BEFORE . "'"
+        )->fetchColumn();
+
+        $next = $last === false || $last === null
+            ? new DateTimeImmutable('1900-01-01')
+            : (new DateTimeImmutable((string) $last))->modify('+1 day');
+
+        return $this->recordBackfill($movieId, $next->format('Y-m-d'));
     }
 
     /**

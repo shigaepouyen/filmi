@@ -71,6 +71,27 @@ $colors = Avatars::colors();
         <?php endif; ?>
     </section>
 
+    <section id="pop-corn" class="space-y-2">
+        <h2 class="text-sm font-medium">Madame Pop-Corn</h2>
+        <p class="text-xs text-slate-400">
+            Clé Gemini : <?= $popcornConfigured ? 'configurée' : 'absente, ses idées sont désactivées' ?>.
+            Elle voit les titres vus, les notes, les listes et les votes, sous des étiquettes
+            (« Parent 1 », « Fille 2 »), jamais les prénoms.
+        </p>
+        <input type="hidden" name="ai_section" value="1">
+        <label class="flex items-start gap-2 text-sm <?= $isAdult ? '' : 'opacity-60' ?>">
+            <input type="checkbox" name="ai_include_memos" value="1" class="mt-1"
+                   <?= $aiIncludeMemos ? 'checked' : '' ?> <?= $isAdult ? '' : 'disabled' ?>>
+            <span>
+                Lui laisser lire les mémos
+                <span class="block text-xs text-slate-400">
+                    Ils comptent peu dans ses choix et partent chez Google : à ne cocher que si les mémos
+                    ne contiennent rien de personnel. Réservé aux parents.
+                </span>
+            </span>
+        </label>
+    </section>
+
     <section class="text-sm text-slate-400">
         Clé TMDb : <?= $tmdbConfigured ? 'configurée' : 'absente, recherche désactivée' ?>.
         La clé se renseigne dans <code>config/config.php</code>, jamais depuis cette page.

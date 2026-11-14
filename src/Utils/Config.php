@@ -9,6 +9,8 @@ final class Config
         'tmdb_api_key' => '',
         'tmdb_language' => 'fr-FR',
         'tmdb_region' => 'FR',
+        'gemini_api_key' => '',
+        'gemini_model' => 'gemini-flash-lite-latest',
         'default_start_time' => '19:15',
         'low_pool_threshold' => 5,
     ];

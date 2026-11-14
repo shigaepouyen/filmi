@@ -7,7 +7,11 @@ use App\Repositories\MovieRepository;
 use App\Repositories\ProfileRepository;
 use App\Repositories\SeanceRepository;
 use App\Repositories\SettingRepository;
+use App\Repositories\SuggestionRepository;
+use App\Repositories\TasteRepository;
 use App\Repositories\VoteRepository;
+use App\Services\AiSuggestionService;
+use App\Services\GeminiService;
 use App\Services\TmdbService;
 use App\Utils\Config;
 use App\Utils\Database;
@@ -22,6 +26,8 @@ final class App
     public readonly SeanceRepository $seances;
     public readonly SettingRepository $settings;
     public readonly TmdbService $tmdb;
+    public readonly SuggestionRepository $suggestions;
+    public readonly AiSuggestionService $popcorn;
 
     private static ?self $instance = null;
 
@@ -39,6 +45,15 @@ final class App
             (string) Config::get('tmdb_api_key'),
             (string) Config::get('tmdb_language'),
             (string) Config::get('tmdb_region')
+        );
+        $this->suggestions = new SuggestionRepository($db);
+        $this->popcorn = new AiSuggestionService(
+            new GeminiService((string) Config::get('gemini_api_key'), (string) Config::get('gemini_model')),
+            $this->tmdb,
+            new TasteRepository($db, $this->profiles),
+            $this->suggestions,
+            $this->movies,
+            $this->settings
         );
     }
 
