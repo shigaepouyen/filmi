@@ -37,7 +37,7 @@ if (mb_strlen($overview) > 200) {
 }
 ?>
 <article class="rounded-2xl bg-white/5 p-3 ring-1 ring-white/10"
-         x-data="{ busy: false, gone: false, error: '', playing: false }" x-show="!gone"
+         x-data="{ busy: false, gone: false, error: '', playing: false, section: '<?= Security::e($mode) ?>' }" x-show="!gone"
          @trailer-started.window="if ($event.detail !== <?= (int) $suggestion['id'] ?>) playing = false">
     <div class="flex gap-3">
         <?php if (!empty($suggestion['poster_url'])): ?>

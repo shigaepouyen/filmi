@@ -77,18 +77,21 @@ $card = static fn (array $s, string $mode): string => ViewRenderer::component('s
     </section>
 <?php endif; ?>
 
-<h2 class="mb-2 text-sm font-medium text-slate-300">Nouvelles idées (<?= count($fresh) ?>)</h2>
-<?php if ($fresh === []): ?>
-    <p class="mb-6 rounded-2xl bg-white/5 p-6 text-center text-sm text-slate-400">Pas d'idée en attente.</p>
-<?php else: ?>
+<?php /* Les compteurs suivent les cartes : une carte traitee disparait sans recharger la page,
+          son compteur doit baisser avec elle (idea-gone est envoye par la carte). */ ?>
+<section x-data="{ n: <?= count($fresh) ?> }" @idea-gone.window="if ($event.detail === 'new') n--">
+    <h2 class="mb-2 text-sm font-medium text-slate-300">Nouvelles idées (<span x-text="n"><?= count($fresh) ?></span>)</h2>
+    <p x-show="n <= 0" <?= $fresh === [] ? '' : 'x-cloak' ?>
+       class="mb-6 rounded-2xl bg-white/5 p-6 text-center text-sm text-slate-400">Pas d'idée en attente.</p>
     <div class="mb-6 space-y-3">
         <?php foreach ($fresh as $s): ?><?= $card($s, 'new') ?><?php endforeach; ?>
     </div>
-<?php endif; ?>
+</section>
 
 <?php if ($kept !== []): ?>
-    <details class="mb-6">
-        <summary class="cursor-pointer text-sm font-medium text-slate-300">Gardées au chaud (<?= count($kept) ?>)</summary>
+    <details class="mb-6" x-data="{ n: <?= count($kept) ?> }" @idea-gone.window="if ($event.detail === 'kept') n--"
+             x-show="n > 0">
+        <summary class="cursor-pointer text-sm font-medium text-slate-300">Gardées au chaud (<span x-text="n"><?= count($kept) ?></span>)</summary>
         <div class="mt-2 space-y-3">
             <?php foreach ($kept as $s): ?><?= $card($s, 'kept') ?><?php endforeach; ?>
         </div>
@@ -129,8 +132,13 @@ async function popcorn(card, action, id, pool) {
     try {
         await popcornCall('/api/suggestion.php', pool ? { id, action, pool } : { id, action });
         card.gone = true;
-        // Garder ou rouvrir deplace la carte d'une section a l'autre : on recharge.
-        if (action === 'keep' || action === 'restore') { location.reload(); }
+        // Prevenir les compteurs de section. Envoye ici et non depuis un x-effect : dans un
+        // effet, le compteur serait suivi et l'evenement se redeclencherait en cascade.
+        window.dispatchEvent(new CustomEvent('idea-gone', { detail: card.section }));
+        // Garder, ecarter ou rouvrir deplace la carte d'une section a l'autre : on recharge,
+        // pour que les trois listes et leurs compteurs disent la verite. Ajouter en liste ou
+        // « deja vu » la fait sortir de la page : la carte disparait, son compteur baisse.
+        if (action === 'keep' || action === 'reject' || action === 'restore') { location.reload(); }
     } catch (e) { card.error = e.message; }
     finally { card.busy = false; }
 }
