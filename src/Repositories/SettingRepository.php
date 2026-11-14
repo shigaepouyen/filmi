@@ -85,6 +85,27 @@ final class SettingRepository
         $this->set('ai_include_memos', $include ? '1' : '0');
     }
 
+    /**
+     * La derniere demande a Madame Pop-Corn, la meme pour toute la famille : quand,
+     * par qui, combien d'idees gardees, lesquelles ecartees et pourquoi, ou l'erreur
+     * rencontree. Sans elle, une demande qui ne donne rien ne laisse aucune trace.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function lastAiAttempt(): ?array
+    {
+        $raw = $this->get('ai_last_attempt');
+        $data = $raw === null ? null : json_decode($raw, true);
+
+        return is_array($data) ? $data : null;
+    }
+
+    /** @param array<string, mixed> $attempt */
+    public function setLastAiAttempt(array $attempt): void
+    {
+        $this->set('ai_last_attempt', json_encode($attempt, JSON_UNESCAPED_UNICODE));
+    }
+
     /** Nombre d'appels au modele deja faits aujourd'hui. */
     public function aiCallsToday(): int
     {

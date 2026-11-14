@@ -33,9 +33,11 @@ class AiSuggestionServiceTest extends DbTestCase
         return (string) file_get_contents(__DIR__ . '/../fixtures/' . $name);
     }
 
-    private function service(array $ideas, ?string $geminiKey = 'k'): AiSuggestionService
+    /** @param list<array>|null $batches reponses successives du modele ; $ideas sert quand elles sont epuisees */
+    private function service(array $ideas, ?string $geminiKey = 'k', ?array $batches = null): AiSuggestionService
     {
-        $gemini = new GeminiService((string) $geminiKey, 'm', function (string $u, array $h, string $body) use ($ideas): string {
+        $gemini = new GeminiService((string) $geminiKey, 'm', function (string $u, array $h, string $body) use ($ideas, $batches): string {
+            $ideas = $batches[count($this->geminiBodies)] ?? $ideas;
             $this->geminiBodies[] = $body;
             return json_encode(['candidates' => [['content' => ['parts' => [['text' => json_encode(['suggestions' => $ideas])]]]]]]);
         });
@@ -73,7 +75,7 @@ class AiSuggestionServiceTest extends DbTestCase
             $this->idea('Film inventé', 2001),         // l'annee ne colle a aucun resultat
         ])->generate();
 
-        $this->assertSame(['added' => 1, 'dropped' => 1], $result);
+        $this->assertSame(['added' => 1, 'dropped' => 1, 'passes' => 2], $result);
         $row = $this->suggestions->byStatus('new')[0];
         $this->assertSame(129, (int) $row['tmdb_id']);
         $this->assertSame('Parce que', $row['why']);
@@ -83,7 +85,7 @@ class AiSuggestionServiceTest extends DbTestCase
     {
         $this->movies->add(['tmdb_id' => 129, 'title' => 'Le Voyage de Chihiro', 'pool' => 'kid', 'added_by' => 1]);
 
-        $this->assertSame(['added' => 0, 'dropped' => 1], $this->service([$this->idea('Le Voyage de Chihiro', 2001)])->generate());
+        $this->assertSame(['added' => 0, 'dropped' => 1, 'passes' => 2], $this->service([$this->idea('Le Voyage de Chihiro', 2001)])->generate());
     }
 
     public function testSeriesUseTheLightSummaryAndKeepNoEpisodeList(): void
@@ -170,5 +172,55 @@ class AiSuggestionServiceTest extends DbTestCase
 
         $this->expectException(\InvalidArgumentException::class);
         $this->service([])->transfer($id, 'kid', (new ProfileRepository($this->db))->find(3));
+    }
+
+    public function testASecondPassRecoversWhenTheFirstOnlyRepeatsKnownTitles(): void
+    {
+        $this->movies->add(['tmdb_id' => 129, 'title' => 'Le Voyage de Chihiro', 'pool' => 'kid', 'added_by' => 1]);
+
+        $result = $this->service([], 'k', [
+            [$this->idea('Le Voyage de Chihiro', 2001)],   // deja en liste : tout part en doublon
+            [$this->idea('Heartstopper', 2022, 'series')], // le second passage trouve
+        ])->generate();
+
+        $this->assertSame(['added' => 1, 'dropped' => 1, 'passes' => 2], $result);
+        $this->assertCount(2, $this->geminiBodies);
+        // Le second passage redonne au modele le titre qu'il vient de se faire refuser.
+        $this->assertStringContainsString('Le Voyage de Chihiro', $this->geminiBodies[1]);
+        $this->assertSame(1, $this->settings->aiCallsToday(), 'deux passages = une seule demande comptee');
+    }
+
+    public function testTheLastAttemptIsKeptForEveryoneWithTheReasonsForDrops(): void
+    {
+        $this->movies->add(['tmdb_id' => 129, 'title' => 'Le Voyage de Chihiro', 'pool' => 'kid', 'added_by' => 1]);
+
+        $this->service([$this->idea('Le Voyage de Chihiro', 2001)])->generate('JC');
+
+        $last = $this->settings->lastAiAttempt();
+        $this->assertSame('JC', $last['by']);
+        $this->assertSame(0, $last['added']);
+        $this->assertSame('Le Voyage de Chihiro', $last['dropped'][0]['title']);
+        $this->assertStringContainsString('déjà dans vos listes', $last['dropped'][0]['reason']);
+        $this->assertNull($last['error']);
+    }
+
+    public function testAFailedAttemptIsKeptToo(): void
+    {
+        $gemini = new GeminiService('k', 'm', fn () => throw new LlmException('Gemini a répondu 503.'));
+        $service = new AiSuggestionService(
+            $gemini, new TmdbService('t', 'fr-FR', 'FR', fn () => '{}'),
+            new TasteRepository($this->db, new ProfileRepository($this->db)),
+            $this->suggestions, $this->movies, $this->settings
+        );
+
+        try {
+            $service->generate('Zoé');
+            $this->fail('exception attendue');
+        } catch (LlmException) {
+        }
+
+        $last = $this->settings->lastAiAttempt();
+        $this->assertSame('Zoé', $last['by']);
+        $this->assertSame('Gemini a répondu 503.', $last['error']);
     }
 }

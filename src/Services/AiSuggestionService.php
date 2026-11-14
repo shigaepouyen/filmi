@@ -21,6 +21,9 @@ final class AiSuggestionService
     public const DAILY_LIMIT = 6;
     public const ASKED = 8;
     public const KEPT_PER_CALL = 6;
+    /** En dessous, on redemande une fois au modele. */
+    public const MIN_USEFUL = 3;
+    public const MAX_PASSES = 2;
 
     public function __construct(
         private GeminiService $gemini,
@@ -38,10 +41,17 @@ final class AiSuggestionService
     }
 
     /**
-     * @return array{added: int, dropped: int}
+     * Une demande = au plus deux passages chez le modele, comptes pour un seul appel :
+     * un modele leger repropose volontiers des classiques que la famille a deja, et
+     * tout part alors en doublon. Le second passage lui redonne les titres refuses.
+     * Le resultat, y compris un echec, est garde pour toute la famille (voir
+     * SettingRepository::lastAiAttempt()).
+     *
+     * @param string|null $by prenom du profil qui a clique, pour l'afficher
+     * @return array{added: int, dropped: int, passes: int}
      * @throws LlmException
      */
-    public function generate(): array
+    public function generate(?string $by = null): array
     {
         if (!$this->gemini->isConfigured()) {
             throw new LlmException("Madame Pop-Corn n'a pas de clé Gemini. Elle se renseigne dans config/config.php.");
@@ -60,49 +70,94 @@ final class AiSuggestionService
         // L'appel est compte avant d'etre fait : un echec cote Google consomme
         // quand meme du quota, et un bouton qu'on martele ne doit pas le vider.
         $this->settings->countAiCall();
-        $payload = $this->gemini->generateJson(
-            AiPrompt::SYSTEM,
-            AiPrompt::user($taste, $this->suggestions->knownTitles(), self::ASKED),
-            AiPrompt::schema()
-        );
 
         $added = 0;
-        $dropped = 0;
-        foreach (($payload['suggestions'] ?? []) as $idea) {
-            if (!is_array($idea) || $added >= self::KEPT_PER_CALL) {
-                continue;
+        $dropped = [];
+        $tried = [];
+        $passes = 0;
+        $record = ['at' => date('Y-m-d H:i'), 'by' => $by, 'added' => 0, 'passes' => 0, 'dropped' => [], 'error' => null];
+
+        $startedAt = microtime(true);
+        for ($pass = 0; $pass < self::MAX_PASSES; $pass++) {
+            $passes++;
+            try {
+                $payload = $this->gemini->generateJson(
+                    AiPrompt::SYSTEM,
+                    AiPrompt::user($taste, array_merge($this->suggestions->knownTitles(), $tried), self::ASKED),
+                    AiPrompt::schema()
+                );
+            } catch (LlmException $e) {
+                if ($pass === 0) {
+                    $record['error'] = $e->getMessage();
+                    $record['passes'] = $passes;
+                    $this->settings->setLastAiAttempt($record);
+                    throw $e;
+                }
+                break; // le premier passage a deja donne quelque chose : on le garde
             }
 
-            if ($this->store($idea)) {
-                $added++;
-            } else {
-                $dropped++;
+            foreach (($payload['suggestions'] ?? []) as $idea) {
+                if (!is_array($idea) || $added >= self::KEPT_PER_CALL) {
+                    continue;
+                }
+                $title = trim((string) ($idea['title'] ?? ''));
+                $key = mb_strtolower($title);
+                if ($title === '' || in_array($key, $tried, true)) {
+                    continue; // deja vu pendant cette demande : on ne le compte pas deux fois
+                }
+                $tried[] = $key;
+
+                $reason = $this->store($idea);
+                if ($reason === null) {
+                    $added++;
+                } else {
+                    $dropped[] = [
+                        'title' => $title,
+                        'year' => isset($idea['year']) && is_numeric($idea['year']) ? (int) $idea['year'] : null,
+                        'reason' => $reason,
+                    ];
+                }
+            }
+
+            // Pas de second passage si le premier a deja pris beaucoup de temps.
+            if ($added >= self::MIN_USEFUL || $dropped === [] || microtime(true) - $startedAt > 30) {
+                break;
             }
         }
 
-        return ['added' => $added, 'dropped' => $dropped];
+        $record['added'] = $added;
+        $record['passes'] = $passes;
+        $record['dropped'] = $dropped;
+        $this->settings->setLastAiAttempt($record);
+
+        return ['added' => $added, 'dropped' => count($dropped), 'passes' => $passes];
     }
 
-    /** @param array<string, mixed> $idea */
-    private function store(array $idea): bool
+    /**
+     * @param array<string, mixed> $idea
+     * @return string|null null si l'idee est enregistree, sinon la raison de son rejet
+     */
+    private function store(array $idea): ?string
     {
         $title = trim((string) ($idea['title'] ?? ''));
         $year = isset($idea['year']) && is_numeric($idea['year']) ? (int) $idea['year'] : null;
         $kind = ($idea['kind'] ?? 'film') === 'series' ? 'series' : 'film';
         if ($title === '') {
-            return false;
+            return 'sans titre';
         }
 
         try {
             $found = $this->match($title, $year, $kind);
             if ($found === null) {
-                return false;
+                return 'introuvable chez TMDb';
             }
 
             $tmdbId = (int) $found['tmdb_id'];
-            if ($this->suggestions->exists($tmdbId, $kind)
-                || $this->movies->findDuplicate($tmdbId, (string) $found['title'], $found['year']) !== null) {
-                return false;
+            if ($this->suggestions->exists($tmdbId, $kind)) {
+                return 'déjà proposée';
+            }
+            if ($this->movies->findDuplicate($tmdbId, (string) $found['title'], $found['year']) !== null) {
+                return 'déjà dans vos listes ou déjà vu';
             }
 
             $details = $kind === 'series'
@@ -110,7 +165,7 @@ final class AiSuggestionService
                 : $this->tmdb->details($tmdbId);
         } catch (TmdbException) {
             // Une idee dont la fiche est injoignable est perdue, pas le lot entier.
-            return false;
+            return 'fiche TMDb injoignable';
         }
 
         return $this->suggestions->add($details + [
@@ -118,7 +173,7 @@ final class AiSuggestionService
             'audience' => $idea['audience'] ?? 'all',
             'bet_type' => $idea['bet'] ?? null,
             'why' => $idea['why'] ?? null,
-        ]) !== null;
+        ]) !== null ? null : 'non enregistrée';
     }
 
     /**

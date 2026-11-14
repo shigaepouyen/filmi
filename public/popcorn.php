@@ -18,5 +18,6 @@ $app->render('popcorn', [
     'startTime' => $app->settings->startTime(),
     'subscribedBrands' => $app->settings->subscribedBrands(),
     'manageablePools' => Access::manageablePools((string) $profile['side']),
+    'lastAttempt' => $app->settings->lastAiAttempt(),
     'includeMemos' => $app->settings->aiIncludeMemos(),
 ], 'Filmi, Madame Pop-Corn');

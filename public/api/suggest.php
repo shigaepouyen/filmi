@@ -7,15 +7,15 @@ use App\App;
 use App\Services\LlmException;
 
 $app = App::boot();
-$app->requireProfileJson();
+$profile = $app->requireProfileJson();
 $app->requirePost();
 
 // Le modele et TMDb se suivent : plus long qu'une page ordinaire, sans que ce
 // temps soit celui de l'utilisateur devant un ecran fige (le bouton affiche l'attente).
-set_time_limit(90);
+set_time_limit(150);
 
 try {
-    $result = $app->popcorn->generate();
+    $result = $app->popcorn->generate((string) $profile['name']);
 } catch (LlmException $e) {
     $app->json(['error' => $e->getMessage()], 502);
 }

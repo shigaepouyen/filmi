@@ -46,6 +46,37 @@ $card = static fn (array $s, string $mode): string => ViewRenderer::component('s
     <p x-show="error" x-cloak class="w-full rounded-xl bg-rose-500/20 px-3 py-2 text-sm text-rose-100" x-text="error"></p>
 </section>
 
+<?php if (!empty($lastAttempt)):
+    $when = (string) ($lastAttempt['at'] ?? '');
+    $whenText = preg_match('/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})$/', $when, $m)
+        ? \App\Utils\FormatUtils::frenchDate($m[1]) . ' à ' . $m[2]
+        : $when;
+    $dropped = is_array($lastAttempt['dropped'] ?? null) ? $lastAttempt['dropped'] : [];
+    ?>
+    <section class="mb-6 rounded-2xl bg-white/5 p-3 text-xs text-slate-300 ring-1 ring-white/10">
+        <p>
+            <span class="font-medium text-slate-200">Dernière demande</span>,
+            <?= Security::e($whenText) ?><?= !empty($lastAttempt['by']) ? ' par ' . Security::e((string) $lastAttempt['by']) : '' ?>.
+            <?php if (!empty($lastAttempt['error'])): ?>
+                <span class="text-rose-200">Échec : <?= Security::e((string) $lastAttempt['error']) ?></span>
+            <?php else: ?>
+                <?= (int) ($lastAttempt['added'] ?? 0) ?> idée<?= ($lastAttempt['added'] ?? 0) > 1 ? 's' : '' ?> gardée<?= ($lastAttempt['added'] ?? 0) > 1 ? 's' : '' ?>,
+                <?= count($dropped) ?> écartée<?= count($dropped) > 1 ? 's' : '' ?><?= ($lastAttempt['passes'] ?? 1) > 1 ? ' (en deux passages)' : '' ?>.
+            <?php endif; ?>
+        </p>
+        <?php if ($dropped !== []): ?>
+            <details class="mt-1">
+                <summary class="cursor-pointer text-slate-400">Pourquoi écartées ?</summary>
+                <ul class="mt-1 list-disc pl-5 text-slate-400">
+                    <?php foreach ($dropped as $d): ?>
+                        <li><?= Security::e((string) ($d['title'] ?? '')) ?><?= !empty($d['year']) ? ' (' . (int) $d['year'] . ')' : '' ?> : <?= Security::e((string) ($d['reason'] ?? '')) ?></li>
+                    <?php endforeach; ?>
+                </ul>
+            </details>
+        <?php endif; ?>
+    </section>
+<?php endif; ?>
+
 <h2 class="mb-2 text-sm font-medium text-slate-300">Nouvelles idées (<?= count($fresh) ?>)</h2>
 <?php if ($fresh === []): ?>
     <p class="mb-6 rounded-2xl bg-white/5 p-6 text-center text-sm text-slate-400">Pas d'idée en attente.</p>
