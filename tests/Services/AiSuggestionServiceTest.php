@@ -1,0 +1,174 @@
+<?php
+namespace App\Tests\Services;
+
+use App\Repositories\MovieRepository;
+use App\Repositories\ProfileRepository;
+use App\Repositories\SettingRepository;
+use App\Repositories\SuggestionRepository;
+use App\Repositories\TasteRepository;
+use App\Services\AiSuggestionService;
+use App\Services\GeminiService;
+use App\Services\LlmException;
+use App\Services\TmdbService;
+use App\Tests\Support\DbTestCase;
+
+class AiSuggestionServiceTest extends DbTestCase
+{
+    private SuggestionRepository $suggestions;
+    private MovieRepository $movies;
+    private SettingRepository $settings;
+    private array $geminiBodies = [];
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seedProfiles();
+        $this->suggestions = new SuggestionRepository($this->db);
+        $this->movies = new MovieRepository($this->db);
+        $this->settings = new SettingRepository($this->db);
+    }
+
+    private function fixture(string $name): string
+    {
+        return (string) file_get_contents(__DIR__ . '/../fixtures/' . $name);
+    }
+
+    private function service(array $ideas, ?string $geminiKey = 'k'): AiSuggestionService
+    {
+        $gemini = new GeminiService((string) $geminiKey, 'm', function (string $u, array $h, string $body) use ($ideas): string {
+            $this->geminiBodies[] = $body;
+            return json_encode(['candidates' => [['content' => ['parts' => [['text' => json_encode(['suggestions' => $ideas])]]]]]]);
+        });
+        $routes = [
+            '/search/movie' => $this->fixture('tmdb_search.json'),
+            '/search/tv' => $this->fixture('tmdb_tv_search.json'),
+            '/movie/129' => $this->fixture('tmdb_details.json'),
+            '/tv/124834' => $this->fixture('tmdb_tv_details.json'),
+            '/season/' => $this->fixture('tmdb_tv_season1.json'),
+        ];
+        $tmdb = new TmdbService('t', 'fr-FR', 'FR', function (string $url) use ($routes): string {
+            foreach ($routes as $fragment => $payload) {
+                if (str_contains($url, $fragment)) {
+                    return $payload;
+                }
+            }
+            throw new \App\Services\TmdbException('introuvable : ' . $url);
+        });
+
+        return new AiSuggestionService(
+            $gemini, $tmdb, new TasteRepository($this->db, new ProfileRepository($this->db)),
+            $this->suggestions, $this->movies, $this->settings
+        );
+    }
+
+    private function idea(string $title, int $year, string $kind = 'film'): array
+    {
+        return ['title' => $title, 'year' => $year, 'kind' => $kind, 'audience' => 'all', 'bet' => 'safe', 'why' => 'Parce que'];
+    }
+
+    public function testIdeasAreVerifiedAtTmdbAndInventedOnesAreDropped(): void
+    {
+        $result = $this->service([
+            $this->idea('Le Voyage de Chihiro', 2001),
+            $this->idea('Film inventé', 2001),         // l'annee ne colle a aucun resultat
+        ])->generate();
+
+        $this->assertSame(['added' => 1, 'dropped' => 1], $result);
+        $row = $this->suggestions->byStatus('new')[0];
+        $this->assertSame(129, (int) $row['tmdb_id']);
+        $this->assertSame('Parce que', $row['why']);
+    }
+
+    public function testWorksAlreadyInTheListsOrSuggestedBeforeAreNotAddedAgain(): void
+    {
+        $this->movies->add(['tmdb_id' => 129, 'title' => 'Le Voyage de Chihiro', 'pool' => 'kid', 'added_by' => 1]);
+
+        $this->assertSame(['added' => 0, 'dropped' => 1], $this->service([$this->idea('Le Voyage de Chihiro', 2001)])->generate());
+    }
+
+    public function testSeriesUseTheLightSummaryAndKeepNoEpisodeList(): void
+    {
+        $this->service([$this->idea('Heartstopper', 2022, 'series')])->generate();
+
+        $row = $this->suggestions->byStatus('new')[0];
+        $this->assertSame('series', $row['kind']);
+        $this->assertSame(124834, (int) $row['tmdb_id']);
+    }
+
+    public function testDailyLimitStopsBeforeCallingTheModel(): void
+    {
+        $service = $this->service([]);
+        for ($i = 0; $i < AiSuggestionService::DAILY_LIMIT; $i++) {
+            $this->settings->countAiCall();
+        }
+
+        try {
+            $service->generate();
+            $this->fail('exception attendue');
+        } catch (LlmException $e) {
+            $this->assertStringContainsString('demain', $e->getMessage());
+            $this->assertSame([], $this->geminiBodies);
+        }
+    }
+
+    public function testNoGeminiKeyIsAClearErrorNotACall(): void
+    {
+        $this->expectException(LlmException::class);
+        $this->service([], '')->generate();
+    }
+
+    public function testMemosAreSentOnlyWhenTheSettingIsOn(): void
+    {
+        $this->movies->add(['title' => 'Alien', 'pool' => 'adult', 'bet_type' => 'safe', 'memo' => 'mémo-test-unique', 'added_by' => 1]);
+
+        $this->service([])->generate();
+        $this->assertStringNotContainsString('mémo-test-unique', $this->geminiBodies[0]);
+
+        $this->settings->setAiIncludeMemos(true);
+        $this->service([])->generate();
+        $this->assertStringContainsString('mémo-test-unique', $this->geminiBodies[1]);
+    }
+
+    public function testTransferCreatesAMovieInTheChosenListAndLocksTheSuggestion(): void
+    {
+        $this->service([$this->idea('Le Voyage de Chihiro', 2001)])->generate();
+        $id = (int) $this->suggestions->byStatus('new')[0]['id'];
+        $parent = (new ProfileRepository($this->db))->find(1);
+
+        $movieId = $this->service([])->transfer($id, 'adult', $parent);
+
+        $movie = $this->movies->find($movieId);
+        $this->assertSame('adult', $movie['pool']);
+        $this->assertSame('safe', $movie['bet_type']);
+        $this->assertStringContainsString('Madame Pop-Corn', $movie['memo']);
+        $this->assertSame('transferred', $this->suggestions->find($id)['status']);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->service([])->transfer($id, 'kid', $parent);
+    }
+
+    public function testAGirlCannotTransferIntoTheParentsList(): void
+    {
+        $this->service([$this->idea('Le Voyage de Chihiro', 2001)])->generate();
+        $id = (int) $this->suggestions->byStatus('new')[0]['id'];
+        $girl = (new ProfileRepository($this->db))->find(3);
+
+        try {
+            $this->service([])->transfer($id, 'adult', $girl);
+            $this->fail('refus attendu');
+        } catch (\InvalidArgumentException) {
+            $this->assertSame('new', $this->suggestions->find($id)['status']);
+            $this->assertSame(0, $this->movies->countPool('adult'));
+        }
+    }
+
+    public function testTransferIsRefusedWhenTheWorkIsAlreadyInAList(): void
+    {
+        $this->service([$this->idea('Le Voyage de Chihiro', 2001)])->generate();
+        $id = (int) $this->suggestions->byStatus('new')[0]['id'];
+        $this->movies->add(['tmdb_id' => 129, 'title' => 'Le Voyage de Chihiro', 'pool' => 'kid', 'added_by' => 3]);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->service([])->transfer($id, 'kid', (new ProfileRepository($this->db))->find(3));
+    }
+}

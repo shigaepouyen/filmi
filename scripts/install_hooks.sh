@@ -39,6 +39,12 @@ if git diff --cached -U0 | grep -qiE "^\+.*tmdb_api_key['\"]?[[:space:]]*=>[[:sp
     echec=1
 fi
 
+# 4. Idem pour la cle Gemini.
+if git diff --cached -U0 | grep -qiE "^\+.*gemini_api_key['\"]?[[:space:]]*=>[[:space:]]*['\"][a-z0-9_-]{8,}"; then
+    echo "REFUS : une cle Gemini non vide apparait dans les modifications indexees." >&2
+    echec=1
+fi
+
 if [ "$echec" -ne 0 ]; then
     echo >&2
     echo "Commit annule. Aucun secret n a ete enregistre." >&2

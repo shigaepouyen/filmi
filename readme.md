@@ -89,6 +89,19 @@ Une fois ce périmètre défini, la liste et le tirage n'affichent plus que les 
 
 Tant que rien n'est coché, toutes les plateformes s'affichent. C'est l'état transitoire avant le premier réglage.
 
+### Madame Pop-Corn, les idées de l'IA
+
+Une page à part, **cloisonnée des listes manuelles** : Madame Pop-Corn propose des films et des séries à partir de ce que la famille a vu, des deux listes et, si on le permet, des mémos. Ses idées vivent dans leur propre table et n'entrent jamais dans un tirage.
+
+- **Pondération dite en clair au modèle** : ce qui a été vu et noté pèse le plus, les listes et leurs votes comptent moyennement, les mémos ne sont qu'un indice faible.
+- **Vérifiée chez TMDb** : le modèle ne fournit que des titres. Affiche, synopsis, plateformes, avis parental et heure de fin viennent de TMDb, et une idée que TMDb ne retrouve pas à un an près est écartée. C'est le garde-fou contre les titres inventés.
+- **Chaque idée dit pourquoi** (« Coco, noté 5 par tout le monde »), le public visé et si c'est une valeur sûre ou une découverte.
+- **Garder au chaud, passer en liste, écarter** : une idée gardée reste sur la page ; « → Liste des parents » ou « → Liste des filles » la crée dans la liste choisie, avec la même règle d'accès que partout (les filles ne peuvent alimenter que la leur). Une idée écartée n'est jamais reproposée.
+- **Vie privée** : aucun prénom ne part, seulement « Parent 1 », « Fille 2 ». Les mémos et les raisons de veto ne partent que si un parent coche la case dans les réglages, et la clé n'est jamais envoyée au navigateur.
+- **Quota** : six demandes par jour, comptées avant l'appel, le bouton ne se déclenche que sur clic.
+
+Clé Gemini gratuite sur aistudio.google.com/apikey, puis `./scripts/set_gemini_key.sh` (même principe que la clé TMDb, et le hook pre-commit la surveille aussi). Le modèle se règle par `gemini_model` dans `config/config.php`, `gemini-flash-lite-latest` par défaut, avec repli automatique sur `gemini-3.1-flash-lite` si Google est surchargé (les modèles « flash » complets saturent souvent). Sur l'offre gratuite, Google peut utiliser les requêtes pour améliorer ses produits : c'est pour cela que les mémos sont désactivés par défaut. Une migration (`php scripts/migrate.php`, appliquée aussi par le déploiement) crée la table.
+
 ### La mise à jour des fiches
 
 Les plateformes changent, les bandes-annonces arrivent après la sortie. Les réglages portent un bouton **« Mettre à jour maintenant »** qui repasse sur les œuvres encore en liste, avec une barre de progression et le détail des échecs. Il récupère les plateformes, l'avis parental, la bande-annonce et la saga. La progression d'une série en cours n'est jamais touchée.
@@ -165,6 +178,7 @@ public/            # docroot
  ├─ index.php       # choix de profil
  ├─ tonight.php     # Ce samedi
  ├─ pool.php        # les deux listes
+ ├─ popcorn.php     # Madame Pop-Corn, suggestions IA
  ├─ add.php         # ajout d'un film
  ├─ draw.php        # tirage
  ├─ seance.php      # séance en cours, veto, notes
@@ -173,7 +187,7 @@ public/            # docroot
  ├─ awards.php      # palmarès
  ├─ settings.php    # réglages
  ├─ api/            # endpoints JSON (search, duplicate, vote, draw,
- │                  #   rate, rate_skip, refresh)
+ │                  #   rate, rate_skip, refresh, suggest, suggestion)
  └─ assets/icons/   # favicon et icônes PWA
 
 src/

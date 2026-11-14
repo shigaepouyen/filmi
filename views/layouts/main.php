@@ -6,6 +6,7 @@ use App\Utils\Security;
 $navigation = [
     '/tonight.php' => 'Ce samedi',
     '/pool.php' => 'Les listes',
+    '/popcorn.php' => 'Pop-Corn',
     '/add.php' => 'Ajouter',
     '/history.php' => 'Historique',
     '/awards.php' => 'Palmarès',
