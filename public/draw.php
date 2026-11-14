@@ -40,8 +40,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
     // Le repli ne sert que si la session a oublie le tirage : inutile de payer la
     // requete sinon.
+    $isKidWeek = $seance['chooser_side'] === 'kid';
     $tirables = $drawnIds === null
-        ? array_map(static fn (array $m): int => (int) $m['id'], $app->movies->drawCandidates())
+        ? array_map(
+            static fn (array $m): int => (int) $m['id'],
+            $app->movies->drawCandidates($isKidWeek ? 'kid' : 'adult')
+        )
         : [];
 
     if (!ChoiceRules::accepts($shortlist, $chosen, $drawnIds, $tirables)) {
@@ -49,7 +53,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         exit('Cette sélection ne correspond pas au tirage en cours. Relance le tirage.');
     }
 
-    $app->seances->recordChoice((int) $seance['id'], $shortlist, $chosen);
+    // Semaine des filles : le tirage sert a choisir, il ne laisse pas de
+    // shortlist. Les propositions non retenues ne consomment donc aucun cooldown,
+    // comme quand elles choisissaient directement dans leur liste.
+    $app->seances->recordChoice((int) $seance['id'], $isKidWeek ? [] : $shortlist, $chosen);
     unset($_SESSION['filmi_shown_' . (int) $seance['id']]);
     unset($_SESSION['filmi_current_' . (int) $seance['id']]);
     header('Location: /seance.php');
@@ -58,6 +65,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
 $app->render('draw', [
     'seance' => $seance,
+    'isKidWeek' => $seance['chooser_side'] === 'kid',
     'startTime' => $app->settings->startTime(),
     'currentMovies' => $_SESSION['filmi_current_' . (int) $seance['id']] ?? null,
 ], 'Filmi, le tirage');

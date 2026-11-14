@@ -71,6 +71,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         // ne veut plus rien dire.
         $estUneDerogation = ScheduleService::isDerogation($nouveauCamp, $defaultSide);
 
+        // Le trio tire en session vient de la liste de l'ancien camp : le garder
+        // laisserait choisir un film de la mauvaise liste.
+        unset(
+            $_SESSION['filmi_shown_' . (int) $seance['id']],
+            $_SESSION['filmi_current_' . (int) $seance['id']]
+        );
+
         $app->seances->setChooserSide(
             (int) $seance['id'],
             $nouveauCamp,

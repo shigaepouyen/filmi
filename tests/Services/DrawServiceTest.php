@@ -150,4 +150,52 @@ class DrawServiceTest extends TestCase
 
         $this->assertSame('Un film sûr', $result['movies'][0]['title']);
     }
+
+    /** @return list<array{id:int,bet_type:null}> */
+    private function kidPool(int $n): array
+    {
+        return array_map(static fn (int $id): array => ['id' => $id, 'bet_type' => null], range(1, $n));
+    }
+
+    public function testKidDrawIgnoresBetTypeAndReturnsThreeDistinctFilms(): void
+    {
+        for ($run = 0; $run < 30; $run++) {
+            $ids = array_column(DrawService::pickAny($this->kidPool(6))['movies'], 'id');
+            $this->assertCount(3, $ids);
+            $this->assertSame($ids, array_unique($ids));
+        }
+    }
+
+    public function testKidDrawAvoidsShownFilmsWhenPossible(): void
+    {
+        $result = DrawService::pickAny($this->kidPool(6), [1, 2, 3]);
+
+        $this->assertEqualsCanonicalizing([4, 5, 6], array_column($result['movies'], 'id'));
+        $this->assertFalse($result['reset']);
+    }
+
+    public function testKidDrawResetsWhenEverythingWasShown(): void
+    {
+        $result = DrawService::pickAny($this->kidPool(4), [1, 2, 3, 4]);
+
+        $this->assertCount(3, $result['movies']);
+        $this->assertTrue($result['reset']);
+    }
+
+    public function testKidDrawOffersWhatExistsWhenTheListHasFewerThanThree(): void
+    {
+        $result = DrawService::pickAny($this->kidPool(2));
+
+        $this->assertCount(2, $result['movies']);
+    }
+
+    public function testKidDrawOnEmptyListSaysSoInTheirOwnList(): void
+    {
+        try {
+            DrawService::pickAny([]);
+            $this->fail('DrawException attendue');
+        } catch (DrawException $e) {
+            $this->assertStringContainsString('liste des filles', $e->getMessage());
+        }
+    }
 }
