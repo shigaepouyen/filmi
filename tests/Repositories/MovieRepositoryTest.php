@@ -731,4 +731,64 @@ class MovieRepositoryTest extends DbTestCase
             }
         }
     }
+
+    public function testRelinkReplacesEveryTmdbFieldButKeepsWhatBelongsToTheFamily(): void
+    {
+        $id = $this->repo->add([
+            'tmdb_id' => 111, 'title' => 'Mauvais match', 'year' => 1999, 'runtime' => 80, 'overview' => 'Faux synopsis',
+            'director' => 'Quelqu\'un', 'collection_id' => 7, 'collection_name' => 'Mauvaise saga', 'collection_rank' => 2,
+            'pool' => 'adult', 'bet_type' => 'discovery', 'memo' => 'ancien mémo', 'added_by' => 1,
+        ]);
+        $this->db->exec("INSERT INTO votes (movie_id, profile_id) VALUES ({$id}, 1)");
+
+        $this->repo->relinkToTmdb($id, [
+            'tmdb_id' => 222, 'title' => 'Le bon film', 'year' => 2010, 'runtime' => 120, 'overview' => 'Vrai synopsis',
+            'poster_url' => 'https://img/p.jpg', 'providers' => '[]', 'trailer_url' => 'https://www.youtube.com/watch?v=abc123XYZ',
+        ], 'nouveau mémo');
+
+        $m = $this->repo->find($id);
+        $this->assertSame(222, (int) $m['tmdb_id']);
+        $this->assertSame('Le bon film', $m['title']);
+        $this->assertSame('Vrai synopsis', $m['overview']);
+        $this->assertSame(120, (int) $m['runtime']);
+        $this->assertNull($m['director'], 'les donnees de la mauvaise fiche ne survivent pas');
+        $this->assertNull($m['collection_id']);
+        $this->assertNull($m['collection_name']);
+        $this->assertSame('nouveau mémo', $m['memo']);
+        $this->assertSame('adult', $m['pool']);
+        $this->assertSame('discovery', $m['bet_type']);
+        $this->assertSame(1, (int) $m['added_by']);
+        $this->assertSame('pool', $m['status']);
+        $this->assertSame(1, (int) $this->db->query("SELECT COUNT(*) FROM votes WHERE movie_id = {$id}")->fetchColumn());
+    }
+
+    public function testRelinkRefusesAFicheAlreadyInTheLists(): void
+    {
+        $this->repo->add(['tmdb_id' => 222, 'title' => 'Déjà là', 'pool' => 'kid', 'added_by' => 1]);
+        $id = $this->repo->add(['tmdb_id' => 111, 'title' => 'À corriger', 'pool' => 'kid', 'added_by' => 1]);
+
+        $this->expectException(\InvalidArgumentException::class);
+        try {
+            $this->repo->relinkToTmdb($id, ['tmdb_id' => 222, 'title' => 'Déjà là'], null);
+        } finally {
+            $this->assertSame(111, (int) $this->repo->find($id)['tmdb_id'], 'rien n\'est ecrit en cas de refus');
+        }
+    }
+
+    public function testRelinkingTheSameFicheIsAllowedAndSeriesKeepTheirProgressClipped(): void
+    {
+        $id = $this->repo->addSeries([
+            'tmdb_id' => 333, 'title' => 'Série', 'pool' => 'kid', 'added_by' => 1,
+            'episodes' => [['season' => 1, 'number' => 1]], 'episode_count' => 10, 'episodes_watched' => 8,
+        ]);
+
+        // La meme fiche (meme tmdb_id) n'est pas un doublon d'elle-meme.
+        $this->repo->relinkToTmdb($id, ['tmdb_id' => 333, 'title' => 'Série', 'episode_count' => 5, 'season_count' => 1,
+            'episodes' => json_encode([['season' => 1, 'number' => 1]])], null);
+
+        $m = $this->repo->find($id);
+        $this->assertSame(5, (int) $m['episode_count']);
+        $this->assertSame(5, (int) $m['episodes_watched'], 'progression ramenee a la nouvelle longueur');
+        $this->assertSame('series', $m['kind']);
+    }
 }

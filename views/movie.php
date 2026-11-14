@@ -374,19 +374,76 @@ $notesFamille = $familyRating['rows'];
         <section class="mt-8 rounded-2xl bg-white/5 p-4">
             <h2 class="text-sm font-medium text-slate-300">Modifier la fiche</h2>
             <p class="mt-1 text-xs text-slate-400">
-                Corrige le titre, l'année, la durée ou le mémo. Le synopsis, l'affiche, la bande-annonce
-                et les plateformes viennent de TMDb et se remettent à jour tout seuls.
+                Corrige le titre, l'année, la durée ou le mémo. Si le titre ne tombait pas sur la bonne fiche,
+                cherche-le sur TMDb et rattache le film au bon résultat : affiche, synopsis et plateformes suivent.
             </p>
-            <form method="post" class="mt-3 space-y-3">
+            <form method="post" class="mt-3 space-y-3"
+                  x-data="{
+                    q: <?= Security::e(json_encode((string) $movie['title'], JSON_UNESCAPED_UNICODE)) ?>,
+                    original: <?= Security::e(json_encode((string) $movie['title'], JSON_UNESCAPED_UNICODE)) ?>,
+                    results: [], searching: false, searched: false, selected: null, failed: false,
+                    async search() {
+                        if (this.q.trim().length < 2) { this.results = []; return; }
+                        this.searching = true; this.failed = false;
+                        try {
+                            const r = await fetch('/api/search.php?type=<?= $isSeries ? 'series' : 'movie' ?>&q=' + encodeURIComponent(this.q));
+                            const p = await r.json();
+                            this.failed = !r.ok;
+                            this.results = p.results || [];
+                            this.searched = true;
+                        } catch (e) { this.failed = true; } finally { this.searching = false; }
+                    },
+                    choose(m) { this.selected = m; this.results = []; this.q = m.title; },
+                    clear() { this.selected = null; }
+                  }">
                 <input type="hidden" name="csrf" value="<?= Security::csrfToken() ?>">
                 <input type="hidden" name="id" value="<?= (int) $movie['id'] ?>">
                 <input type="hidden" name="action" value="edit_details">
+                <input type="hidden" name="tmdb_id" :value="selected ? selected.tmdb_id : ''">
                 <label class="block text-xs text-slate-400" for="edit_title">Titre
                     <input id="edit_title" name="title" required maxlength="<?= \App\Repositories\MovieRepository::TITLE_MAX ?>"
-                           value="<?= Security::e($movie['title']) ?>"
+                           x-model="q"
+                           <?php if ($tmdbConfigured): ?>@input.debounce.600ms="if (!selected && q.trim() !== original) search()"<?php endif; ?>
                            class="mt-1 w-full rounded-xl bg-white/10 px-3 py-2 text-sm text-slate-100">
                 </label>
-                <div class="flex gap-3">
+
+                <?php if ($tmdbConfigured): ?>
+                    <div class="space-y-2">
+                        <button type="button" @click="clear(); search()" class="rounded-xl bg-white/10 px-3 py-1.5 text-xs">
+                            Rechercher « <span x-text="q"></span> » sur TMDb
+                        </button>
+                        <p x-show="searching" x-cloak class="text-xs text-slate-400">Recherche en cours...</p>
+                        <p x-show="failed" x-cloak class="text-xs text-rose-200">TMDb est injoignable, réessaie dans un instant.</p>
+                        <p x-show="searched && !searching && !failed && !results.length && !selected" x-cloak class="text-xs text-slate-400">
+                            Aucun résultat pour ce titre. Tu peux enregistrer le texte tel quel.
+                        </p>
+                        <ul x-show="results.length" x-cloak class="divide-y divide-white/5 overflow-hidden rounded-xl bg-white/5">
+                            <template x-for="m in results" :key="m.tmdb_id">
+                                <li>
+                                    <button type="button" @click="choose(m)" class="flex w-full items-center gap-3 p-2 text-left hover:bg-white/10">
+                                        <template x-if="m.poster_url"><img :src="m.poster_url" alt="" class="h-16 w-11 rounded object-cover"></template>
+                                        <template x-if="!m.poster_url"><span class="h-16 w-11 rounded bg-slate-800"></span></template>
+                                        <span>
+                                            <span class="block text-sm" x-text="m.title"></span>
+                                            <span class="block text-xs text-slate-400" x-text="m.year || 'année inconnue'"></span>
+                                        </span>
+                                    </button>
+                                </li>
+                            </template>
+                        </ul>
+                        <div x-show="selected" x-cloak class="rounded-xl bg-emerald-500/15 px-3 py-2 text-sm">
+                            Rattacher à <strong x-text="selected ? selected.title : ''"></strong>
+                            <span x-text="selected && selected.year ? '(' + selected.year + ')' : ''"></span>.
+                            <span class="block text-xs text-slate-300">
+                                L'affiche, le synopsis, la durée, les plateformes et la bande-annonce seront rechargés depuis TMDb.
+                                La liste, les votes et l'historique ne changent pas.
+                            </span>
+                            <button type="button" @click="clear()" class="mt-1 text-xs underline">annuler</button>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <div class="flex gap-3" x-show="!selected">
                     <label class="block flex-1 text-xs text-slate-400" for="edit_year">Année
                         <input id="edit_year" name="year" type="number" min="1880" max="<?= (int) date('Y') + 5 ?>"
                                value="<?= $movie['year'] !== null ? (int) $movie['year'] : '' ?>"

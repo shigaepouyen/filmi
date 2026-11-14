@@ -592,6 +592,63 @@ final class MovieRepository
             ->execute([$title, $year, $runtime, $memo === '' ? null : $memo, $id]);
     }
 
+    /** Colonnes que TMDb alimente : un nouveau rattachement les remplace toutes, meme par NULL. */
+    private const TMDB_COLUMNS = [
+        'tmdb_id', 'title', 'original_title', 'year', 'runtime', 'poster_url', 'overview',
+        'genres', 'director', 'tmdb_rating', 'certification', 'providers', 'providers_at',
+        'trailer_url', 'collection_id', 'collection_name', 'collection_rank',
+    ];
+
+    /**
+     * Rattache un film ou une serie a une autre fiche TMDb (le titre saisi a la main
+     * ne tombait pas sur la bonne). Toutes les donnees TMDb sont remplacees, y compris
+     * par NULL : garder la saga ou le realisateur de la mauvaise fiche serait pire que
+     * de les laisser vides. Ce qui appartient a la famille ne bouge pas : liste, pari,
+     * proposeur, votes, statut, seances. Seul le memo peut etre redonne en meme temps.
+     *
+     * Pour une serie la suite d'episodes est remplacee ; la progression est conservee,
+     * ramenee au nombre d'episodes de la nouvelle fiche si celle-ci est plus courte.
+     *
+     * @param array<string, mixed> $data sortie de TmdbService::details() ou seriesDetails()
+     * @throws InvalidArgumentException
+     */
+    public function relinkToTmdb(int $id, array $data, ?string $memo): void
+    {
+        $movie = $this->find($id);
+        if ($movie === null) {
+            throw new InvalidArgumentException('Film introuvable.');
+        }
+        if (trim((string) ($data['title'] ?? '')) === '' || !isset($data['tmdb_id'])) {
+            throw new InvalidArgumentException("TMDb n'a renvoyé aucune fiche exploitable.");
+        }
+
+        $other = $this->findDuplicate((int) $data['tmdb_id'], '', null);
+        if ($other !== null && (int) $other['id'] !== $id) {
+            throw new InvalidArgumentException(sprintf('« %s » est déjà dans les listes.', $other['title']));
+        }
+
+        $row = [];
+        foreach (self::TMDB_COLUMNS as $column) {
+            $row[$column] = $data[$column] ?? null;
+        }
+        $row['title'] = mb_substr(trim((string) $row['title']), 0, self::TITLE_MAX);
+
+        if (($movie['kind'] ?? 'film') === 'series') {
+            $episodes = $data['episodes'] ?? null;
+            $row['episodes'] = is_array($episodes) ? json_encode($episodes, JSON_UNESCAPED_UNICODE) : $episodes;
+            $row['season_count'] = $data['season_count'] ?? null;
+            $row['episode_count'] = $data['episode_count'] ?? null;
+            $row['episodes_watched'] = min((int) $movie['episodes_watched'], (int) ($data['episode_count'] ?? 0));
+        }
+
+        $memo = $memo === null ? null : mb_substr(trim($memo), 0, self::MEMO_MAX);
+        $row['memo'] = $memo === '' ? null : $memo;
+
+        $sets = implode(', ', array_map(static fn (string $c): string => $c . ' = :' . $c, array_keys($row)));
+        $row['_id'] = $id;
+        $this->db->prepare("UPDATE movies SET {$sets} WHERE id = :_id")->execute($row);
+    }
+
     /**
      * Série en cours dans ce pool, s'il y en a une. Une série en cours reste en
      * statut 'pool' (cf. advanceSeries()) et se reconnaît à episodes_watched > 0.

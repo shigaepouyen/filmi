@@ -141,8 +141,24 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         // Champ vide = valeur effacee (annee, duree, memo) ; seul le titre est obligatoire.
         $numeric = static fn (string $key): ?int => ($_POST[$key] ?? '') === '' ? null : (int) $_POST[$key];
         $memo = (string) ($_POST['memo'] ?? '');
+        $tmdbId = ctype_digit((string) ($_POST['tmdb_id'] ?? '')) ? (int) $_POST['tmdb_id'] : null;
 
         try {
+            if ($tmdbId !== null) {
+                // Rattachement a un resultat TMDb choisi apres une recherche sur le titre saisi.
+                // La fiche est rechargee ici : le navigateur ne dicte jamais les metadonnees.
+                try {
+                    $data = ($movie['kind'] ?? 'film') === 'series'
+                        ? $app->tmdb->seriesDetails($tmdbId)
+                        : $app->tmdb->details($tmdbId);
+                } catch (\App\Services\TmdbException) {
+                    throw new InvalidArgumentException("TMDb est injoignable. Réessaie dans un instant, rien n'a été modifié.");
+                }
+                $app->movies->relinkToTmdb($id, $data, $memo === '' ? null : $memo);
+                header('Location: /movie.php?id=' . $id);
+                exit;
+            }
+
             $app->movies->updateDetails(
                 $id,
                 (string) ($_POST['title'] ?? ''),
@@ -222,6 +238,7 @@ $app->render('movie', [
     'startTime' => $app->settings->startTime(),
     'subscribedBrands' => $app->settings->subscribedBrands(),
     'canManage' => Access::canManagePool((string) $profile['side'], (string) $movie['pool']),
+    'tmdbConfigured' => $app->tmdb->isConfigured(),
     'blockedByFilm' => $app->movies->blockedBy($id),
     'manageablePools' => Access::manageablePools((string) $profile['side']),
     'allProfiles' => $app->profiles->all(),
